@@ -88,7 +88,7 @@ export const Footer = () => {
             </div>
           </div>
 
-          {/* Company Links */}
+          {/* Company & Developer Links */}
           <div className="lg:col-span-2">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-5">Company</h4>
             <div className="flex flex-col gap-3">
@@ -103,17 +103,27 @@ export const Footer = () => {
               ))}
             </div>
 
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 mt-8">Legal</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 mt-8">Developers & API</h4>
             <div className="flex flex-col gap-3">
-              {legalLinks.map((link) => (
-                <button 
-                  key={link.path}
-                  onClick={() => handleNav(link.path)} 
-                  className="text-sm text-slate-300 hover:text-white transition-colors text-left"
-                >
-                  {link.label}
-                </button>
-              ))}
+              <button 
+                onClick={() => handleNav('/docs')} 
+                className="text-sm font-semibold text-brand-400 hover:text-brand-300 transition-colors text-left flex items-center gap-1.5"
+              >
+                <span>Documentation & API</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 border border-brand-500/30">v1.0</span>
+              </button>
+              <button 
+                onClick={() => handleNav('/docs')} 
+                className="text-sm text-slate-300 hover:text-white transition-colors text-left"
+              >
+                API Playground
+              </button>
+              <button 
+                onClick={() => handleNav('/docs')} 
+                className="text-sm text-slate-300 hover:text-white transition-colors text-left"
+              >
+                Webhooks Guide
+              </button>
             </div>
           </div>
 
