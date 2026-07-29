@@ -46,6 +46,7 @@ import { IntegrationsPage as WebIntegrationsPage } from '@/website/pages/Integra
 import { PrivacyPolicyPage } from '@/website/pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from '@/website/pages/TermsOfServicePage';
 import { RefundPolicyPage } from '@/website/pages/RefundPolicyPage';
+import { DocsPage } from '@/website/pages/DocsPage';
 import Login from '@/components/Login';
 import { 
   UserPlus,
@@ -291,7 +292,9 @@ const AppContent = () => {
       <Route path="/company" element={<CompanyPage />} />
       <Route path="/contact" element={<ContactPage />} />
       <Route path="/integrations" element={<WebIntegrationsPage />} />
-      <Route path="/resources" element={<Navigate to="/product" replace />} />
+      <Route path="/docs" element={<DocsPage />} />
+      <Route path="/docs/*" element={<DocsPage />} />
+      <Route path="/resources" element={<Navigate to="/docs" replace />} />
 
       {/* 2. Authentication Entry: Handles redirecting active sessions away from login */}
       <Route path="/preview/loader" element={<div className="min-h-screen bg-slate-50 flex items-center justify-center"><CallMindLoader onComplete={() => window.location.reload()} size="lg" text="Simulating loader..." /></div>} />

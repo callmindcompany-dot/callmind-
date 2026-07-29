@@ -21,6 +21,7 @@ export const Footer = () => {
 
   const productLinks = [
     { label: 'CRM Product Suite', path: '/product' },
+    { label: 'Developer Docs & API', path: '/docs' },
     { label: 'Integrations', path: '/integrations' },
     { label: 'Telecaller Mobile App', path: '/mobile-app' },
     { label: 'Pricing Plans', path: '/pricing' },
