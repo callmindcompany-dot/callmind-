@@ -1,0 +1,589 @@
+import express from "express";
+import { GoogleGenAI } from "@google/genai";
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Gemini Client
+const geminiApiKey = process.env.GEMINI_API_KEY;
+export let aiClient: GoogleGenAI | null = null;
+if (geminiApiKey) {
+  aiClient = new GoogleGenAI({
+    apiKey: geminiApiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      }
+    }
+  });
+  console.log("[Gemini AI] Client successfully initialized with configured API Key.");
+}
+
+// Supabase configuration
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+export const isPlaceholder = false;
+
+// Convert camelCase to snake_case for PostgreSQL
+export function toSnakeCase(str: string): string {
+  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+}
+
+// Convert snake_case to camelCase
+export function toCamelCase(str: string): string {
+  return str.replace(/([-_][a-z])/g, group =>
+    group.toUpperCase().replace('-', '').replace('_', '')
+  );
+}
+
+// Convert object keys recursively
+export function mapKeys(obj: any, converter: (s: string) => string): any {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(item => mapKeys(item, converter));
+  }
+  if (typeof obj === 'object' && !(obj instanceof Date)) {
+    const n: any = {};
+    Object.keys(obj).forEach(k => {
+      n[converter(k)] = mapKeys(obj[k], converter);
+    });
+    return n;
+  }
+  return obj;
+}
+
+// Mock Firestore FieldValue simulator
+export const FieldValue = {
+  increment(value: number) {
+    return { type: 'increment', value };
+  },
+  serverTimestamp() {
+    return new Date().toISOString();
+  }
+};
+
+// Mock Firestore Timestamp adapter
+export class MockTimestamp {
+  constructor(private date: Date) {}
+  toDate() { return this.date; }
+  toMillis() { return this.date.getTime(); }
+  static now() { return new MockTimestamp(new Date()); }
+  static fromDate(date: Date) { return new MockTimestamp(date); }
+  static fromMillis(ms: number) { return new MockTimestamp(new Date(ms)); }
+}
+
+export const Timestamp = MockTimestamp;
+
+// Mock Firestore Query Builder
+export class QueryBuilder {
+  private constraints: any[] = [];
+  constructor(private tableName: string) {}
+
+  where(field: string, op: string, value: any) {
+    this.constraints.push({ type: 'where', field, op, value });
+    return this;
+  }
+
+  limit(count: number) {
+    if (count > 0) {
+      this.constraints.push({ type: 'limit', count });
+    }
+    return this;
+  }
+
+  async get() {
+    
+
+    let q = supabaseAdmin.from(this.tableName).select('*');
+    for (const c of this.constraints) {
+      if (c.type === 'where') {
+        const dbField = toSnakeCase(c.field);
+        if (c.op === '==') {
+          q = q.eq(dbField, c.value);
+        } else if (c.op === 'in') {
+          q = q.in(dbField, c.value);
+        }
+      } else if (c.type === 'limit') {
+        q = q.limit(c.count);
+      }
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    
+    return {
+      empty: !data || data.length === 0,
+      size: data?.length || 0,
+      docs: (data || []).map((row: any) => ({
+        ref: db.collection(this.tableName).doc(row.id),
+        data: () => mapKeys(row, toCamelCase)
+      }))
+    };
+  }
+
+  count() {
+    return {
+      get: async () => {
+        
+
+        let q = supabaseAdmin.from(this.tableName).select('*', { count: 'exact', head: true });
+        for (const c of this.constraints) {
+          if (c.type === 'where') {
+            q = q.eq(toSnakeCase(c.field), c.value);
+          }
+        }
+        const { count, error } = await q;
+        if (error) throw error;
+        return {
+          data: () => ({ count: count || 0 })
+        };
+      }
+    };
+  }
+}
+
+// Expose standard db interface
+export const db = {
+  collection(name: string) {
+    const tableName = toSnakeCase(name);
+    return {
+      doc(id: string) {
+        const docRef = { id, collectionName: name };
+        return {
+          id,
+          ref: docRef,
+          async get() {
+            
+
+            const { data, error } = await supabaseAdmin
+              .from(tableName)
+              .select('*')
+              .eq('id', id)
+              .maybeSingle();
+            if (error) throw error;
+            return {
+              exists: !!data,
+              data: () => data ? mapKeys(data, toCamelCase) : null
+            };
+          },
+          async update(data: any) {
+            const dbData = mapKeys(data, toSnakeCase);
+            
+            
+
+            // Resolve FieldValue.increment
+            for (const k of Object.keys(dbData)) {
+              if (dbData[k] && dbData[k].type === 'increment') {
+                const { data: current } = await supabaseAdmin.from(tableName).select(k).eq('id', id).maybeSingle();
+                const baseValue = current ? (current[k as keyof typeof current] || 0) : 0;
+                dbData[k] = baseValue + dbData[k].value;
+              }
+            }
+
+            const { error } = await supabaseAdmin
+              .from(tableName)
+              .update(dbData)
+              .eq('id', id);
+            if (error) throw error;
+          },
+          async set(data: any, options?: { merge?: boolean }) {
+            const dbData = mapKeys(data, toSnakeCase);
+            
+            
+
+            const { error } = await supabaseAdmin
+              .from(tableName)
+              .upsert([{ id, ...dbData }]);
+            if (error) throw error;
+          },
+          collection(subName: string) {
+            const subTableName = toSnakeCase(subName);
+            const parentField = tableName === 'companies' ? 'company_id' : (tableName === 'users' ? 'user_id' : null);
+            return {
+              async add(data: any) {
+                const dbData = mapKeys(data, toSnakeCase);
+                if (parentField) {
+                  dbData[parentField] = id;
+                }
+
+                
+
+                const { data: inserted, error } = await supabaseAdmin
+                  .from(subTableName)
+                  .insert([dbData])
+                  .select('id')
+                  .single();
+                if (error) throw error;
+                return { id: inserted.id };
+              },
+              async get() {
+                
+
+                let q = supabaseAdmin.from(subTableName).select('*');
+                if (parentField) {
+                  q = q.eq(parentField, id);
+                }
+                const { data, error } = await q;
+                if (error) throw error;
+                return {
+                  empty: !data || data.length === 0,
+                  size: data?.length || 0,
+                  docs: (data || []).map((row: any) => ({
+                    ref: { id: row.id },
+                    data: () => mapKeys(row, toCamelCase)
+                  }))
+                };
+              }
+            };
+          }
+        };
+      },
+      where(field: string, op: string, value: any) {
+        const q = new QueryBuilder(tableName);
+        return q.where(field, op, value);
+      },
+      async add(data: any) {
+        const dbData = mapKeys(data, toSnakeCase);
+        
+        
+
+        const { data: inserted, error } = await supabaseAdmin
+          .from(tableName)
+          .insert([dbData])
+          .select('id')
+          .single();
+        if (error) throw error;
+        return { id: inserted.id, ref: this.doc(inserted.id).ref };
+      },
+      batch() {
+        const updates: Array<{ ref: any, data: any }> = [];
+        return {
+          update(ref: any, data: any) {
+            updates.push({ ref, data });
+          },
+          async commit() {
+            // F-16 FIX: Real bulk upsert grouped by table — not a sequential loop.
+            const grouped = new Map<string, Array<{ id: string; [key: string]: any }>>();
+            for (const item of updates) {
+              const tbl = toSnakeCase(item.ref.collectionName);
+              const row = { id: item.ref.id, ...mapKeys(item.data, toSnakeCase) };
+              if (!grouped.has(tbl)) grouped.set(tbl, []);
+              grouped.get(tbl)!.push(row);
+            }
+            for (const [table, rows] of grouped) {
+              const { error } = await supabaseAdmin.from(table).upsert(rows);
+              if (error) throw new Error(`Batch commit failed on table '${table}': ${error.message}`);
+            }
+          }
+        };
+      }
+    };
+  },
+  batch() {
+    const updates: Array<{ ref: any, data: any }> = [];
+    return {
+      update(ref: any, data: any) {
+        updates.push({ ref, data });
+      },
+      async commit() {
+        // F-16 FIX: Real bulk upsert grouped by table — not a sequential loop.
+        // Groups all updates by collection name and sends one upsert per table,
+        // giving near-atomic behaviour (single round-trip per table).
+        const grouped = new Map<string, Array<{ id: string; [key: string]: any }>>();
+        for (const item of updates) {
+          const tbl = toSnakeCase(item.ref.collectionName);
+          const row = { id: item.ref.id, ...mapKeys(item.data, toSnakeCase) };
+          if (!grouped.has(tbl)) grouped.set(tbl, []);
+          grouped.get(tbl)!.push(row);
+        }
+        for (const [table, rows] of grouped) {
+          const { error } = await supabaseAdmin.from(table).upsert(rows);
+          if (error) throw new Error(`Batch commit failed on table '${table}': ${error.message}`);
+        }
+      }
+    };
+  }
+};
+
+// Decoupled Supabase token authentication check helper
+export const auth = {
+  verifyIdToken: async (idToken: string) => {
+    if (!idToken) throw new Error("Missing ID Token");
+    
+    
+
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(idToken);
+    if (error || !user) {
+      throw error || new Error("Failed to verify user ID Token on Supabase Auth server");
+    }
+    
+    return {
+      uid: user.id,
+      email: user.email,
+      name: user.user_metadata?.name || user.email?.split('@')[0]
+    };
+  },
+  revokeRefreshTokens: async (userId: string) => {
+    if (isPlaceholder) return;
+    await supabaseAdmin.auth.admin.signOut(userId);
+  }
+};
+
+// Inbound lead processing logic (migrated from server.ts)
+export async function processInboundLead(companyId: string, source: string, payload: any) {
+  console.log(`[Ingestion Engine] Inbound lead from ${source} for company ${companyId}:`, payload);
+  
+  const sourceQuery = await db.collection("lead_sources")
+    .where("companyId", "==", companyId)
+    .where("sourceType", "==", source.toLowerCase())
+    .get();
+
+  let mapping: Record<string, string> = {};
+  let automationRules = { mode: 'RoundRobin', skipOfflineAgents: true };
+
+  if (!sourceQuery.empty) {
+    const sourceData = sourceQuery.docs[0].data();
+    mapping = sourceData.fieldMapping || {};
+    automationRules = sourceData.automationRules || automationRules;
+  } else {
+    if (source.toLowerCase() === 'facebook') {
+      mapping = { full_name: 'name', phone_number: 'phone', email: 'email', city: 'city' };
+    } else if (source.toLowerCase() === 'indiamart') {
+      mapping = { SENDER_NAME: 'name', SENDER_MOBILE: 'phone', SENDER_EMAIL: 'email', QUERY_MESSAGE: 'comment', SENDER_CITY: 'city' };
+    } else {
+      mapping = { name: 'name', phone: 'phone', email: 'email', comment: 'comment' };
+    }
+  }
+
+  const leadData: any = {};
+  Object.keys(payload).forEach(key => {
+    const targetField = mapping[key];
+    if (targetField && targetField !== 'doNotMap') {
+      leadData[targetField] = payload[key];
+    } else if (!targetField) {
+      const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cleanKey === 'name' || cleanKey === 'fullname' || cleanKey === 'sendername') {
+        leadData.name = payload[key];
+      } else if (cleanKey === 'phone' || cleanKey === 'mobile' || cleanKey === 'sendermobile' || cleanKey === 'phonenumber') {
+        leadData.phone = payload[key];
+      } else if (cleanKey === 'email' || cleanKey === 'senderemail') {
+        leadData.email = payload[key];
+      } else if (cleanKey === 'city' || cleanKey === 'sendercity') {
+        leadData.city = payload[key];
+      } else if (cleanKey === 'comment' || cleanKey === 'remarks' || cleanKey === 'querymessage' || cleanKey === 'message') {
+        leadData.comment = payload[key];
+      }
+    }
+  });
+
+  if (!leadData.name && payload.name) leadData.name = payload.name;
+  if (!leadData.phone && payload.phone) leadData.phone = payload.phone;
+
+  if (!leadData.phone) {
+    throw new Error("Validation Failed: Incoming lead does not contain a phone number.");
+  }
+
+  let phone = String(leadData.phone).replace(/\D/g, '');
+  if (phone.length === 10) {
+    phone = '+91' + phone;
+  } else if (phone.length > 10 && !phone.startsWith('+')) {
+    phone = '+' + phone;
+  }
+  leadData.phone = phone;
+
+  if (leadData.email) {
+    leadData.email = String(leadData.email).trim().toLowerCase();
+  }
+  if (leadData.name) {
+    leadData.name = String(leadData.name).trim().replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  const teamSettingsSnap = await db.collection("team_settings").doc(companyId).get();
+  const teamSettings = teamSettingsSnap.exists ? teamSettingsSnap.data() : {};
+
+  const assignmentMode = teamSettings.assignmentRule || 'Manual';
+  const activeIds = teamSettings.activeAgentIds || [];
+  const smartDedupe = teamSettings.smartDeduplication ?? true;
+  const dedupeWindow = teamSettings.dedupeWindowDays !== undefined ? teamSettings.dedupeWindowDays : 7;
+  const holdNight = teamSettings.holdNightLeads ?? false;
+  const nightStart = teamSettings.nightHours?.start || '22:00';
+  const nightEnd = teamSettings.nightHours?.end || '08:00';
+
+  const dupCheck = await db.collection("leads")
+    .where("phone", "==", phone)
+    .where("companyId", "==", companyId)
+    .limit(1)
+    .get();
+
+  let leadId = '';
+  let isDuplicate = false;
+  let assignedAgentId = null;
+
+  if (!dupCheck.empty && smartDedupe) {
+    const matchDoc = dupCheck.docs[0];
+    const data = matchDoc.data();
+    let createdTime: Date;
+    if (data.createdAt?.seconds) {
+      createdTime = new Date(data.createdAt.seconds * 1000);
+    } else if (data.createdAt) {
+      createdTime = new Date(data.createdAt);
+    } else {
+      createdTime = new Date();
+    }
+    const differenceDays = (new Date().getTime() - createdTime.getTime()) / (1000 * 3600 * 24);
+
+    if (differenceDays <= dedupeWindow) {
+      isDuplicate = true;
+      leadId = matchDoc.ref.id;
+      assignedAgentId = data.assignedTo || null;
+
+      await db.collection("leads").doc(leadId).update({
+        comment: (data.comment ? data.comment + '\n' : '') + `[Duplicate ingestion from ${source}]: ` + (leadData.comment || ''),
+        updatedAt: FieldValue.serverTimestamp(),
+        isUnseen: true
+      });
+    }
+  }
+
+  let holdOutboundTrigger = false;
+  let holdUntil = '';
+  
+  if (holdNight) {
+    const currentHour = new Date().getHours();
+    const startH = parseInt(nightStart.split(':')[0]);
+    const endH = parseInt(nightEnd.split(':')[0]);
+    
+    const inNightWindow = startH > endH
+      ? (currentHour >= startH || currentHour < endH)
+      : (currentHour >= startH && currentHour < endH);
+
+    if (inNightWindow) {
+      holdOutboundTrigger = true;
+      holdUntil = nightEnd;
+      console.log(`[Night Hold Queue] Lead held. Scheduled release at ${nightEnd}.`);
+    }
+  }
+
+  if (!isDuplicate) {
+    let categoryName = 'General';
+    const commentText = (leadData.comment || '').toLowerCase();
+    if (commentText.includes('vip') || commentText.includes('luxury') || commentText.includes('high value')) {
+      categoryName = 'VIP';
+    } else if (commentText.includes('commercial') || commentText.includes('office') || commentText.includes('shop')) {
+      categoryName = 'Commercial';
+    }
+
+    const usersSnap = await db.collection("users").where("companyId", "==", companyId).get();
+    const allAgents = usersSnap.docs
+      .map(d => ({ uid: d.ref.id, ...d.data() }))
+      .filter((u: any) => u.role !== 'admin' && u.role !== 'founder');
+
+    let routedAgents = [...allAgents];
+
+    let skillMatch = '';
+    if (commentText.includes('villa')) skillMatch = 'villa';
+    else if (commentText.includes('commercial')) skillMatch = 'commercial';
+    else if (commentText.includes('budget') || commentText.includes('high value')) skillMatch = 'luxury';
+
+    if (skillMatch) {
+      const matchingSkill = allAgents.filter((a: any) => a.skills && Array.isArray(a.skills) && a.skills.includes(skillMatch));
+      if (matchingSkill.length > 0) {
+        routedAgents = matchingSkill;
+      }
+    }
+
+    if (leadData.city) {
+      const matchingCity = routedAgents.filter((a: any) => a.coverageCities && Array.isArray(a.coverageCities) && a.coverageCities.map((c: string) => c.toLowerCase()).includes(leadData.city.toLowerCase()));
+      if (matchingCity.length > 0) {
+        routedAgents = matchingCity;
+      }
+    }
+
+    if (activeIds.length > 0) {
+      routedAgents = routedAgents.filter((a: any) => activeIds.includes(a.uid));
+    }
+
+    const categoryAgents = teamSettings.categoryAgentMap?.[categoryName] || [];
+    if (categoryAgents.length > 0) {
+      routedAgents = routedAgents.filter((a: any) => categoryAgents.includes(a.uid));
+    }
+
+    if (assignmentMode === 'RoundRobin' && routedAgents.length > 0) {
+      let nextIndex = 0;
+      if (!isPlaceholder) {
+        const { data: indexVal, error: rpcErr } = await supabaseAdmin.rpc('increment_routing_index', {
+          p_company_id: companyId,
+          p_source: source.toLowerCase(),
+          p_agent_count: routedAgents.length
+        });
+        if (!rpcErr && typeof indexVal === 'number') {
+          nextIndex = indexVal;
+        } else {
+          console.error('[Routing Error] RPC atomic increment failed, falling back to local calculation:', rpcErr);
+          const routeRef = db.collection("routing_state").doc(`${companyId}_${source.toLowerCase()}`);
+          const routeDoc = await routeRef.get();
+          const lastIndex = routeDoc.exists ? (routeDoc.data().lastAssignedIndex || 0) : 0;
+          nextIndex = (lastIndex + 1) % routedAgents.length;
+          await routeRef.set({
+            lastAssignedIndex: nextIndex,
+            companyId,
+            source: source.toLowerCase(),
+            updatedAt: FieldValue.serverTimestamp()
+          }, { merge: true });
+        }
+      } else {
+        const routeRef = db.collection("routing_state").doc(`${companyId}_${source.toLowerCase()}`);
+        const routeDoc = await routeRef.get();
+        const lastIndex = routeDoc.exists ? (routeDoc.data().lastAssignedIndex || 0) : 0;
+        nextIndex = (lastIndex + 1) % routedAgents.length;
+        await routeRef.set({
+          lastAssignedIndex: nextIndex,
+          companyId,
+          source: source.toLowerCase(),
+          updatedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+      }
+      assignedAgentId = routedAgents[nextIndex].uid;
+    }
+
+    const newLead = {
+      companyId,
+      name: leadData.name || 'Unknown Lead',
+      phone: leadData.phone,
+      email: leadData.email || '',
+      city: leadData.city || '',
+      comment: leadData.comment || '',
+      source,
+      status: 'New',
+      assignedTo: assignedAgentId,
+      isUnseen: true,
+      isNew: true,
+      holdOutboundTrigger,
+      holdUntil,
+      createdAt: FieldValue.serverTimestamp()
+    };
+
+    const added = await db.collection("leads").add(newLead);
+    leadId = added.id;
+  }
+
+  await db.collection("import_logs").add({
+    companyId,
+    source,
+    leadId,
+    status: isDuplicate ? 'duplicate_updated' : 'success',
+    assignedTo: assignedAgentId,
+    createdAt: FieldValue.serverTimestamp(),
+    routingReason: isDuplicate
+      ? `Smart De-duplication Merged (Cooldown check)`
+      : (assignedAgentId ? `Auto-assigned via Round-Robin Rotation` : `Pooled in Unassigned Inbox`)
+  });
+
+  if (!holdOutboundTrigger && teamSettings.welcomeTemplate) {
+    const vars = teamSettings.welcomeTemplateVariables || { '{{1}}': 'name', '{{2}}': 'comment' };
+    const mappedVal1 = leadData[vars['{{1}}']] || '';
+    const mappedVal2 = leadData[vars['{{2}}']] || '';
+    console.log(`[WhatsApp Welcome Template Dispatch] Template sent: {{1}}="${mappedVal1}", {{2}}="${mappedVal2}"`);
+  }
+
+  return { leadId, isDuplicate, assignedTo: assignedAgentId };
+}

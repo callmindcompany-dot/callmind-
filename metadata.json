@@ -1,0 +1,9 @@
+{
+  "name": "CallMind",
+  "description": "AI-powered Calling CRM for efficient lead management and automated calling workflows.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API",
+    "MAJOR_CAPABILITY_FIREBASE"
+  ]
+}
