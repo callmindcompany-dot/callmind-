@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, PhoneCall, Database, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { FREE_TRIAL_CONFIG } from '../../config/pricing';
 
 const simulatorSteps = [
   {
@@ -111,7 +112,7 @@ export const Hero = () => {
               className="group px-7 py-3.5 bg-brand-600 text-white rounded-xl font-bold text-sm btn-glow btn-tactile font-sans flex items-center gap-2 overflow-hidden relative"
             >
               <span className="relative z-10 flex items-center gap-2">
-                Start 7-Day Trial (3 Telecallers Included)
+                Start {FREE_TRIAL_CONFIG.trialDays}-Day Trial ({FREE_TRIAL_CONFIG.includedTelecallers} Telecallers Included)
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </span>
               <div className="absolute inset-0 w-0 bg-white/10 group-hover:w-full transition-all duration-300 ease-out z-0" />

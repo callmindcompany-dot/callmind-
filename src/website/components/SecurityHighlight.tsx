@@ -34,8 +34,11 @@ export const SecurityHighlight = () => {
                   <Lock size={16} className="text-slate-700" />
                 </div>
                 <div>
+                  {/* RLS filters rows by policy — it is not encryption. Describing
+                      it as "cryptographically isolated" is a claim the system
+                      does not make and cannot be defended in a security review. */}
                   <h4 className="font-bold text-slate-900">Row-Level Database Security</h4>
-                  <p className="text-sm text-slate-500 font-medium">Your agency's leads are cryptographically isolated from others using Supabase RLS.</p>
+                  <p className="text-sm text-slate-500 font-medium">Every query is scoped to your workspace by PostgreSQL Row Level Security policies, enforced in the database itself.</p>
                 </div>
               </li>
             </ul>

@@ -2,61 +2,77 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Zap, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { PRICING_PLANS, FREE_TRIAL_CONFIG } from '../../config/pricing';
+
+/**
+ * Plan copy for the landing page.
+ *
+ * Prices and seat limits are read from PRICING_PLANS so this section can never
+ * drift from what the billing flow actually charges. This component previously
+ * hardcoded ₹599/₹1199/₹1799 and advertised an "Enterprise" plan with SSO and a
+ * 99.9% uptime guarantee — none of which exist in the pricing config.
+ */
+const PLAN_COPY = [
+  {
+    key: 'starter',
+    desc: 'For small sales teams starting with SIM telecalling',
+    popular: false,
+    features: [
+      'Android app with 1-click SIM dialing',
+      'Excel & CSV lead import',
+      'Call duration & timestamp logs',
+      'Performance dashboards',
+      'Email support',
+    ],
+  },
+  {
+    key: 'growth',
+    desc: 'For scaling SMEs that need automated lead capture and AI scripts',
+    popular: true,
+    features: [
+      'Everything in Starter, plus:',
+      'IndiaMART GLUSR webhook integration',
+      'Meta Lead Ads auto-capture',
+      'AI talk scripts & lead scoring',
+      'Kanban lead pipeline board',
+      'Automated 18% GST tax invoices',
+      'Chat support',
+    ],
+  },
+  {
+    key: 'pro',
+    desc: 'For large sales teams needing unlimited leads and full API access',
+    popular: false,
+    features: [
+      'Everything in Growth, plus:',
+      'Unlimited leads & pipeline stages',
+      'Full read/write REST API access',
+      'Advanced AI lead scoring',
+      'Priority WhatsApp support',
+    ],
+  },
+] as const;
 
 export const PricingPreview = () => {
   const navigate = useNavigate();
   const [isAnnual, setIsAnnual] = useState(true);
 
-  const plans = [
-    {
-      name: 'Starter',
-      desc: 'Ideal for small sales teams starting with SIM telecalling',
-      monthlyPrice: 599,
-      annualPrice: 499,
-      popular: false,
-      features: [
-        'Up to 5 Telecallers',
-        'Android Mobile App 1-Click Dialing',
-        'Excel & CSV Lead Import',
-        'Call Duration & Timestamp Logs',
-        'Basic Performance Dashboards',
-        'Standard Email Support',
-      ],
-    },
-    {
-      name: 'Growth',
-      desc: 'For scaling SMEs requiring automated lead capture & AI scripts',
-      monthlyPrice: 1199,
-      annualPrice: 999,
-      popular: true,
-      features: [
-        'Up to 25 Telecallers',
-        'Everything in Starter, plus:',
-        'IndiaMART GLUSR Webhook Integration',
-        'Meta Lead Ads Auto-Capture',
-        'AI Talk Scripts & Objection Handling',
-        'Kanban Lead Pipeline Board',
-        'Automated GST Tax Invoices (18%)',
-        'Priority Phone & Chat Support',
-      ],
-    },
-    {
-      name: 'Enterprise',
-      desc: 'For large sales BPOs needing custom APIs & dedicated SLAs',
-      monthlyPrice: 1799,
-      annualPrice: 1499,
-      popular: false,
-      features: [
-        'Unlimited Telecallers',
-        'Everything in Growth, plus:',
-        'Custom REST API & Webhook Integrations',
-        'Dedicated Account Manager',
-        'Custom SLA & 99.9% Uptime Guarantee',
-        'Custom Data Retention Policies',
-        'SSO & Advanced Security Controls',
-      ],
-    },
-  ];
+  const plans = PLAN_COPY.map((copy) => {
+    const plan = PRICING_PLANS[copy.key];
+    return {
+      name: plan.name,
+      desc: copy.desc,
+      monthlyPrice: plan.monthlyPrice,
+      annualPrice: plan.annualPrice,
+      seats: `${plan.minSeats}–${plan.maxSeats} telecallers`,
+      popular: copy.popular,
+      features: copy.features,
+    };
+  });
+
+  const maxAnnualSaving = Math.max(
+    ...plans.map((p) => Math.round(((p.monthlyPrice - p.annualPrice) / p.monthlyPrice) * 100))
+  );
 
   return (
     <section className="py-24 px-6 md:px-12 bg-white relative overflow-hidden font-sans border-t border-slate-100">
@@ -73,7 +89,8 @@ export const PricingPreview = () => {
             Invest in Higher Telecalling ROI
           </h2>
           <p className="text-base text-slate-500 font-medium">
-            Start with a 7-Day Free Trial. Upgrade anytime. All plans include B2B GST Tax Invoices.
+            Start with a {FREE_TRIAL_CONFIG.trialDays}-day free trial including {FREE_TRIAL_CONFIG.includedTelecallers} telecallers.
+            Upgrade anytime. All plans include B2B GST tax invoices.
           </p>
 
           {/* Billing Cycle Toggle */}
@@ -93,8 +110,10 @@ export const PricingPreview = () => {
               }`}
             >
               Annual Billing
+              {/* Derived, not hardcoded — the discount differs per plan
+                  (20% / 25% / 18%), so a single fixed figure would be wrong. */}
               <span className="px-2 py-0.5 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-black uppercase">
-                Save 20%
+                Save up to {maxAnnualSaving}%
               </span>
             </button>
           </div>
@@ -131,11 +150,16 @@ export const PricingPreview = () => {
                   </div>
 
                   {/* Price */}
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-black font-grotesk">₹{price}</span>
-                    <span className={`text-xs font-semibold ${p.popular ? 'text-slate-400' : 'text-slate-500'}`}>
-                      / telecaller / month
-                    </span>
+                  <div className="space-y-1.5">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-black font-grotesk">₹{price}</span>
+                      <span className={`text-xs font-semibold ${p.popular ? 'text-slate-400' : 'text-slate-500'}`}>
+                        / telecaller / month
+                      </span>
+                    </div>
+                    <p className={`text-[11px] font-semibold ${p.popular ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {p.seats}
+                    </p>
                   </div>
 
                   {/* Features List */}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Smartphone, Zap, Shield, WifiOff, Sparkles, CheckCircle2, ChevronRight, ChevronLeft, Phone, PhoneCall, Lock } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { SITE_URL } from '../siteConfig';
 
 const mobileScreens = [
   {
@@ -154,15 +155,17 @@ export const MobileAppShowcase = () => {
             <div className="w-20 h-1 bg-slate-700 rounded-full mx-auto mt-3" />
           </div>
 
-          {/* QR Download Banner */}
+          {/* QR Banner — points at the public mobile app page. Never ship a
+              localhost URL here; a scanned code that resolves to nothing reads
+              as a broken product to the person holding the phone. */}
           <div className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-4 w-full max-w-[320px] shadow-sm">
             <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-              <QRCodeSVG value="http://localhost:8083" size={64} />
+              <QRCodeSVG value={`${SITE_URL}/mobile-app`} size={64} />
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-900 font-display">Scan Expo Mobile Preview</p>
+              <p className="text-xs font-bold text-slate-900 font-display">Get the Telecaller App</p>
               <p className="text-[11px] text-slate-500 font-medium leading-tight">
-                Scan with your Android camera to preview the Telecaller Mobile App.
+                Scan with your Android camera to open the CallMind telecaller app page.
               </p>
             </div>
           </div>

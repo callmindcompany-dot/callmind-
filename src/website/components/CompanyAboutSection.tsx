@@ -16,8 +16,8 @@ export const CompanyAboutSection = () => {
     },
     {
       icon: Database,
-      title: 'PostgreSQL Row Level Security (RLS)',
-      desc: 'Enterprise multi-tenant database isolation ensures your workspace lead data and call histories remain strictly private to your account.',
+      title: 'Multi-Tenant Data Isolation',
+      desc: 'Every workspace is scoped to its own company records, enforced in the database with PostgreSQL Row Level Security policies.',
     },
     {
       icon: FileText,
@@ -65,23 +65,26 @@ export const CompanyAboutSection = () => {
           ))}
         </div>
 
-        {/* Platform Stat Banner */}
+        {/* Platform Facts Banner
+            Only verifiable product facts belong here. Usage numbers (workspaces,
+            calls logged) and uptime figures must not be shown until they can be
+            measured and stood behind. */}
         <div className="bg-white border border-slate-200 p-8 rounded-3xl grid grid-cols-2 md:grid-cols-4 gap-6 text-center shadow-sm">
           <div className="space-y-1">
-            <p className="text-3xl font-black text-slate-900 font-grotesk">500+</p>
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Active Workspaces</p>
+            <p className="text-3xl font-black text-emerald-600 font-grotesk">0 GB</p>
+            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Call Audio Stored</p>
           </div>
           <div className="space-y-1">
-            <p className="text-3xl font-black text-emerald-600 font-grotesk">1,000,000+</p>
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Calls Logged</p>
+            <p className="text-3xl font-black text-slate-900 font-grotesk">SIM</p>
+            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Native Dialing, No VoIP</p>
           </div>
           <div className="space-y-1">
-            <p className="text-3xl font-black text-brand-600 font-grotesk">99.9%</p>
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Cloud Uptime</p>
+            <p className="text-3xl font-black text-brand-600 font-grotesk">3</p>
+            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Lead Sources Built In</p>
           </div>
           <div className="space-y-1">
             <p className="text-3xl font-black text-amber-600 font-grotesk">18% GST</p>
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tax Compliant</p>
+            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Invoices Generated</p>
           </div>
         </div>
 

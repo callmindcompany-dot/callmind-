@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Database, TrendingUp, FileText, ShieldCheck, ChevronRight, ChevronLeft, Layers, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { SITE_DOMAIN } from '../siteConfig';
 
 const webScreens = [
   {
@@ -131,7 +132,7 @@ export const WebAppShowcase = () => {
                   <div className="w-3 h-3 rounded-full bg-emerald-400" />
                 </div>
                 <div className="px-4 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-mono border border-slate-200 font-semibold">
-                  app.callmind.ai / {currentScreen.id}
+                  {SITE_DOMAIN} / {currentScreen.id}
                 </div>
                 <div className="flex items-center gap-2 text-slate-500">
                   <button

@@ -8,6 +8,7 @@ import { MobileAppShowcase } from '../components/MobileAppShowcase';
 import { TechnicalFeatures } from '../components/TechnicalFeatures';
 import { SecurityHighlight } from '../components/SecurityHighlight';
 import { useNavigate } from 'react-router-dom';
+import { FREE_TRIAL_CONFIG } from '../../config/pricing';
 
 export const ProductPage = () => {
   const navigate = useNavigate();
@@ -55,7 +56,7 @@ export const ProductPage = () => {
           <div className="max-w-5xl mx-auto bg-gradient-to-br from-brand-600 to-blue-700 rounded-3xl p-10 text-white text-center space-y-6 shadow-xl">
             <h2 className="text-3xl font-black font-display">Empower Your Sales Team Today</h2>
             <p className="text-white/80 max-w-xl mx-auto text-sm font-medium">
-              Start your 7-Day Free Trial. No credit card required. Instant setup for up to 2 telecallers.
+              Start your {FREE_TRIAL_CONFIG.trialDays}-Day Free Trial. No credit card required. Instant setup for up to {FREE_TRIAL_CONFIG.includedTelecallers} telecallers.
             </p>
             <button
               onClick={() => navigate('/signup')}

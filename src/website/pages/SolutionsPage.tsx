@@ -4,6 +4,7 @@ import { Users, Building2, PhoneCall, Rocket, ArrowRight, CheckCircle2, ArrowLef
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { useNavigate } from 'react-router-dom';
+import { FREE_TRIAL_CONFIG } from '../../config/pricing';
 
 const solutions = [
   {
@@ -138,7 +139,7 @@ export const SolutionsPage = () => {
               Transform Your Telecalling Workflow
             </h2>
             <p className="text-base text-slate-500 font-medium">
-              Start your 7-day free trial today. Up to 2 telecallers included free.
+              Start your {FREE_TRIAL_CONFIG.trialDays}-day free trial today. Up to {FREE_TRIAL_CONFIG.includedTelecallers} telecallers included free.
             </p>
             <button
               onClick={() => navigate('/signup')}
