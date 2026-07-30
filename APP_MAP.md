@@ -8,7 +8,7 @@ This document is the absolute source of truth for the CallMind CRM application. 
 
 CallMind CRM is a multi-tenant SaaS telecalling platform designed for business owners in India to manage customer leads, dial customers directly, and monitor employee call attendance.
 
-* **Target Audience:** Small business owners in India managing teams of 10 to 100 telecallers.
+* **Target Audience:** Small business owners in India managing teams of 10 to 50 telecallers.
 * **Telecaller User Persona:** Low-to-moderate tech comfort; using low-end mobile devices or desktops.
 * **Budget Sensitivity:** Pre-revenue stage; API and server infrastructure spends are extremely tight. Performance and token usage must be optimized.
 * **Key Non-Negotiables:** Lead ingestion robustness, real-time round-robin routing, call logging reliability, data isolation, and GDPR/DPDP compliant data deletion.

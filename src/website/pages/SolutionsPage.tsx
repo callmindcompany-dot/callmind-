@@ -23,7 +23,7 @@ const solutions = [
   {
     icon: Users,
     title: 'BPO & Telecalling Agencies',
-    tagline: 'Scale 10 to 100+ Telecallers With Zero Friction',
+    tagline: 'Scale 10 to 50 Telecallers With Zero Friction',
     description: 'Outsourced telecalling agencies need rapid onboarding, strict team management, and clear productivity reports across multiple client accounts.',
     benefits: [
       '3-second QR code telecaller team onboarding',

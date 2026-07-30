@@ -6,7 +6,7 @@ This document is the **absolute source of truth** for the **CallMind Mobile App*
 
 ## 1. Core Product & Mobile App Profile
 
-The CallMind Mobile App is an offline-first, telecaller-centric mobile CRM application designed for field agents and telecalling teams in India.
+The CallMind Mobile App is an offline-first, telecaller-centric mobile CRM application designed for small business owners in India managing teams of 10 to 50 telecallers.
 
 * **Target Users:** Telecallers, Field Agents, Sales Representatives, Team Leads.
 * **Primary Objective:** Execute rapid dialing, auto-log call durations and dispositions, record voice notes, view AI objection-handling scripts, track daily punch-in attendance, and work seamlessly in low-connectivity areas.
