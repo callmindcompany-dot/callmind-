@@ -12,22 +12,16 @@ import {
   Copy, 
   Check, 
   Play, 
-  ExternalLink, 
   Menu, 
   X, 
-  Sparkles,
   BookOpen,
-  ArrowRight,
-  Filter,
   CheckCircle2,
   AlertTriangle,
   Info,
-  Layers,
-  Terminal
+  Terminal,
+  FileText
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { DOCS_CATEGORIES, DocArticle, DocCategory, CodeSnippet } from '@/website/data/DocsData';
-import { DocsHero3D } from '@/components/docs/DocsHero3D';
+import { DOCS_CATEGORIES, DocArticle, DocCategory } from '@/website/data/DocsData';
 import { DocsSearchModal } from '@/components/docs/DocsSearchModal';
 import { ApiPlaygroundModal } from '@/components/docs/ApiPlaygroundModal';
 import { Navbar } from '@/website/components/Navbar';
@@ -85,79 +79,68 @@ export const DocsPage: React.FC = () => {
     const cat = DOCS_CATEGORIES.find(c => c.articles.some(a => a.id === article.id));
     if (cat) setSelectedCategory(cat);
     setActiveCodeTab(0);
-    window.scrollTo({ top: 380, behavior: 'smooth' });
+    window.scrollTo({ top: 120, behavior: 'smooth' });
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans flex flex-col selection:bg-brand-100 selection:text-brand-700">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans flex flex-col">
       <SEOHead
-        title="CallMind Documentation — Setup, Webhooks & API Reference"
-        description="Developer and admin documentation for CallMind CRM: IndiaMART, TradeIndia, Meta webhooks, mobile app setup, and REST API reference."
+        title="CallMind Documentation & API Reference"
+        description="Documentation, integration guides, and REST API specification for CallMind CRM."
         path="/docs"
       />
       <Navbar />
 
-      {/* Docs Hero Section */}
-      <section className="relative pt-28 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-6 space-y-4 text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-50 border border-brand-200/80 text-xs font-bold text-brand-700 shadow-2xs">
-              <Sparkles className="w-3.5 h-3.5 text-brand-600" />
-              CallMind Developer Hub & API Reference
+      {/* Header Banner */}
+      <header className="pt-28 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full border-b border-slate-200">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2 text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-brand-50 border border-brand-200 text-xs font-bold text-brand-700 font-sans">
+              <Terminal className="w-3.5 h-3.5 text-brand-600" />
+              CallMind Documentation & API Reference
             </div>
-
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase italic tracking-tighter text-slate-950 font-display leading-tight">
-              Build & Scale with <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-indigo-600 to-violet-600">CallMind Docs</span>
+            <h1 className="text-3xl sm:text-4xl font-black uppercase text-slate-950 font-display tracking-tight">
+              Documentation & API Hub
             </h1>
-
-            <p className="text-slate-600 text-sm sm:text-base leading-relaxed max-w-xl">
-              Step-by-step setup guides, B2B lead webhooks, REST API endpoints, and mobile app protocols designed for business owners and developers.
+            <p className="text-slate-600 text-sm sm:text-base leading-relaxed max-w-2xl font-sans">
+              Official setup guides, REST API endpoint specifications, lead webhooks, and mobile app protocols.
             </p>
-
-            {/* Quick Search Trigger Bar */}
-            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <button
-                onClick={() => setIsSearchOpen(true)}
-                className="flex-1 glass-card flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200/90 shadow-xs hover:border-brand-400 transition-all text-slate-400 hover:text-slate-600 cursor-pointer bg-white"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Search className="w-4 h-4 text-brand-600" />
-                  <span className="text-sm font-medium text-slate-500">Search guides, APIs, webhooks, error matrix...</span>
-                </div>
-                <kbd className="hidden sm:inline-block px-2.5 py-0.5 bg-slate-100 border border-slate-300 rounded-md text-[11px] font-mono font-bold text-slate-600 shadow-2xs">
-                  Ctrl K
-                </kbd>
-              </button>
-
-              <button
-                onClick={() => setIsPlaygroundOpen(true)}
-                className="btn-tactile btn-glow inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md transition-all cursor-pointer shrink-0"
-              >
-                <Play className="w-4 h-4 fill-white" />
-                API Playground
-              </button>
-            </div>
           </div>
 
-          {/* 3D Ecosystem Node Canvas */}
-          <div className="lg:col-span-6">
-            <DocsHero3D />
+          {/* Quick Actions */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 shadow-xs hover:border-brand-400 text-slate-600 text-sm font-medium transition-all cursor-pointer"
+            >
+              <Search className="w-4 h-4 text-slate-400" />
+              <span>Search Docs</span>
+              <kbd className="hidden sm:inline-block ml-2 px-2 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono text-slate-500">
+                Ctrl K
+              </kbd>
+            </button>
+
+            <button
+              onClick={() => setIsPlaygroundOpen(true)}
+              className="btn-tactile flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold shadow-sm transition-all cursor-pointer"
+            >
+              <Play className="w-4 h-4 fill-white" />
+              API Playground
+            </button>
           </div>
         </div>
-      </section>
 
-      {/* Category Filter Chips Bar */}
-      <section className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mb-6">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar border-b border-slate-200/80">
+        {/* Category Navigation Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pt-6 pb-2 custom-scrollbar">
           <button
             onClick={() => setActiveCategoryFilter('all')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap font-sans ${
               activeCategoryFilter === 'all'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white'
                 : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
             }`}
           >
-            All Categories ({allArticles.length})
+            All Docs ({allArticles.length})
           </button>
           {DOCS_CATEGORIES.map(cat => (
             <button
@@ -168,9 +151,9 @@ export const DocsPage: React.FC = () => {
                 setSelectedArticle(cat.articles[0]);
                 setActiveCodeTab(0);
               }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 font-sans ${
                 activeCategoryFilter === cat.id
-                  ? 'bg-brand-600 text-white shadow-xs'
+                  ? 'bg-brand-600 text-white'
                   : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
               }`}
             >
@@ -179,12 +162,12 @@ export const DocsPage: React.FC = () => {
             </button>
           ))}
         </div>
-      </section>
+      </header>
 
-      {/* Main Documentation Portal Body */}
-      <section className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-20">
-        {/* Mobile Navigation Toggle Bar */}
-        <div className="lg:hidden flex items-center justify-between mb-4 p-3.5 rounded-xl glass-card border border-slate-200 bg-white">
+      {/* Main Documentation Body */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+        {/* Mobile Sidebar Toggle */}
+        <div className="lg:hidden flex items-center justify-between mb-4 p-3 rounded-xl bg-white border border-slate-200">
           <button
             onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
             className="flex items-center gap-2 text-xs font-bold uppercase text-slate-800"
@@ -192,18 +175,12 @@ export const DocsPage: React.FC = () => {
             <Menu className="w-4 h-4 text-brand-600" />
             {selectedCategory.title} ➔ {selectedArticle.title}
           </button>
-          <button
-            onClick={() => setIsSearchOpen(true)}
-            className="p-2 rounded-lg bg-slate-100 text-slate-600"
-          >
-            <Search className="w-4 h-4" />
-          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Sidebar Navigation */}
-          <aside className={`lg:col-span-3 lg:block ${isMobileSidebarOpen ? 'block' : 'hidden'} space-y-6 sticky top-24`}>
-            <div className="glass-card p-4 rounded-2xl border border-slate-200/90 shadow-sm space-y-6 bg-white">
+          {/* Left Navigation Tree */}
+          <aside className={`lg:col-span-3 lg:block ${isMobileSidebarOpen ? 'block' : 'hidden'} sticky top-24`}>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-6">
               {DOCS_CATEGORIES
                 .filter(cat => activeCategoryFilter === 'all' || activeCategoryFilter === cat.id)
                 .map(category => (
@@ -225,15 +202,15 @@ export const DocsPage: React.FC = () => {
                               setActiveCodeTab(0);
                               setIsMobileSidebarOpen(false);
                             }}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 flex items-center justify-between cursor-pointer ${
+                            className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center justify-between cursor-pointer font-sans ${
                               isActive
-                                ? 'bg-brand-50 text-brand-700 font-bold border-l-2 border-brand-600 shadow-2xs'
-                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                                ? 'bg-brand-50 text-brand-700 font-bold border-l-2 border-brand-600'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                             }`}
                           >
                             <span className="truncate">{article.title}</span>
                             {article.apiSpec && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 shrink-0">
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 shrink-0 font-mono">
                                 {article.apiSpec.method}
                               </span>
                             )}
@@ -246,45 +223,45 @@ export const DocsPage: React.FC = () => {
             </div>
           </aside>
 
-          {/* Main Article Content Viewer */}
-          <main className="lg:col-span-9 space-y-6">
-            <div className="glass-card p-6 sm:p-10 rounded-2xl border border-slate-200/90 shadow-sm space-y-8 bg-white">
-              {/* Article Header Metadata */}
-              <div className="border-b border-slate-200 pb-6 space-y-4">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="px-2.5 py-1 rounded-md bg-brand-50 text-brand-700 font-bold border border-brand-200/70">
+          {/* Right Article Viewer */}
+          <section className="lg:col-span-9">
+            <article className="bg-white p-6 sm:p-10 rounded-2xl border border-slate-200 shadow-xs space-y-8">
+              {/* Metadata */}
+              <div className="border-b border-slate-200 pb-6 space-y-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-sans text-slate-500">
+                  <span className="px-2.5 py-0.5 rounded bg-brand-50 text-brand-700 font-bold border border-brand-200">
                     {selectedCategory.title}
                   </span>
-                  <span className="text-slate-300">•</span>
-                  <span className="text-slate-500 font-medium">{selectedArticle.readTime}</span>
-                  <span className="text-slate-300">•</span>
-                  <span className="text-slate-500 font-medium">Updated {selectedArticle.lastUpdated}</span>
+                  <span>•</span>
+                  <span>{selectedArticle.readTime}</span>
+                  <span>•</span>
+                  <span>Updated {selectedArticle.lastUpdated}</span>
                 </div>
 
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-950 font-display tracking-tight">
                   {selectedArticle.title}
                 </h2>
 
-                <p className="text-slate-600 text-sm sm:text-base leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <p className="text-slate-600 text-sm sm:text-base leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200/60 font-sans">
                   {selectedArticle.summary}
                 </p>
 
-                {/* Article Tags */}
+                {/* Tags */}
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {selectedArticle.tags.map(tag => (
-                    <span key={tag} className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold border border-slate-200">
+                    <span key={tag} className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-xs font-medium border border-slate-200 font-sans">
                       #{tag}
                     </span>
                   ))}
                 </div>
               </div>
 
-              {/* API Endpoint Spec & Multi-Language Code Switcher */}
+              {/* API Endpoint Inspector (If API Spec exists) */}
               {selectedArticle.apiSpec && (
-                <div className="space-y-4 p-5 rounded-2xl bg-slate-900 text-slate-100 border border-slate-800 shadow-md">
+                <div className="space-y-4 p-5 rounded-2xl bg-slate-950 text-slate-100 border border-slate-800">
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-2 font-mono text-xs sm:text-sm font-semibold">
-                      <span className={`px-2 py-0.5 rounded text-white font-bold text-xs uppercase ${
+                    <div className="flex items-center gap-2 font-mono text-xs sm:text-sm">
+                      <span className={`px-2 py-0.5 rounded text-white font-bold text-xs ${
                         selectedArticle.apiSpec.method === 'POST' ? 'bg-violet-600' :
                         selectedArticle.apiSpec.method === 'GET' ? 'bg-emerald-600' :
                         selectedArticle.apiSpec.method === 'DELETE' ? 'bg-rose-600' : 'bg-amber-600'
@@ -296,7 +273,7 @@ export const DocsPage: React.FC = () => {
 
                     <button
                       onClick={() => setIsPlaygroundOpen(true)}
-                      className="btn-tactile flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                      className="btn-tactile flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-colors cursor-pointer font-sans"
                     >
                       <Play className="w-3.5 h-3.5 fill-white" />
                       Test in Playground
@@ -305,7 +282,7 @@ export const DocsPage: React.FC = () => {
 
                   <p className="text-xs text-slate-400 font-sans">{selectedArticle.apiSpec.description}</p>
 
-                  {/* Code Tabs */}
+                  {/* Code Snippets */}
                   {selectedArticle.apiSpec.snippets.length > 0 && (
                     <div className="space-y-2 pt-2">
                       <div className="flex items-center justify-between border-b border-slate-800 overflow-x-auto">
@@ -314,7 +291,7 @@ export const DocsPage: React.FC = () => {
                             <button
                               key={snippet.label}
                               onClick={() => setActiveCodeTab(idx)}
-                              className={`px-3 py-1.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 cursor-pointer ${
+                              className={`px-3 py-1.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2 cursor-pointer font-mono ${
                                 activeCodeTab === idx
                                   ? 'bg-slate-800 text-brand-400 border-brand-500 font-bold'
                                   : 'text-slate-400 hover:text-slate-200 border-transparent'
@@ -327,24 +304,24 @@ export const DocsPage: React.FC = () => {
 
                         <button
                           onClick={() => handleCopyCode(selectedArticle.apiSpec!.snippets[activeCodeTab]?.code || '')}
-                          className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer mb-1"
+                          className="flex items-center gap-1 text-xs text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer mb-1 font-sans"
                         >
                           {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                          {copiedCode ? 'Copied!' : 'Copy Code'}
+                          {copiedCode ? 'Copied' : 'Copy'}
                         </button>
                       </div>
 
-                      <pre className="p-4 rounded-xl bg-slate-950 text-xs font-mono text-slate-200 overflow-x-auto custom-scrollbar border border-slate-800/80 leading-relaxed">
+                      <pre className="p-4 rounded-xl bg-slate-900 text-xs font-mono text-slate-200 overflow-x-auto custom-scrollbar border border-slate-800 leading-relaxed">
                         <code>{selectedArticle.apiSpec.snippets[activeCodeTab]?.code}</code>
                       </pre>
                     </div>
                   )}
 
-                  {/* Sample JSON Response Preview */}
+                  {/* JSON Response Sample */}
                   {selectedArticle.apiSpec.responseBody && (
                     <div className="space-y-1.5 pt-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Sample JSON Response (200 OK)</span>
-                      <pre className="p-3.5 rounded-xl bg-slate-950 text-xs font-mono text-emerald-400 overflow-x-auto border border-slate-800 max-h-48 custom-scrollbar">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-sans">Sample Response (200 OK)</span>
+                      <pre className="p-3 rounded-xl bg-slate-900 text-xs font-mono text-emerald-400 overflow-x-auto border border-slate-800 max-h-48 custom-scrollbar">
                         <code>{selectedArticle.apiSpec.responseBody}</code>
                       </pre>
                     </div>
@@ -352,14 +329,14 @@ export const DocsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Main Markdown Article Content */}
-              <div className="prose prose-slate max-w-none text-slate-700 text-sm sm:text-base leading-relaxed space-y-4">
+              {/* Main Content Markdown Renderer */}
+              <div className="prose prose-slate max-w-none text-slate-700 text-sm sm:text-base leading-relaxed space-y-4 font-sans">
                 {selectedArticle.content.split('\n\n').map((paragraph, index) => {
                   const trimmed = paragraph.trim();
 
                   if (trimmed.startsWith('###')) {
                     return (
-                      <h3 key={index} className="text-lg sm:text-xl font-black text-slate-950 font-display mt-8 mb-3 border-b border-slate-100 pb-2">
+                      <h3 key={index} className="text-lg sm:text-xl font-bold text-slate-950 font-display mt-8 mb-3 border-b border-slate-100 pb-2">
                         {trimmed.replace('###', '').trim()}
                       </h3>
                     );
@@ -373,7 +350,7 @@ export const DocsPage: React.FC = () => {
                     );
                   }
 
-                  // Styled GitHub Alert Callout Boxes
+                  // Alert Callouts
                   if (trimmed.startsWith('> [!NOTE]')) {
                     return (
                       <div key={index} className="p-4 rounded-xl bg-blue-50 border-l-4 border-brand-600 text-brand-900 text-xs sm:text-sm my-4 flex items-start gap-3">
@@ -392,34 +369,34 @@ export const DocsPage: React.FC = () => {
                     );
                   }
 
-                  if (trimmed.startsWith('> [!WARNING]') || trimmed.startsWith('> [!IMPORTANT]')) {
+                  if (trimmed.startsWith('> [!WARNING]')) {
                     return (
                       <div key={index} className="p-4 rounded-xl bg-amber-50 border-l-4 border-amber-500 text-amber-900 text-xs sm:text-sm my-4 flex items-start gap-3">
                         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                        <div>{trimmed.replace('> [!WARNING]', '').replace('> [!IMPORTANT]', '').trim()}</div>
+                        <div>{trimmed.replace('> [!WARNING]', '').trim()}</div>
                       </div>
                     );
                   }
 
                   return (
-                    <p key={index} className="text-slate-600 leading-relaxed">
+                    <p key={index} className="text-slate-600 leading-relaxed font-sans">
                       {trimmed}
                     </p>
                   );
                 })}
               </div>
 
-              {/* Next / Previous Article Footer Navigation */}
-              <div className="pt-8 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Navigation Footer */}
+              <div className="pt-8 border-t border-slate-200 flex items-center justify-between gap-4 font-sans">
                 {prevArticle ? (
                   <button
                     onClick={() => navigateToArticle(prevArticle)}
-                    className="w-full sm:w-auto p-4 rounded-xl border border-slate-200 hover:border-brand-400 bg-white hover:bg-brand-50/40 text-left transition-all group flex items-center gap-3 cursor-pointer"
+                    className="p-3 sm:p-4 rounded-xl border border-slate-200 hover:border-brand-400 bg-white hover:bg-slate-50 text-left transition-all group flex items-center gap-3 cursor-pointer"
                   >
-                    <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-brand-600 group-hover:-translate-x-1 transition-transform" />
+                    <ChevronLeft className="w-4 h-4 text-slate-400 group-hover:text-brand-600 group-hover:-translate-x-1 transition-transform" />
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Previous Guide</span>
-                      <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-brand-700">{prevArticle.title}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Previous</span>
+                      <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-brand-600">{prevArticle.title}</span>
                     </div>
                   </button>
                 ) : <div />}
@@ -427,20 +404,20 @@ export const DocsPage: React.FC = () => {
                 {nextArticle && (
                   <button
                     onClick={() => navigateToArticle(nextArticle)}
-                    className="w-full sm:w-auto p-4 rounded-xl border border-slate-200 hover:border-brand-400 bg-white hover:bg-brand-50/40 text-right transition-all group flex items-center gap-3 ml-auto cursor-pointer"
+                    className="p-3 sm:p-4 rounded-xl border border-slate-200 hover:border-brand-400 bg-white hover:bg-slate-50 text-right transition-all group flex items-center gap-3 ml-auto cursor-pointer"
                   >
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Next Guide</span>
-                      <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-brand-700">{nextArticle.title}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Next</span>
+                      <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-brand-600">{nextArticle.title}</span>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-brand-600 group-hover:translate-x-1 transition-transform" />
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-brand-600 group-hover:translate-x-1 transition-transform" />
                   </button>
                 )}
               </div>
-            </div>
-          </main>
+            </article>
+          </section>
         </div>
-      </section>
+      </main>
 
       {/* Modals */}
       <DocsSearchModal
