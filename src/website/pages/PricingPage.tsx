@@ -26,7 +26,7 @@ const faqs = [
   },
   {
     question: 'Is our customer data secure?',
-    answer: 'Yes. We enforce Supabase Row-Level Security (RLS), meaning each company\'s data is completely isolated. We do not record or store call audio.',
+    answer: 'Yes. Your workspace data is scoped to your company by PostgreSQL Row-Level Security policies enforced in the database. We also do not record or store call audio.',
   },
   {
     question: 'What payment methods do you accept?',

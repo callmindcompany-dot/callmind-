@@ -16,7 +16,7 @@ const securityPillars = [
   {
     icon: Lock,
     title: 'Supabase Row-Level Security (RLS)',
-    description: 'Every database query is gated by postgres Row-Level Security policies. Your company workspace data is completely isolated and invisible to other tenants.',
+    description: 'Queries are gated by PostgreSQL Row-Level Security policies that match rows against your company, so the isolation is enforced by the database and not by application code.',
     tag: 'Data Isolation',
   },
   {
@@ -118,7 +118,12 @@ export const SecurityPage = () => {
             <div className="space-y-4 font-sans">
               {[
                 { title: 'No Call Interception', text: 'CallMind triggers your native phone dialer via standard OS intents. Your call data travels across your mobile carrier network only.' },
-                { title: 'Row-Level Tenant Isolation', text: 'Supabase RLS policies verify company_id on every single SELECT, INSERT, UPDATE, and DELETE query. Cross-tenant leaks are programmatically impossible.' },
+                // Describe the mechanism, not an absolute guarantee. "Cross-tenant
+                // leaks are programmatically impossible" was the previous wording;
+                // it is not a claim any system can defend, and at the time of
+                // writing several browser-readable tables were still missing
+                // policies (see supabase/migrations/20260730_rls_gap_closure.sql).
+                { title: 'Row-Level Tenant Isolation', text: 'Reads and writes are scoped to your workspace by PostgreSQL Row Level Security policies that check company_id, enforced inside the database rather than in application code.' },
                 { title: 'Sanitized Webhook Payloads', text: 'Inbound webhooks from IndiaMART and Meta Ads are sanitized to prevent injection attacks before stored in your workspace inbox.' },
                 { title: 'Role-Based Access Control (RBAC)', text: 'Telecallers cannot export lead databases or access financial settings. Only Founders and Admins hold full workspace permissions.' },
               ].map((item, i) => (
