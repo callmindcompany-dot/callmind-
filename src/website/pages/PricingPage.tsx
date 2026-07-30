@@ -142,6 +142,8 @@ export const PricingPage = () => {
             <span className={`text-sm font-semibold ${!isAnnual ? 'text-slate-900' : 'text-slate-500'}`}>Monthly</span>
             <button
               onClick={() => setIsAnnual(!isAnnual)}
+              role="switch"
+              aria-checked={isAnnual}
               className="w-14 h-8 bg-slate-200 rounded-full p-1 transition-colors relative focus:outline-none"
               aria-label="Toggle annual billing"
             >
@@ -232,6 +234,7 @@ export const PricingPage = () => {
                 <div key={i} className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50/50">
                   <button
                     onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                    aria-expanded={openFaq === i}
                     className="w-full p-5 text-left flex justify-between items-center font-bold text-sm text-slate-900 font-sans"
                   >
                     <span>{faq.question}</span>

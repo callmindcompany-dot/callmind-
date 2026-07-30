@@ -71,6 +71,7 @@ export const FAQSection = () => {
               >
                 <button
                   onClick={() => toggleFAQ(idx)}
+                  aria-expanded={isOpen}
                   className="w-full p-6 text-left flex items-center justify-between gap-4 focus:outline-none"
                 >
                   <span className="text-base font-bold text-slate-900 font-display">

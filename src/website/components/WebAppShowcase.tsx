@@ -132,12 +132,14 @@ export const WebAppShowcase = () => {
                   <button
                     onClick={() => setActiveIndex((prev) => (prev - 1 + webScreens.length) % webScreens.length)}
                     className="p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                    aria-label="Previous screenshot"
                   >
                     <ChevronLeft size={16} />
                   </button>
                   <button
                     onClick={() => setActiveIndex((prev) => (prev + 1) % webScreens.length)}
                     className="p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                    aria-label="Next screenshot"
                   >
                     <ChevronRight size={16} />
                   </button>
@@ -167,10 +169,12 @@ export const WebAppShowcase = () => {
               {/* Bottom Carousel Indicators */}
               <div className="flex items-center justify-between pt-2 text-xs text-slate-500 font-medium border-t border-slate-200">
                 <div className="flex items-center gap-2">
-                  {webScreens.map((_, i) => (
+                  {webScreens.map((screen, i) => (
                     <button
                       key={i}
                       onClick={() => setActiveIndex(i)}
+                      aria-label={`Show ${screen.title}`}
+                      aria-current={activeIndex === i}
                       className={`h-1.5 rounded-full transition-all cursor-pointer ${
                         activeIndex === i ? 'w-8 bg-brand-600' : 'w-2 bg-slate-200'
                       }`}
