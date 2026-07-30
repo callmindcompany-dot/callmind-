@@ -133,7 +133,7 @@ export const PricingPreview = () => {
                 }`}
               >
                 {p.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-brand-500 to-blue-600 text-white text-[11px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-brand-500 to-brand-500 text-white text-[11px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1">
                     <Sparkles size={12} />
                     Most Popular for SMEs
                   </div>

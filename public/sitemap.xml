@@ -13,6 +13,7 @@
   <url><loc>https://callmind.app/integrations</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://callmind.app/company</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://callmind.app/contact</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://callmind.app/faq</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://callmind.app/docs</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://callmind.app/legal/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>https://callmind.app/legal/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>

@@ -68,7 +68,7 @@ export const PlatformPage = () => {
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.08] font-display max-w-4xl mx-auto">
             One platform for your entire{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-blue-500">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-400">
               telecalling operation.
             </span>
           </h1>
@@ -203,7 +203,7 @@ export const PlatformPage = () => {
 
         {/* CTA */}
         <section className="py-24 px-6 md:px-12 bg-white border-t border-slate-100">
-          <div className="max-w-4xl mx-auto bg-gradient-to-br from-brand-600 to-blue-700 rounded-3xl p-10 md:p-16 text-center text-white shadow-xl space-y-6">
+          <div className="max-w-4xl mx-auto bg-gradient-to-br from-brand-600 to-brand-700 rounded-3xl p-10 md:p-16 text-center text-white shadow-xl space-y-6">
             <h2 className="text-3xl md:text-4xl font-black tracking-tight font-display">
               See it running on your own leads.
             </h2>

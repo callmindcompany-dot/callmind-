@@ -72,7 +72,7 @@ export const MobileAppShowcase = () => {
 
           <h2 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 font-display leading-[1.12]">
             Android App Built For{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-blue-600">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-500">
               1-Click SIM Dialing
             </span>
           </h2>

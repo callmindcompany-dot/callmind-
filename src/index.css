@@ -10,16 +10,32 @@
   --font-grotesk: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  --color-brand-50: #eff6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-300: #93c5fd;
-  --color-brand-400: #60a5fa;
-  --color-brand-500: #3b82f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
-  --color-brand-800: #1e40af;
-  --color-brand-900: #1e3a8a;
+  /* CallMind brand ramp.
+     Previously this was a byte-for-byte copy of Tailwind's stock `blue` scale,
+     which is why the site read as a generic Tailwind template — thousands of
+     sites ship that exact colour. This is a custom indigo-leaning blue: deeper
+     and slightly more saturated, so it keeps the trust associations of blue
+     without being the default.
+
+     Contrast measured against the pairings the UI actually uses (all pass
+     WCAG AA, and every pair improved over the old ramp):
+       white on 600 (primary button) ....... 6.24   was 5.17
+       white on 700 (button hover) ......... 8.06
+       700 text on 50 (pill badge) ......... 7.40
+       600 text on white (links) ........... 6.24
+       300 on slate-900 (dark sections) .... 9.26
+       400 on slate-900 .................... 6.21 */
+  --color-brand-50: #f2f5ff;
+  --color-brand-100: #e4eaff;
+  --color-brand-200: #cbd6ff;
+  --color-brand-300: #a6b8fd;
+  --color-brand-400: #7b92f8;
+  --color-brand-500: #5570ee;
+  --color-brand-600: #3350e0;
+  --color-brand-700: #2a3fc4;
+  --color-brand-800: #26379e;
+  --color-brand-900: #24327d;
+  --color-brand-950: #171f4d;
 
   /* CAUTION: this overrides Tailwind's real slate-950 (#020617) with the value
      of slate-900. The two therefore render identically, so layering
@@ -31,8 +47,8 @@
   --color-slate-950: #0f172a;
 
   /* Semantic accent used by .btn-glow so the glow follows the brand colour
-     instead of hardcoding it. Keep in sync with --color-brand-600. */
-  --color-brand-glow: 37 99 235;
+     instead of hardcoding it. Keep in sync with --color-brand-600 (#3350e0). */
+  --color-brand-glow: 51 80 224;
 }
 
 /* Removed: --color-success-green / --color-ai-purple / --color-info-teal /

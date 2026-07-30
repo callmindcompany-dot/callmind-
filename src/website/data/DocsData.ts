@@ -65,7 +65,7 @@ When you register an account, CallMind creates a tenant workspace bound to your 
 ---
 
 ### Role-Based Access Control
-* **Founder / Admin**: Uses the Web Dashboard (\`callmind.ai\`) to monitor call attendance, assign leads, view reports, and manage billing.
+* **Founder / Admin**: Uses the Web Dashboard (\`callmind.app\`) to monitor call attendance, assign leads, view reports, and manage billing.
 * **Telecaller / Team Lead**: Uses the Mobile App to dial assigned leads, log call dispositions, and record voice notes.
         `
       },
@@ -226,7 +226,7 @@ The system polls IndiaMART every 5 minutes and routes incoming leads to active t
 ### Webhook Endpoint
 Configure your Meta App webhook setting to:
 \`\`\`http
-POST https://callmind.ai/v1/webhooks/facebook
+POST https://callmind.app/v1/webhooks/facebook
 \`\`\`
 
 Include your workspace API Key header:
@@ -301,7 +301,7 @@ Use this endpoint to push leads from landing pages or external systems into Call
             {
               language: 'bash',
               label: 'cURL',
-              code: `curl -X POST https://callmind.ai/api/leads \\
+              code: `curl -X POST https://callmind.app/api/leads \\
   -H "Authorization: Bearer YOUR_WORKSPACE_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -315,7 +315,7 @@ Use this endpoint to push leads from landing pages or external systems into Call
             {
               language: 'javascript',
               label: 'JavaScript / Fetch',
-              code: `const response = await fetch('https://callmind.ai/api/leads', {
+              code: `const response = await fetch('https://callmind.app/api/leads', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer YOUR_WORKSPACE_API_KEY',
@@ -337,7 +337,7 @@ console.log(data);`
               label: 'Python',
               code: `import requests
 
-url = "https://callmind.ai/api/leads"
+url = "https://callmind.app/api/leads"
 headers = {
     "Authorization": "Bearer YOUR_WORKSPACE_API_KEY",
     "Content-Type": "application/json"
@@ -394,13 +394,13 @@ print(response.json())`
             {
               language: 'bash',
               label: 'cURL',
-              code: `curl -X GET "https://callmind.ai/api/leads?status=New&limit=10" \\
+              code: `curl -X GET "https://callmind.app/api/leads?status=New&limit=10" \\
   -H "Authorization: Bearer YOUR_WORKSPACE_API_KEY"`
             },
             {
               language: 'javascript',
               label: 'JavaScript',
-              code: `const response = await fetch('https://callmind.ai/api/leads?status=New&limit=10', {
+              code: `const response = await fetch('https://callmind.app/api/leads?status=New&limit=10', {
   headers: { 'Authorization': 'Bearer YOUR_WORKSPACE_API_KEY' }
 });
 const data = await response.json();`
@@ -446,7 +446,7 @@ Records completed call details from telecallers or automated dialers.
             {
               language: 'bash',
               label: 'cURL',
-              code: `curl -X POST https://callmind.ai/api/calls/log \\
+              code: `curl -X POST https://callmind.app/api/calls/log \\
   -H "Authorization: Bearer YOUR_WORKSPACE_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{

@@ -307,7 +307,7 @@ export const ProductPage = () => {
 
         {/* CTA Banner */}
         <section className="py-20 px-6 md:px-12 font-sans">
-          <div className="max-w-5xl mx-auto bg-gradient-to-br from-brand-600 to-blue-700 rounded-3xl p-10 text-white text-center space-y-6 shadow-xl">
+          <div className="max-w-5xl mx-auto bg-gradient-to-br from-brand-600 to-brand-700 rounded-3xl p-10 text-white text-center space-y-6 shadow-xl">
             <h2 className="text-3xl font-black font-display">Experience CallMind Product Suite</h2>
             <p className="text-white/80 max-w-xl mx-auto text-sm font-medium">
               Start your {FREE_TRIAL_CONFIG.trialDays}-Day Free Trial. No credit card required. Instant setup for up to {FREE_TRIAL_CONFIG.includedTelecallers} telecallers.

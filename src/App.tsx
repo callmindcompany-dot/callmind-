@@ -49,6 +49,7 @@ import { RefundPolicyPage } from '@/website/pages/RefundPolicyPage';
 import { DocsPage } from '@/website/pages/DocsPage';
 import { NotFoundPage } from '@/website/pages/NotFoundPage';
 import { PlatformPage } from '@/website/pages/PlatformPage';
+import { FaqPage } from '@/website/pages/FaqPage';
 import Login from '@/components/Login';
 import { 
   UserPlus,
@@ -288,6 +289,7 @@ const AppContent = () => {
       <Route path="/" element={<LandingPage />} />
       <Route path="/product" element={<ProductPage />} />
       <Route path="/platform" element={<PlatformPage />} />
+      <Route path="/faq" element={<FaqPage />} />
       <Route path="/mobile-app" element={<MobileAppPage />} />
       <Route path="/solutions" element={<SolutionsPage />} />
       <Route path="/security" element={<SecurityPage />} />

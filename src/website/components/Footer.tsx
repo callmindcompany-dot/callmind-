@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, Mail, ShieldCheck } from 'lucide-react';
+import { Phone, Mail, ShieldCheck, Linkedin, Instagram, Github } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
@@ -30,6 +30,7 @@ export const Footer = () => {
   const companyLinks = [
     { label: 'About CallMind', path: '/company' },
     { label: 'Security & Privacy', path: '/security' },
+    { label: 'FAQ', path: '/faq' },
     { label: 'Contact Sales', path: '/contact' },
   ];
 
@@ -131,8 +132,65 @@ export const Footer = () => {
           </div>
         </div>
 
-        {/* Copyright + Legal Links Bottom Bar */}
-        <div className="flex flex-col items-center gap-3 text-xs text-slate-500">
+        {/* Copyright + Social Buttons + Legal Links Bottom Bar */}
+        <div className="flex flex-col items-center gap-5 text-xs text-slate-500 pt-2">
+          {/* 4 Social Media Hover Icon Buttons (Email, LinkedIn, Instagram, GitHub) */}
+          <div className="flex items-center justify-center gap-3.5">
+            {/* Email */}
+            <a
+              href="mailto:support@callmind.app"
+              aria-label="Contact via Email"
+              className="group relative flex justify-center items-center p-2.5 rounded-xl bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/80 hover:border-brand-500 hover:bg-brand-600 transition-all duration-300 shadow-md hover:-translate-y-1"
+            >
+              <Mail className="w-4 h-4" />
+              <span className="absolute -top-9 opacity-0 group-hover:opacity-100 group-hover:-translate-y-1 transition-all duration-300 px-2.5 py-1 rounded-md bg-slate-800 text-white text-[11px] font-bold border border-slate-700 shadow-lg pointer-events-none whitespace-nowrap">
+                Email
+              </span>
+            </a>
+
+            {/* LinkedIn */}
+            <a
+              href="https://linkedin.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="CallMind LinkedIn"
+              className="group relative flex justify-center items-center p-2.5 rounded-xl bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/80 hover:border-blue-500 hover:bg-blue-600 transition-all duration-300 shadow-md hover:-translate-y-1"
+            >
+              <Linkedin className="w-4 h-4" />
+              <span className="absolute -top-9 opacity-0 group-hover:opacity-100 group-hover:-translate-y-1 transition-all duration-300 px-2.5 py-1 rounded-md bg-slate-800 text-white text-[11px] font-bold border border-slate-700 shadow-lg pointer-events-none whitespace-nowrap">
+                LinkedIn
+              </span>
+            </a>
+
+            {/* Instagram */}
+            <a
+              href="https://instagram.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="CallMind Instagram"
+              className="group relative flex justify-center items-center p-2.5 rounded-xl bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/80 hover:border-pink-500 hover:bg-pink-600 transition-all duration-300 shadow-md hover:-translate-y-1"
+            >
+              <Instagram className="w-4 h-4" />
+              <span className="absolute -top-9 opacity-0 group-hover:opacity-100 group-hover:-translate-y-1 transition-all duration-300 px-2.5 py-1 rounded-md bg-slate-800 text-white text-[11px] font-bold border border-slate-700 shadow-lg pointer-events-none whitespace-nowrap">
+                Instagram
+              </span>
+            </a>
+
+            {/* GitHub */}
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="CallMind GitHub"
+              className="group relative flex justify-center items-center p-2.5 rounded-xl bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/80 hover:border-purple-500 hover:bg-purple-600 transition-all duration-300 shadow-md hover:-translate-y-1"
+            >
+              <Github className="w-4 h-4" />
+              <span className="absolute -top-9 opacity-0 group-hover:opacity-100 group-hover:-translate-y-1 transition-all duration-300 px-2.5 py-1 rounded-md bg-slate-800 text-white text-[11px] font-bold border border-slate-700 shadow-lg pointer-events-none whitespace-nowrap">
+                GitHub
+              </span>
+            </a>
+          </div>
+
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             <Link to="/legal/privacy" onClick={scrollTop} className="hover:text-slate-300 transition-colors">
               Privacy Policy

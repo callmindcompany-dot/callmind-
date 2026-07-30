@@ -15,7 +15,7 @@ export const ProductSimulator = () => {
             <Zap size={16} className="fill-brand-500" /> Live Demo Simulation
           </div>
           <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight font-display">
-            See how leads flow <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-blue-500">instantly.</span>
+            See how leads flow <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-400">instantly.</span>
           </h2>
           <p className="text-lg text-slate-500 font-medium font-sans">
             No fake promises. Watch how an IndiaMART inquiry reaches your telecaller's phone in under 3 seconds.

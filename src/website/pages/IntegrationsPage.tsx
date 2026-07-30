@@ -62,7 +62,7 @@ export const IntegrationsPage = () => {
             </span>
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.08] font-display max-w-4xl mx-auto">
-            Connect Your Lead Sources in <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-blue-500">60 Seconds.</span>
+            Connect Your Lead Sources in <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-400">60 Seconds.</span>
           </h1>
           <p className="text-lg text-slate-500 max-w-2xl mx-auto font-medium">
             Stop downloading CSV files. Route leads from IndiaMART, JustDial, TradeIndia, Meta Ads, website forms and custom webhooks straight into your telecallers' mobile app.

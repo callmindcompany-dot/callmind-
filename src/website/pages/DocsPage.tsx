@@ -53,7 +53,7 @@ export const DocsPage: React.FC = () => {
   };
 
   const handleCopyPath = (pathText: string) => {
-    navigator.clipboard.writeText(`https://callmind.ai${pathText}`);
+    navigator.clipboard.writeText(`https://callmind.app${pathText}`);
     setCopiedPath(true);
     setTimeout(() => setCopiedPath(false), 2000);
   };

@@ -47,7 +47,7 @@ export const LandingPage = () => {
 
         {/* 6. Final Conversion Call to Action Banner */}
         <section className="py-20 px-6 md:px-12 bg-white border-t border-slate-200 font-sans">
-          <div className="max-w-6xl mx-auto bg-gradient-to-br from-brand-600 via-brand-700 to-blue-800 rounded-3xl p-8 md:p-14 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="max-w-6xl mx-auto bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800 rounded-3xl p-8 md:p-14 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="space-y-4 max-w-2xl text-center md:text-left">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-bold text-white border border-white/20">
                 <Zap size={14} className="text-amber-300" />

@@ -86,7 +86,7 @@ export const Hero = () => {
           >
             Make Every Call Smarter.<br className="hidden md:block" />
             Turn SIM Calls Into{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-blue-600">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-500">
               Higher Revenue.
             </span>
           </motion.h1>
