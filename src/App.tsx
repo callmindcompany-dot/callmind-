@@ -47,6 +47,7 @@ import { PrivacyPolicyPage } from '@/website/pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from '@/website/pages/TermsOfServicePage';
 import { RefundPolicyPage } from '@/website/pages/RefundPolicyPage';
 import { DocsPage } from '@/website/pages/DocsPage';
+import { NotFoundPage } from '@/website/pages/NotFoundPage';
 import Login from '@/components/Login';
 import { 
   UserPlus,
@@ -379,8 +380,9 @@ const AppContent = () => {
         </TrialActiveRoute>
       } />
 
-      {/* 6. Fallback Strategy: Safe landing for invalid routes */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* 6. Fallback: real 404 page for unknown routes (was a silent redirect
+             to "/", i.e. a soft 404 that hid mistyped URLs from users and SEO). */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
     </>
   );
