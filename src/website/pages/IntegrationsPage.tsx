@@ -3,8 +3,37 @@ import { motion } from 'framer-motion';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SEOHead } from '../components/SEOHead';
-import { ArrowLeft, ArrowRight, Database, Facebook, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Database, Facebook, FileSpreadsheet, CheckCircle2, Building2, Package, Globe, Webhook, MessageCircle, Mail, CreditCard, Plug } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { SectionHeader } from '../components/SectionHeader';
+
+/**
+ * Every card below maps to something that actually exists in this repo — a
+ * Supabase edge function or an API route — so the marketing page can't claim an
+ * integration the product doesn't have:
+ *   IndiaMART      -> supabase/functions/indiamart-poll
+ *   JustDial       -> supabase/functions/justdial-poll
+ *   TradeIndia     -> supabase/functions/tradeindia-poll
+ *   Meta Lead Ads  -> supabase/functions/facebook-poll
+ *   Website Forms  -> supabase/functions/webhook-receiver (+ WebsiteFormPanel)
+ *   Custom Webhook -> supabase/functions/webhook-receiver
+ *   WhatsApp       -> supabase/functions/send-whatsapp-message + receive-whatsapp-webhook
+ *   Email / SMTP   -> supabase/functions/send-email + test-smtp
+ *   Excel / Sheets -> in-app importer
+ *   Razorpay       -> src/routes/payments.ts
+ */
+const allIntegrations = [
+  { icon: Database, name: 'IndiaMART', desc: 'GLUSR webhook lead sync' },
+  { icon: Building2, name: 'JustDial', desc: 'Auto-capture JustDial enquiries' },
+  { icon: Package, name: 'TradeIndia', desc: 'TradeIndia lead ingestion' },
+  { icon: Facebook, name: 'Meta Lead Ads', desc: 'Facebook & Instagram forms' },
+  { icon: Globe, name: 'Website Forms', desc: 'Embed a form, leads flow in' },
+  { icon: Webhook, name: 'Custom Webhooks', desc: 'POST leads from any source' },
+  { icon: MessageCircle, name: 'WhatsApp Business', desc: 'Send & receive on WhatsApp' },
+  { icon: Mail, name: 'Email / SMTP', desc: 'Send email from your own domain' },
+  { icon: FileSpreadsheet, name: 'Excel & Google Sheets', desc: 'Bulk import with AI mapping' },
+  { icon: CreditCard, name: 'Razorpay', desc: 'GST-compliant subscription billing' },
+];
 
 export const IntegrationsPage = () => {
   const navigate = useNavigate();
@@ -13,7 +42,7 @@ export const IntegrationsPage = () => {
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead 
         title="Integrations | CallMind by Voolabs" 
-        description="Connect CallMind with IndiaMART, Facebook Leads, and Google Sheets to auto-capture leads directly to your telecallers."
+        description="Connect CallMind with IndiaMART, JustDial, TradeIndia, Meta Lead Ads, WhatsApp, email, website forms and custom webhooks to auto-capture leads."
         path="/integrations"
       />
       <Navbar />
@@ -36,7 +65,7 @@ export const IntegrationsPage = () => {
             Connect Your Lead Sources in <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-blue-500">60 Seconds.</span>
           </h1>
           <p className="text-lg text-slate-500 max-w-2xl mx-auto font-medium">
-            Stop downloading CSV files. Route leads from IndiaMART and Facebook directly into your telecallers' mobile app instantly.
+            Stop downloading CSV files. Route leads from IndiaMART, JustDial, TradeIndia, Meta Ads, website forms and custom webhooks straight into your telecallers' mobile app.
           </p>
         </section>
 
@@ -127,6 +156,33 @@ export const IntegrationsPage = () => {
               </div>
             </div>
 
+          </div>
+        </section>
+
+        {/* Full integrations grid — every card is backed by real code (see allIntegrations) */}
+        <section className="py-20 px-6 md:px-12 bg-slate-50 border-t border-slate-100">
+          <div className="max-w-6xl mx-auto space-y-14">
+            <SectionHeader
+              badge={{ icon: Plug, text: 'Everything Connected' }}
+              title="One Platform, Every Lead Source"
+              subtitle="Capture leads wherever they come from, and reach customers on every channel — all wired into the same pipeline."
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {allIntegrations.map((it) => (
+                <div
+                  key={it.name}
+                  className="bg-white border border-slate-200 rounded-2xl p-6 flex items-start gap-4 hover:border-brand-200 hover:shadow-md transition-all"
+                >
+                  <div className="w-11 h-11 shrink-0 bg-brand-50 text-brand-600 rounded-xl flex items-center justify-center border border-brand-100">
+                    <it.icon size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 font-display">{it.name}</h3>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">{it.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
