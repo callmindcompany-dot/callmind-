@@ -10,15 +10,18 @@ export default defineConfig(() => {
       chunkSizeWarningLimit: 900,
       rollupOptions: {
         output: {
-          // Split heavy, independently-cacheable libraries out of the main
-          // bundle. These are only pulled in by the authenticated admin app
-          // (charts, spreadsheet/PDF export, drag-and-drop), so isolating them
-          // keeps them out of the vendor code a first-time marketing visitor
-          // must parse, and lets them cache across deploys of app code.
+          // Only framer-motion is split by hand, because the public marketing
+          // pages genuinely use it — it belongs in the eager graph, and naming
+          // it lets it stay cached across deploys of app code.
+          //
+          // recharts, xlsx/jspdf and @dnd-kit are deliberately NOT listed.
+          // Forcing them into named chunks made Rollup emit them as top-level
+          // chunks, which Vite then advertised with <link rel="modulepreload">
+          // — so a marketing visitor still downloaded ~1.2 MB of charting and
+          // export code before touching the app. Left unlisted, they are pulled
+          // into the lazily-imported dashboard chunks that actually use them
+          // and are not fetched until someone opens those screens.
           manualChunks: {
-            'vendor-charts': ['recharts'],
-            'vendor-export': ['xlsx', 'jspdf'],
-            'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
             'vendor-motion': ['framer-motion'],
           },
         },

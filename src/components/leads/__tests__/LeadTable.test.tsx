@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { LeadTable } from '../LeadTable';
-import type { Lead } from '@/types/lead';
+// LeadTable takes the Lead shape exported by LeadsPage, which is a narrower
+// type than the one in @/types/lead (its status is a literal union). Import the
+// same one the component uses so the fixtures type-check against reality.
+import type { Lead } from '../../LeadsPage';
 
 /**
  * Regression test for the react-window v2 migration.

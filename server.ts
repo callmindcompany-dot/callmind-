@@ -184,8 +184,36 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+
+    // Vite fingerprints everything under /assets (index-D9r9h5eG.js), so those
+    // files can never change behind a given URL and are safe to cache forever.
+    // They were being served with express.static's default of no cache headers,
+    // which made every repeat visitor re-download the whole bundle.
+    app.use('/assets', express.static(path.join(distPath, 'assets'), {
+      immutable: true,
+      maxAge: '1y',
+      // A missing hashed asset should 404, not fall through to the SPA handler
+      // and return index.html with a 200 — that turns a deploy mismatch into a
+      // confusing MIME error in the browser instead of a clear miss.
+      fallthrough: false,
+    }));
+
+    // Everything else in dist (favicon.svg, robots.txt, sitemap.xml, og-image,
+    // screenshots) keeps a stable name, so it gets a short cache with
+    // revalidation rather than an immutable one.
+    app.use(express.static(distPath, {
+      maxAge: '1h',
+      setHeaders: (res, filePath) => {
+        // index.html must never be cached: it carries the references to the
+        // current hashed bundles, so a stale copy points at deleted files.
+        if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+      },
+    }));
+
+    app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

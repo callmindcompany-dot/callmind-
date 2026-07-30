@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from '@/AuthContext';
 import { CompanyProvider, useCompany } from '@/CompanyContext';
@@ -6,32 +6,48 @@ import { ProtectedRoute, FounderRoute, RoleGate, TrialActiveRoute, TrialPausedRo
 import { DashboardLayout } from '@components/DashboardLayout';
 import { AccountPausedPage } from '@components/AccountPausedPage';
 import { AccountExpiredPage } from '@components/AccountExpiredPage';
-import { Dashboard } from '@components/Dashboard';
-import { LeadsPage } from '@components/LeadsPage';
-import { ReportsPage } from '@components/ReportsPage';
-import { TeamPage } from '@components/TeamPage';
-import { CallsPage } from '@components/CallsPage';
-import { SettingsPage } from '@components/SettingsPage';
-import { BillingPage } from '@components/BillingPage';
-import IntegrationsPage from '@components/IntegrationsPage';
-import { JoinPage } from '@components/JoinPage';
-import { AIInsightsHub } from '@components/AIInsightsHub';
-import { AutomationPage } from '@components/AutomationPage';
-import { AnalyticsPage } from '@components/AnalyticsPage';
-import { AuditLogPage } from '@components/AuditLogPage';
-import { AnnouncementsPage } from '@components/AnnouncementsPage';
-import { RoadmapPage } from '@components/RoadmapPage';
-import { FoundersLab } from '@components/FoundersLab';
-import { FounderHub } from '@components/FounderHub';
-import { SequencesPage } from '@components/SequencesPage';
-import { SchedulerPage } from '@components/SchedulerPage';
-import { CommunicationPage } from '@components/CommunicationPage';
-import { SupportPage } from '@components/SupportPage';
-import { HelpCenterPage } from '@components/HelpCenterPage';
-import { PrivacyPage } from '@components/PrivacyPage';
-import { TermsPage } from '@components/TermsPage';
-import { RefundPage } from '@components/RefundPage';
-import { VideoTutorialsPage } from '@components/VideoTutorialsPage';
+/**
+ * Authenticated app screens are code-split.
+ *
+ * These all live behind auth, but they were statically imported, so every
+ * marketing visitor downloaded them: the homepage pulled ~4 MB up front,
+ * including the chart library (Recharts), the PDF/Excel export stack
+ * (jspdf, xlsx) and drag-and-drop (@dnd-kit) — none of which the public site
+ * uses. Splitting them here means those vendors only load once someone
+ * actually opens the screen that needs them.
+ *
+ * Every component below renders inside an existing <Suspense fallback={<PageLoader />}>
+ * boundary (renderDashboardContent, /join, /founder-hub), which is what makes
+ * this safe. If you add a lazy screen, make sure it has a boundary above it.
+ *
+ * lazy() expects a default export, hence the .then() unwrap for named ones.
+ */
+const Dashboard = lazy(() => import('@components/Dashboard').then(m => ({ default: m.Dashboard })));
+const LeadsPage = lazy(() => import('@components/LeadsPage').then(m => ({ default: m.LeadsPage })));
+const ReportsPage = lazy(() => import('@components/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const TeamPage = lazy(() => import('@components/TeamPage').then(m => ({ default: m.TeamPage })));
+const CallsPage = lazy(() => import('@components/CallsPage').then(m => ({ default: m.CallsPage })));
+const SettingsPage = lazy(() => import('@components/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const BillingPage = lazy(() => import('@components/BillingPage').then(m => ({ default: m.BillingPage })));
+const IntegrationsPage = lazy(() => import('@components/IntegrationsPage'));
+const JoinPage = lazy(() => import('@components/JoinPage').then(m => ({ default: m.JoinPage })));
+const AIInsightsHub = lazy(() => import('@components/AIInsightsHub').then(m => ({ default: m.AIInsightsHub })));
+const AutomationPage = lazy(() => import('@components/AutomationPage').then(m => ({ default: m.AutomationPage })));
+const AnalyticsPage = lazy(() => import('@components/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
+const AuditLogPage = lazy(() => import('@components/AuditLogPage').then(m => ({ default: m.AuditLogPage })));
+const AnnouncementsPage = lazy(() => import('@components/AnnouncementsPage').then(m => ({ default: m.AnnouncementsPage })));
+const RoadmapPage = lazy(() => import('@components/RoadmapPage').then(m => ({ default: m.RoadmapPage })));
+const FoundersLab = lazy(() => import('@components/FoundersLab').then(m => ({ default: m.FoundersLab })));
+const FounderHub = lazy(() => import('@components/FounderHub').then(m => ({ default: m.FounderHub })));
+const SequencesPage = lazy(() => import('@components/SequencesPage').then(m => ({ default: m.SequencesPage })));
+const SchedulerPage = lazy(() => import('@components/SchedulerPage').then(m => ({ default: m.SchedulerPage })));
+const CommunicationPage = lazy(() => import('@components/CommunicationPage').then(m => ({ default: m.CommunicationPage })));
+const SupportPage = lazy(() => import('@components/SupportPage').then(m => ({ default: m.SupportPage })));
+const HelpCenterPage = lazy(() => import('@components/HelpCenterPage').then(m => ({ default: m.HelpCenterPage })));
+const PrivacyPage = lazy(() => import('@components/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
+const TermsPage = lazy(() => import('@components/TermsPage').then(m => ({ default: m.TermsPage })));
+const RefundPage = lazy(() => import('@components/RefundPage').then(m => ({ default: m.RefundPage })));
+const VideoTutorialsPage = lazy(() => import('@components/VideoTutorialsPage').then(m => ({ default: m.VideoTutorialsPage })));
 import { FeatureGate } from '@components/FeatureGate';
 import { PipelineBoard } from '@components/PipelineBoard';
 import { LandingPage } from '@/website/LandingPage';
@@ -93,9 +109,6 @@ import { sanitize } from '@/lib/sanitize';
 import CallMindLoader from '@components/CallMindLoader';
 import { TrialUpgradeModal } from '@components/TrialUpgradeModal';
 
-// No-op - moved to direct imports for stability
-// const Dashboard = lazy(() => import('@components/Dashboard'));
-// ... other lazy imports moved up
 
 import { supabase } from '@/supabaseClient';
 
@@ -369,7 +382,11 @@ const AppContent = () => {
       {/* 4. Administrative Hub: Founder-only permission check */}
       <Route path="/founder-hub" element={
         <FounderRoute>
-          <FounderHub />
+          {/* FounderHub is lazy now, so it needs its own boundary — the other
+              lazy screens sit inside renderDashboardContent's Suspense. */}
+          <Suspense fallback={<PageLoader />}>
+            <FounderHub />
+          </Suspense>
         </FounderRoute>
       } />
 
