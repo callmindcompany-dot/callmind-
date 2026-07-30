@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { PhoneCall, Database, Clock, Layers, FileText, Users } from 'lucide-react';
+import { SectionHeader } from './SectionHeader';
 
 const features = [
   {
@@ -58,18 +59,12 @@ export const Features = () => {
     <section className="py-24 px-6 md:px-12 bg-slate-50 border-y border-slate-100 font-sans">
       <div className="max-w-7xl mx-auto">
         
-        {/* Section Header */}
-        <div className="text-center space-y-4 mb-16">
-          <span className="inline-block px-4 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-xs font-semibold">
-            Core Platform Features
-          </span>
-          <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight font-display">
-            Everything Your Sales Team Needs
-          </h2>
-          <p className="text-base text-slate-500 max-w-2xl mx-auto font-medium">
-            From lead capture to GST invoicing — CallMind replaces spreadsheets, manual typing, and disconnected tools with one unified telecalling CRM.
-          </p>
-        </div>
+        <SectionHeader
+          className="mb-16"
+          badge={{ text: 'Core Platform Features' }}
+          title="Everything Your Sales Team Needs"
+          subtitle="From lead capture to GST invoicing — CallMind replaces spreadsheets, manual typing, and disconnected tools with one unified telecalling CRM."
+        />
 
         {/* 3x2 Feature Grid */}
         <motion.div

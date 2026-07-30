@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Calculator, TrendingUp } from 'lucide-react';
+import { SectionHeader } from './SectionHeader';
 
 export const RoiCalculator = () => {
   const [teamSize, setTeamSize] = useState(10);
@@ -21,18 +22,12 @@ export const RoiCalculator = () => {
           
           {/* Left: Calculator */}
           <div className="space-y-8">
-            <div className="space-y-4">
-              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-xs font-semibold">
-                <Calculator size={14} />
-                ROI Calculator
-              </span>
-              <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight font-display">
-                See How Much Time Your Team Saves
-              </h2>
-              <p className="text-base text-slate-500 font-medium max-w-lg">
-                Adjust your team size to see estimated daily calls handled and manual data entry hours eliminated every month.
-              </p>
-            </div>
+            <SectionHeader
+              align="left"
+              badge={{ icon: Calculator, text: 'ROI Calculator' }}
+              title="See How Much Time Your Team Saves"
+              subtitle="Adjust your team size to see estimated daily calls handled and manual data entry hours eliminated every month."
+            />
 
             {/* Slider */}
             <div className="space-y-4">

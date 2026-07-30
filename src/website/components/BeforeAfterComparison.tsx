@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { XCircle, CheckCircle2, ArrowRight, Zap, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { SectionHeader } from './SectionHeader';
 
 export const BeforeAfterComparison = () => {
   const navigate = useNavigate();
@@ -37,21 +38,11 @@ export const BeforeAfterComparison = () => {
     <section className="py-24 px-6 md:px-12 bg-white font-sans border-b border-slate-100">
       <div className="max-w-7xl mx-auto space-y-16">
         
-        {/* Section Header */}
-        <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-xs font-semibold">
-            <TrendingUp size={14} className="text-brand-600" />
-            <span>SME Telecalling Transformation</span>
-          </div>
-
-          <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight font-display">
-            How CallMind Transforms Your Sales Team
-          </h2>
-
-          <p className="text-base text-slate-500 font-medium">
-            See the dramatic efficiency leap when switching from outdated spreadsheets to automated SIM telecalling.
-          </p>
-        </div>
+        <SectionHeader
+          badge={{ icon: TrendingUp, text: 'SME Telecalling Transformation' }}
+          title="How CallMind Transforms Your Sales Team"
+          subtitle="See the dramatic efficiency leap when switching from outdated spreadsheets to automated SIM telecalling."
+        />
 
         {/* Comparison Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
