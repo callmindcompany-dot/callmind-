@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Lock, Database, FileText, ArrowRight, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, Lock, Database, FileText, ArrowRight, CheckCircle2, ArrowLeft, Download, Trash2 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SEOHead } from '../components/SEOHead';
@@ -30,6 +30,20 @@ const securityPillars = [
     title: 'Audit Logs & Activity Trails',
     description: 'Every stage change, lead export, and telecaller action is recorded in immutable audit logs accessible from your founder dashboard.',
     tag: 'Compliance',
+  },
+  // Backed by the export-user-data / purge-user-data edge functions — both
+  // authenticated and rate-limited. Only claim what those functions deliver.
+  {
+    icon: Download,
+    title: 'Export Your Data Anytime',
+    description: 'Request a full export of your workspace data on demand. Your leads, calls and notes are yours to take with you — no lock-in.',
+    tag: 'Data Rights',
+  },
+  {
+    icon: Trash2,
+    title: 'Right to Erasure',
+    description: 'Permanently delete your workspace data when you choose, aligned with India’s DPDP Act. Deletion is complete and irreversible.',
+    tag: 'DPDP',
   },
 ];
 

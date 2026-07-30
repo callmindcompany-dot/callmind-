@@ -152,7 +152,7 @@ SplashScreen  OnboardingSlides UserInfo  HomeScreen              LeadListScreen
 | :--- | :--- | :--- |
 | `SettingsScreen.tsx` | App Settings | Main settings hub: Profile edit, Language selector, Theme toggle, Offline sync status, Biometric settings, Help, Sign Out. |
 | `08_ProfileEditScreen.tsx` | Edit Profile | Form to update name, avatar photo, phone number, city, and bio. |
-| `10_LanguageSelectionScreen.tsx` | Multi-Language Selector | Language picker supporting 8 Indian languages (English, Hindi, Marathi, Gujarati, Tamil, Telugu, Kannada, Bengali). |
+| `10_LanguageSelectionScreen.tsx` | App Language Screen | Standardized single language viewer confirming English as the system default language. |
 | `81_ThemeToggleScreen.tsx` | Visual Theme Customizer | Toggle between Light Mode, Dark Mode, and System Default with accent color choices. |
 | `83_AboutAppScreen.tsx` | About CallMind App | App version info, build number, company details, copyright, and technology credits. |
 | `84_PrivacyTermsWebView.tsx` | Privacy & Terms Viewer | In-app WebView displaying legal terms, data privacy policy, and PCI-DSS compliance information. |

@@ -82,18 +82,19 @@ export const ProfileEditScreen: React.FC<ProfileEditScreenProps> = ({ onBack, on
           <Text style={styles.inputSubHint}>Phone number is locked for security</Text>
         </View>
 
-        {/* Preferred Language */}
+        {/* System Language */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Preferred Language</Text>
+          <Text style={styles.label}>System Language</Text>
           <View style={styles.pickerRow}>
-            {['English', 'Hindi', 'Marathi'].map((lang) => (
+            {['English'].map((lang) => (
               <TouchableOpacity
                 key={lang}
-                style={[styles.pickerChip, language === lang && styles.pickerChipActive]}
-                onPress={() => setLanguage(lang)}
+                style={[styles.pickerChip, styles.pickerChipActive]}
+                onPress={() => {}}
+                activeOpacity={1}
               >
-                <Text style={[styles.pickerChipText, language === lang && styles.pickerChipTextActive]}>
-                  {lang}
+                <Text style={[styles.pickerChipText, styles.pickerChipTextActive]}>
+                  {lang} (Standard)
                 </Text>
               </TouchableOpacity>
             ))}

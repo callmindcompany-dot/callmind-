@@ -11,16 +11,10 @@ export const LanguageSelectionScreen: React.FC<LanguageSelectionProps> = ({
   onSelectLanguage,
   onBack,
 }) => {
-  const [selected, setSelected] = useState('en');
+  const [selected] = useState('en');
 
   const languages = [
-    { code: 'en', name: 'English', native: 'English' },
-    { code: 'mr', name: 'Marathi', native: 'मराठी' },
-    { code: 'hi', name: 'Hindi', native: 'हिंदी' },
-    { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી' },
-    { code: 'te', name: 'Telugu', native: 'తెలుగు' },
-    { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ' },
-    { code: 'ta', name: 'Tamil', native: 'தமிழ்' },
+    { code: 'en', name: 'English', native: 'English (Default System Language)' },
   ];
 
   return (
@@ -30,34 +24,34 @@ export const LanguageSelectionScreen: React.FC<LanguageSelectionProps> = ({
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <ArrowLeft size={20} color="#0f172a" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Change Language</Text>
+        <Text style={styles.headerTitle}>App Language</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.heading}>Choose Your Language</Text>
+        <Text style={styles.heading}>System Language</Text>
         <Text style={styles.subheading}>
-          Select your preferred language for CallMind interface.
+          CallMind is standardized on English as the single system language for optimal performance and AI summary accuracy.
         </Text>
 
         <View style={styles.list}>
           {languages.map((lang) => (
             <TouchableOpacity
               key={lang.code}
-              style={[styles.card, selected === lang.code && styles.selectedCard]}
-              onPress={() => setSelected(lang.code)}
+              style={[styles.card, styles.selectedCard]}
+              onPress={() => {}}
+              activeOpacity={1}
             >
-              <View style={[styles.iconBg, selected === lang.code && styles.selectedIconBg]}>
-                <Globe size={18} color={selected === lang.code ? '#2563eb' : '#64748b'} />
+              <View style={[styles.iconBg, styles.selectedIconBg]}>
+                <Globe size={18} color="#2563eb" />
               </View>
               <View style={styles.info}>
-                <Text style={[styles.name, selected === lang.code && styles.selectedName]}>
+                <Text style={[styles.name, styles.selectedName]}>
                   {lang.native}
                 </Text>
-                <Text style={styles.subName}>({lang.name})</Text>
               </View>
-              <View style={[styles.radio, selected === lang.code && styles.radioActive]}>
-                {selected === lang.code && <View style={styles.radioDot} />}
+              <View style={[styles.radio, styles.radioActive]}>
+                <View style={styles.radioDot} />
               </View>
             </TouchableOpacity>
           ))}
@@ -65,8 +59,8 @@ export const LanguageSelectionScreen: React.FC<LanguageSelectionProps> = ({
       </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.saveBtn} onPress={() => onSelectLanguage(selected)}>
-          <Text style={styles.saveText}>Apply Language</Text>
+        <TouchableOpacity style={styles.saveBtn} onPress={() => onSelectLanguage('en')}>
+          <Text style={styles.saveText}>Confirm English</Text>
         </TouchableOpacity>
       </View>
     </View>
