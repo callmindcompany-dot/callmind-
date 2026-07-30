@@ -4,6 +4,7 @@
      /legal/* canonicals so crawlers don't see duplicates. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://callmind.app/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://callmind.app/platform</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
   <url><loc>https://callmind.app/product</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
   <url><loc>https://callmind.app/mobile-app</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://callmind.app/pricing</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>

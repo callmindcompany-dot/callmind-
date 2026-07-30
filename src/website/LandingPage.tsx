@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { IntegrationsBar } from './components/IntegrationsBar';
 import { BeforeAfterComparison } from './components/BeforeAfterComparison';
+import { IndiaFirstSection } from './components/IndiaFirstSection';
 import { RoiCalculator } from './components/RoiCalculator';
 import { Footer } from './components/Footer';
 import { ArrowRight, ShieldCheck, Zap, Phone, CheckCircle2 } from 'lucide-react';
@@ -37,10 +38,14 @@ export const LandingPage = () => {
         {/* 3. Before vs After — Problem & Solution Visual Comparison */}
         <BeforeAfterComparison />
 
-        {/* 4. Interactive ROI & Time-Saved Calculator */}
+        {/* 4. Why this fits Indian teams — the positioning story, and the
+               gateway to the full platform page (dark, to break the rhythm) */}
+        <IndiaFirstSection />
+
+        {/* 5. Interactive ROI & Time-Saved Calculator */}
         <RoiCalculator />
 
-        {/* 5. Final Conversion Call to Action Banner */}
+        {/* 6. Final Conversion Call to Action Banner */}
         <section className="py-20 px-6 md:px-12 bg-white border-t border-slate-200 font-sans">
           <div className="max-w-6xl mx-auto bg-gradient-to-br from-brand-600 via-brand-700 to-blue-800 rounded-3xl p-8 md:p-14 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="space-y-4 max-w-2xl text-center md:text-left">

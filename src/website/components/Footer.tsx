@@ -18,6 +18,7 @@ export const Footer = () => {
   };
 
   const productLinks = [
+    { label: 'Platform Overview', path: '/platform' },
     { label: 'CRM Product Suite', path: '/product' },
     { label: 'Developer Docs & API', path: '/docs' },
     { label: 'Integrations', path: '/integrations' },

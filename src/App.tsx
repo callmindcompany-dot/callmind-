@@ -48,6 +48,7 @@ import { TermsOfServicePage } from '@/website/pages/TermsOfServicePage';
 import { RefundPolicyPage } from '@/website/pages/RefundPolicyPage';
 import { DocsPage } from '@/website/pages/DocsPage';
 import { NotFoundPage } from '@/website/pages/NotFoundPage';
+import { PlatformPage } from '@/website/pages/PlatformPage';
 import Login from '@/components/Login';
 import { 
   UserPlus,
@@ -286,6 +287,7 @@ const AppContent = () => {
       {/* 1. Public Domain: Marketing and Multi-Page Enterprise Website */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/product" element={<ProductPage />} />
+      <Route path="/platform" element={<PlatformPage />} />
       <Route path="/mobile-app" element={<MobileAppPage />} />
       <Route path="/solutions" element={<SolutionsPage />} />
       <Route path="/security" element={<SecurityPage />} />

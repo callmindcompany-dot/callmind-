@@ -78,6 +78,13 @@ The application uses a hybrid architecture combining a high-performance Express 
 * `attendance_logs`: `id` (PK), `company_id`, `user_id`, `type` (`punch_in` | `punch_out`), `timestamp`, `device_info`.
 * `invites`: `id` (PK), `company_id`, `token`, `join_code`, `status` (`active` | `expired` | `revoked`), `used_count`, `max_uses`.
 * `agent_status`: `id` (PK), `user_id`, `user_name`, `company_id`, `status` (`active` | `on_call` | `offline`), `last_seen`.
+* `subscriptions`: `id` (PK, UUID), `company_id`, `plan_id` (`starter` | `professional` | `enterprise`), `status` (`active` | `trial`), `seats_limit`, `billing_cycle`, `starts_at`, `ends_at`.
+* `billing_intents`: `id` (PK, UUID), `user_id`, `user_email`, `company_id`, `plan_id`, `seats`, `duration_months`, `total_amount`, `status` (`pending` | `completed`), `razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature`.
+* `invoices`: `id` (PK, UUID), `company_id`, `invoice_number` (unique), `amount`, `status` (`paid` | `unpaid`), `billing_period_start`, `billing_period_end`, `pdf_url`, `created_at`.
+
+### Recent Database Migrations:
+* `supabase/migrations/20260706_billing.sql`: Initializes `subscriptions`, `billing_intents`, and `invoices` tables with RLS policies enabled.
+* `supabase/migrations/20260729_payments_hardening.sql`: Adds `razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature` to `billing_intents` and creates a `UNIQUE INDEX` on `razorpay_payment_id` for payment replay attack prevention.
 
 ### Multi-Tenancy Isolation Model (RLS):
 The database strictly isolates client organizations by executing Row-Level Security policies on every table containing a `company_id` column.
@@ -114,6 +121,11 @@ A security policy `users_self_read` is declared: `USING (id = auth.uid()::text)`
 ## 5. Express Backend Routing and API Specification
 
 The Node Express server runs on port `3000` (exposing `/api/*` and `/v1/*`).
+
+### `src/routes/payments.ts` (Billing & Razorpay Integration)
+* `/api/payments/create-order` [POST]: Authenticates user (`admin` or `founder` role guard), verifies caller tenancy, calculates order amount in paise (`amount * 100`), and creates a Razorpay Order via `razorpayInstance.orders.create()`. Attaches authoritative purchase notes (`companyId`, `planId`, `seats`, `durationMonths`, `userId`) to the order.
+* `/api/payments/verify` [POST]: Validates Razorpay HMAC SHA-256 payment signature using constant-time string comparison (`safeEqual`). Fetches order status directly from Razorpay API (`orders.fetch(razorpay_order_id)`), verifying `order.status === 'paid'`. Reads metadata directly from server-side order notes to prevent client-side plan/price tampering. Checks `billing_intents` for payment replay (`409 Conflict`), updates `companies` subscription status (`active`, `plan`, `seat_limit`, `plan_expires_at`), logs invoice record in `invoices`, and records intent as `completed`.
+* `/v1/webhooks/razorpay` [POST]: Unauthenticated webhook endpoint mounted before CSRF middleware. Verifies `x-razorpay-signature` against request raw body buffer (`req.rawBody`) using `RAZORPAY_WEBHOOK_SECRET`. Handles `payment.captured` & `subscription.charged` events for automated plan activation and extension.
 
 ### `src/routes/auth.ts`
 * `/api/trial/status` [GET]: Resolves the user's trial configuration, calculating days remaining, maximum leads capacity, and consumption logs.
@@ -241,3 +253,18 @@ The CallMind platform follows a premium, light-themed glassmorphism interface.
   * Glass Card Surfaces: `.glass-card` incorporates drop-shadow offsets and scaling hover effects.
   * Action items: `.btn-tactile` scales buttons slightly down on click (`0.97`) and up on hover (`1.01`).
   * Scrollbars: `.custom-scrollbar` class must keep scrollbar channels narrow (4px) and gray.
+
+---
+
+## 11. Mobile Telecaller Application Architecture
+
+For full architectural documentation, screen catalog, offline-sync protocols, and security rules of the React Native / Expo mobile app, refer to:
+👉 **[MOBILE_APP_MAP.md](file:///c:/Users/vrushabh/Downloads/callmind%20%284%29/MOBILE_APP_MAP.md)**
+
+### Key Highlights of Mobile App Architecture:
+1. **53 Screen Inventory:** Modular React Native components covering Auth, Onboarding, Telephony DialPad, Active Call Floating Overlay, Post-Call Feedback, Lead CRM, AI Sales Battlecards, Attendance, Leaderboards, Inbox, and Settings.
+2. **Strict Mobile Role Guard:** Mobile app permits login exclusively for `telecaller`, `team_lead`, and `floor_manager` roles. Admin/Founder logins are blocked with an explicit error directing them to the web dashboard.
+3. **Offline-First Synchronization Engine (`sync.ts`):** Unsynced call logs are persisted locally in AsyncStorage (`@callmind_unsynced_calls`). When network connectivity is re-established, pending call logs are batch-uploaded to the Supabase `calls` table.
+4. **Attendance Verification:** GPS location coordinates + selfie photo verification clock-in/out tracking (`AttendanceScreen.tsx`).
+5. **System Language Standardization:** Single standard language model (English) across the application for high AI performance and consistency.
+
