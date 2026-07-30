@@ -38,14 +38,14 @@ export const RoiCalculator = () => {
               <input
                 type="range"
                 min={2}
-                max={100}
+                max={50}
                 value={teamSize}
                 onChange={(e) => setTeamSize(Number(e.target.value))}
                 className="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer accent-brand-600"
               />
               <div className="flex justify-between text-xs text-slate-400">
                 <span>2 agents</span>
-                <span>100 agents</span>
+                <span>50 agents</span>
               </div>
             </div>
           </div>
