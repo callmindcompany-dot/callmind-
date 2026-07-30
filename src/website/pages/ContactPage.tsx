@@ -14,6 +14,7 @@ export const ContactPage = () => {
       <SEOHead 
         title="Contact Sales | CallMind by Voolabs" 
         description="Get in touch with the CallMind team. Book a demo, request pricing, or contact our support team in India."
+        path="/contact"
       />
       <Navbar />
 

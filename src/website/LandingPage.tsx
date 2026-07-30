@@ -23,6 +23,7 @@ export const LandingPage = () => {
       <SEOHead
         title="CallMind - Make Every Call Smarter | Telecalling CRM for Indian Sales Teams"
         description="CallMind auto-captures leads from IndiaMART & Meta Ads in 2 seconds, logs SIM calls, and tracks sales pipelines for SMEs."
+        path="/"
       />
       <Navbar />
 

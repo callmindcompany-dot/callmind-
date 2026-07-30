@@ -25,6 +25,7 @@ import { DocsSearchModal } from '@/components/docs/DocsSearchModal';
 import { ApiPlaygroundModal } from '@/components/docs/ApiPlaygroundModal';
 import { Navbar } from '@/website/components/Navbar';
 import { Footer } from '@/website/components/Footer';
+import { SEOHead } from '@/website/components/SEOHead';
 
 export const DocsPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<DocCategory>(DOCS_CATEGORIES[0]);
@@ -67,6 +68,11 @@ export const DocsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans flex flex-col selection:bg-brand-100 selection:text-brand-700">
+      <SEOHead
+        title="CallMind Documentation — Setup, Webhooks & API Reference"
+        description="Developer and admin docs for CallMind CRM: IndiaMART & Meta webhook setup, mobile app pairing, and API reference."
+        path="/docs"
+      />
       <Navbar />
 
       {/* Docs Hero Section */}

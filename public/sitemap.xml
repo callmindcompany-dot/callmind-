@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- CallMind CRM sitemap. Lists canonical public URLs only; alias routes
+     (/privacy, /terms, /refund) are intentionally omitted in favour of their
+     /legal/* canonicals so crawlers don't see duplicates. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://callmind.app/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://callmind.app/product</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://callmind.app/mobile-app</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://callmind.app/pricing</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://callmind.app/solutions</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://callmind.app/security</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://callmind.app/integrations</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://callmind.app/company</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://callmind.app/contact</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://callmind.app/docs</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://callmind.app/legal/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://callmind.app/legal/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://callmind.app/legal/refund</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+</urlset>

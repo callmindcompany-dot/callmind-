@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Mail, MapPin, ShieldCheck, Building2, User, Send, CheckCircle2, ArrowLeft, HeartHandshake } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { SEOHead } from '../components/SEOHead';
 import { FounderSection } from '../components/FounderSection';
 import { CompanyAboutSection } from '../components/CompanyAboutSection';
 import { masterFounderEmail } from '../../constants';
@@ -34,6 +35,11 @@ export const CompanyPage = () => {
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
+      <SEOHead
+        title="About Voolabs — The Team Behind CallMind CRM"
+        description="CallMind is built by Voolabs Technologies for Indian sales teams. Meet the founder and the engineering principles behind the telecalling platform."
+        path="/company"
+      />
       <Navbar />
 
       <main className="flex-grow">

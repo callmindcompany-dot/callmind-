@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { SEOHead } from '../components/SEOHead';
 
 // ─── TOC Sections ────────────────────────────────────────────────────────────
 const TOC_SECTIONS = [
@@ -133,6 +134,11 @@ export const TermsOfServicePage = () => {
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
+      <SEOHead
+        title="Terms of Service — CallMind CRM by Voolabs"
+        description="The terms governing use of CallMind CRM, operated by Voolabs Technologies."
+        path="/legal/terms"
+      />
       <Navbar />
 
       <main className="flex-grow">

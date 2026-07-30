@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { SEOHead } from '../components/SEOHead';
 
 const TOC_SECTIONS = [
   { id: 'no-refund-policy', label: 'Strict No-Refund Policy', icon: Ban },
@@ -85,6 +86,11 @@ export const RefundPolicyPage = () => {
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
+      <SEOHead
+        title="Refund & Cancellation Policy — CallMind CRM"
+        description="CallMind CRM subscription refund and cancellation terms, operated by Voolabs Technologies."
+        path="/legal/refund"
+      />
       <Navbar />
 
       <main className="flex-grow">

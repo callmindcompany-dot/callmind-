@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { SEOHead } from '../components/SEOHead';
 
 // ─── TOC Sections ────────────────────────────────────────────────────────────
 const TOC_SECTIONS = [
@@ -127,6 +128,11 @@ export const PrivacyPolicyPage = () => {
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
+      <SEOHead
+        title="Privacy Policy — CallMind CRM by Voolabs"
+        description="How CallMind CRM by Voolabs Technologies collects, uses, stores, and protects your data."
+        path="/legal/privacy"
+      />
       <Navbar />
 
       <main className="flex-grow">

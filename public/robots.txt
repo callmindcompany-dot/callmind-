@@ -1,0 +1,15 @@
+# CallMind CRM — https://callmind.app
+User-agent: *
+Allow: /
+
+# Keep authenticated app and auth flows out of the index
+Disallow: /dashboard
+Disallow: /founder-hub
+Disallow: /onboarding
+Disallow: /account
+Disallow: /join
+Disallow: /login
+Disallow: /signup
+Disallow: /preview
+
+Sitemap: https://callmind.app/sitemap.xml

@@ -122,6 +122,7 @@ export const ProductPage = () => {
       <SEOHead
         title="CallMind Product Suite - Features & Architecture Deep Dive"
         description="Explore CallMind's complete product capabilities: Web Admin Dashboard, Mobile Telecaller App, SIM call logging, B2B lead ingestion, and Gemini AI intelligence."
+        path="/product"
       />
       <Navbar />
 

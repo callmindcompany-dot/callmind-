@@ -14,6 +14,7 @@ export const IntegrationsPage = () => {
       <SEOHead 
         title="Integrations | CallMind by Voolabs" 
         description="Connect CallMind with IndiaMART, Facebook Leads, and Google Sheets to auto-capture leads directly to your telecallers."
+        path="/integrations"
       />
       <Navbar />
 

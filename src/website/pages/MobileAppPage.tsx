@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Smartphone, ArrowRight, QrCode, PhoneCall, WifiOff, FileEdit, CheckCircle2, Download, ArrowLeft } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { SEOHead } from '../components/SEOHead';
 import { useNavigate } from 'react-router-dom';
 
 const appFeatures = [
@@ -73,6 +74,11 @@ export const MobileAppPage = () => {
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
+      <SEOHead
+        title="CallMind Telecaller App — 1-Click SIM Dialing for Android"
+        description="The CallMind Android app lets telecallers dial leads with one tap over their own SIM, log call outcomes, and sync to the CRM. Zero call audio stored."
+        path="/mobile-app"
+      />
       <Navbar />
 
       <main className="flex-grow">

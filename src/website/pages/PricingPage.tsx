@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, ArrowRight, HelpCircle, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { SEOHead } from '../components/SEOHead';
 import { useNavigate } from 'react-router-dom';
 import { PRICING_PLANS } from '../../config/pricing';
 
@@ -108,6 +109,11 @@ export const PricingPage = () => {
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
+      <SEOHead
+        title="CallMind Pricing — Plans for Indian Telecalling Teams"
+        description="Transparent per-telecaller pricing for CallMind CRM. Start a 7-day free trial with 3 telecallers included. All plans include GST-compliant invoices."
+        path="/pricing"
+      />
       <Navbar />
 
       <main className="flex-grow">

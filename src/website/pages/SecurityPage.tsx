@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ShieldCheck, Lock, Database, FileText, ArrowRight, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { SEOHead } from '../components/SEOHead';
 import { useNavigate } from 'react-router-dom';
 
 const securityPillars = [
@@ -37,6 +38,11 @@ export const SecurityPage = () => {
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
+      <SEOHead
+        title="Security & Data Privacy — CallMind CRM"
+        description="CallMind stores zero call audio, isolates every workspace with PostgreSQL Row Level Security, and encrypts data in transit. See our security posture."
+        path="/security"
+      />
       <Navbar />
 
       <main className="flex-grow">

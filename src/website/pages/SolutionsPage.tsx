@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Users, Building2, PhoneCall, Rocket, ArrowRight, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { SEOHead } from '../components/SEOHead';
 import { useNavigate } from 'react-router-dom';
 import { FREE_TRIAL_CONFIG } from '../../config/pricing';
 
@@ -62,6 +63,11 @@ export const SolutionsPage = () => {
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
+      <SEOHead
+        title="CallMind Solutions — Telecalling CRM by Team & Industry"
+        description="See how real estate, financial services, and SME sales teams use CallMind to auto-capture leads and dial faster over mobile SIM."
+        path="/solutions"
+      />
       <Navbar />
 
       <main className="flex-grow">
