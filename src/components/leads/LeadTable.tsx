@@ -1,8 +1,11 @@
 import React from 'react';
 import { Filter, Users } from 'lucide-react';
-import * as reactWindow from 'react-window';
-// @ts-ignore
-const List = (reactWindow as any).FixedSizeList || reactWindow.FixedSizeList;
+// react-window v2 renamed FixedSizeList to List and changed its API. The old
+// code read `FixedSizeList` off the module, which does not exist in v2 — the
+// fallback expression resolved to undefined on both sides, so rendering it threw
+// "Element type is invalid" for any company that had leads. The build only
+// warned about the missing export, so it shipped.
+import { List, type RowComponentProps } from 'react-window';
 import { SkeletonLoader } from '../SkeletonLoader';
 import { maskPhone } from '@/website/components/dataMasking';
 import { isLeadRotting } from '@/utils/leadRotting';
@@ -229,14 +232,20 @@ export const LeadTable = React.memo(({
   };
 
   // Fix 6: react-window row virtualizer definition
-  const Row = React.useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
+  // v2 passes ariaAttributes alongside index/style and expects a component in
+  // `rowComponent`, not a children-as-function. Spreading ariaAttributes keeps
+  // the list's listitem semantics intact for screen readers.
+  // Typed with the library's own RowComponentProps so TypeScript can tell the
+  // rows' built-in props (index/style/ariaAttributes) apart from any extra
+  // `rowProps`; declaring them by hand made it demand them in rowProps.
+  const Row = React.useCallback(({ index, style, ariaAttributes }: RowComponentProps) => {
     const lead = displayedLeads[index];
     if (!lead) return null;
     const assignedAgent = agents.find(a => a.id === lead.assignedTo);
     const isSelected = selectedLeadIds.includes(lead.id);
 
     return (
-      <div style={style}>
+      <div style={style} {...ariaAttributes}>
         <LeadRow
           lead={lead}
           assignedAgent={assignedAgent}
@@ -333,14 +342,18 @@ export const LeadTable = React.memo(({
                </div>
             ) : (
                <List
-                 height={500}
-                 itemCount={displayedLeads.length}
-                 itemSize={56}
-                 width={2670}
+                 /* v2 API: rowCount/rowHeight/rowComponent. There is no `width`
+                    prop — the list fills its container, and the fixed 2670px
+                    width already comes from the wrapper above. `height` is now
+                    `defaultHeight`, used for first paint before measurement. */
+                 defaultHeight={500}
+                 rowCount={displayedLeads.length}
+                 rowHeight={56}
+                 rowComponent={Row}
+                 rowProps={{}}
                  className="custom-scrollbar"
-               >
-                 {Row}
-               </List>
+                 style={{ height: 500 }}
+               />
             )}
           </div>
         </div>
