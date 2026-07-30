@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Smartphone, Zap, Shield, WifiOff, Sparkles, CheckCircle2, ChevronRight, ChevronLeft, Phone, PhoneCall, Lock } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { SITE_URL } from '../siteConfig';
+import { useInViewAutoplay } from '../hooks/useInViewAutoplay';
 
 const mobileScreens = [
   {
@@ -52,19 +53,12 @@ const mobileScreens = [
 ];
 
 export const MobileAppShowcase = () => {
-  const [activeScreenIndex, setActiveScreenIndex] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveScreenIndex((prev) => (prev + 1) % mobileScreens.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
+  const { ref, index: activeScreenIndex, setIndex: setActiveScreenIndex } = useInViewAutoplay(mobileScreens.length);
 
   const currentScreen = mobileScreens[activeScreenIndex];
 
   return (
-    <section className="py-24 px-6 md:px-12 bg-slate-50 text-slate-900 relative overflow-hidden font-sans border-b border-slate-100">
+    <section ref={ref} className="py-24 px-6 md:px-12 bg-slate-50 text-slate-900 relative overflow-hidden font-sans border-b border-slate-100">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 items-center relative z-10">
         
         {/* Left Side: Mobile Companion Details & Screen Navigation */}
@@ -145,6 +139,8 @@ export const MobileAppShowcase = () => {
                   <img
                     src={currentScreen.imageSrc}
                     alt={currentScreen.title}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover object-top hover:scale-[1.03] transition-transform duration-500"
                   />
                 </motion.div>

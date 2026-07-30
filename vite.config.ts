@@ -5,7 +5,25 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    build: { target: 'esnext' },
+    build: {
+      target: 'esnext',
+      chunkSizeWarningLimit: 900,
+      rollupOptions: {
+        output: {
+          // Split heavy, independently-cacheable libraries out of the main
+          // bundle. These are only pulled in by the authenticated admin app
+          // (charts, spreadsheet/PDF export, drag-and-drop), so isolating them
+          // keeps them out of the vendor code a first-time marketing visitor
+          // must parse, and lets them cache across deploys of app code.
+          manualChunks: {
+            'vendor-charts': ['recharts'],
+            'vendor-export': ['xlsx', 'jspdf'],
+            'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+            'vendor-motion': ['framer-motion'],
+          },
+        },
+      },
+    },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

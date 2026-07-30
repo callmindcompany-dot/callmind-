@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Database, TrendingUp, FileText, ShieldCheck, ChevronRight, ChevronLeft, Layers, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SITE_DOMAIN } from '../siteConfig';
+import { useInViewAutoplay } from '../hooks/useInViewAutoplay';
 
 const webScreens = [
   {
@@ -53,19 +54,12 @@ const webScreens = [
 
 export const WebAppShowcase = () => {
   const navigate = useNavigate();
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % webScreens.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
+  const { ref, index: activeIndex, setIndex: setActiveIndex } = useInViewAutoplay(webScreens.length);
 
   const currentScreen = webScreens[activeIndex];
 
   return (
-    <section className="py-24 px-6 md:px-12 bg-white relative overflow-hidden font-sans border-b border-slate-100">
+    <section ref={ref} className="py-24 px-6 md:px-12 bg-white relative overflow-hidden font-sans border-b border-slate-100">
       <div className="max-w-7xl mx-auto space-y-16 relative z-10">
         
         {/* Section Header */}
@@ -163,6 +157,8 @@ export const WebAppShowcase = () => {
                   <img
                     src={currentScreen.imageSrc}
                     alt={currentScreen.title}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover object-top hover:scale-[1.02] transition-transform duration-500"
                   />
                 </motion.div>

@@ -39,6 +39,8 @@ export const FounderSection = () => {
                 <img
                   src="/founder.png"
                   alt="Vrushabh Shinde - Founder & CEO of CallMind"
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover object-top transform group-hover:scale-105 transition duration-500"
                 />
                 

@@ -23,6 +23,9 @@ import {
 } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
+import { WebAppShowcase } from '../components/WebAppShowcase';
+import { MobileAppShowcase } from '../components/MobileAppShowcase';
+import { TechnicalFeatures } from '../components/TechnicalFeatures';
 import { useNavigate } from 'react-router-dom';
 import { FREE_TRIAL_CONFIG } from '../../config/pricing';
 import { SEOHead } from '../components/SEOHead';
@@ -118,7 +121,7 @@ export const ProductPage = () => {
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
         title="CallMind Product Suite - Features & Architecture Deep Dive"
-        description="Explore CallMind's complete product capabilities: SIM call logging, B2B lead ingestion, round-robin routing, GPS attendance, and Gemini AI intelligence."
+        description="Explore CallMind's complete product capabilities: Web Admin Dashboard, Mobile Telecaller App, SIM call logging, B2B lead ingestion, and Gemini AI intelligence."
       />
       <Navbar />
 
@@ -135,25 +138,35 @@ export const ProductPage = () => {
 
             <div>
               <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-xs font-bold uppercase tracking-wider">
-                <Cpu size={14} /> Product Architecture & Specs
+                <Cpu size={14} /> Product Suite & Interactive Walkthrough
               </span>
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-950 tracking-tight leading-tight font-display">
-              Built for Speed, Reliability, and Absolute <span className="text-brand-600">Privacy.</span>
+              Complete Web Admin & Mobile Telecaller <span className="text-brand-600">Product Suite</span>
             </h1>
 
             <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-              Explore the core engineering modules powering CallMind CRM — from B2B lead ingestion to mobile SIM call logging and Gemini AI analytics.
+              Explore authentic Web Admin Dashboard previews, Telecaller Mobile App UI screens, and deep-dive technical engineering capabilities.
             </p>
           </div>
         </section>
 
-        {/* Interactive Product Modules Explorer */}
+        {/* 1. Web Admin Dashboard Interactive Showcase */}
+        <section className="py-4">
+          <WebAppShowcase />
+        </section>
+
+        {/* 2. Telecaller Mobile App Interactive Showcase */}
+        <section className="py-4">
+          <MobileAppShowcase />
+        </section>
+
+        {/* 3. Interactive Product Modules Explorer */}
         <section className="py-16 px-6 md:px-12 max-w-7xl mx-auto w-full">
           <div className="text-center mb-12 space-y-2">
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-950 font-display">Core Capability Modules</h2>
-            <p className="text-slate-500 text-sm">Select a module to view detailed technical specifications.</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-950 font-display">Core Capability Specs</h2>
+            <p className="text-slate-500 text-sm">Select a capability module to view technical specifications.</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -226,7 +239,10 @@ export const ProductPage = () => {
           </div>
         </section>
 
-        {/* Side-by-Side Product Comparison Matrix */}
+        {/* 4. Deep Technical Features */}
+        <TechnicalFeatures />
+
+        {/* 5. Side-by-Side Product Comparison Matrix */}
         <section className="py-16 px-6 md:px-12 bg-white border-t border-slate-200">
           <div className="max-w-6xl mx-auto space-y-10">
             <div className="text-center space-y-3">
