@@ -8,7 +8,15 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@400;700;900&family=Space+Grotesk:wght@500;700&display=swap" />
+    <!-- Single font request for the whole app.
+         Previously the fonts were requested TWICE: this link (8 weights, and
+         missing JetBrains Mono despite ~100 font-mono usages) plus an @import
+         at the top of src/index.css (20 weights). The @import was the worse of
+         the two — a CSS @import is only discovered after index.css downloads
+         and parses, so it blocked render serially. This link is found during
+         the initial HTML parse. Weights here match what index.css requested,
+         minus Inter 300 which nothing uses. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />

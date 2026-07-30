@@ -72,7 +72,9 @@ export const FAQSection = () => {
                 <button
                   onClick={() => toggleFAQ(idx)}
                   aria-expanded={isOpen}
-                  className="w-full p-6 text-left flex items-center justify-between gap-4 focus:outline-none"
+                  /* focus-visible ring replaces the removed outline: without it
+                     keyboard users got no indication of which FAQ is focused. */
+                  className="w-full p-6 text-left flex items-center justify-between gap-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset rounded-2xl"
                 >
                   <span className="text-base font-bold text-slate-900 font-display">
                     {faq.question}

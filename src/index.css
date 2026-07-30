@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+/* Fonts are loaded from a <link> in index.html, not here.
+   A CSS @import is only discovered after this file downloads and parses, which
+   blocks first render serially; it was also duplicating the request the HTML
+   already makes. Add or change weights in index.html. */
 @import "tailwindcss";
 
 @theme {
@@ -18,14 +21,25 @@
   --color-brand-800: #1e40af;
   --color-brand-900: #1e3a8a;
 
+  /* CAUTION: this overrides Tailwind's real slate-950 (#020617) with the value
+     of slate-900. The two therefore render identically, so layering
+     bg-slate-950 on bg-slate-900 produces no visible depth — if a dark surface
+     looks flat, this is why.
+     Left in place deliberately: ~38 usages (23 of them bg-slate-950) depend on
+     the current appearance, almost all in the admin app. Removing it is a
+     visual change across those screens and should be done as its own task. */
   --color-slate-950: #0f172a;
 
-  --color-success-green: #10b981;
-  --color-ai-purple: #8b5cf6;
-  --color-info-teal: #06b6d4;
-  --color-warning-orange: #f59e0b;
-  --color-danger-red: #ef4444;
+  /* Semantic accent used by .btn-glow so the glow follows the brand colour
+     instead of hardcoding it. Keep in sync with --color-brand-600. */
+  --color-brand-glow: 37 99 235;
 }
+
+/* Removed: --color-success-green / --color-ai-purple / --color-info-teal /
+   --color-warning-orange / --color-danger-red. All five were defined here but
+   referenced in zero files — the app uses Tailwind's emerald-*, amber-* and
+   red-* directly. Reintroduce them only alongside code that uses them,
+   otherwise they read as a design system that exists but isn't followed. */
 
 @layer utilities {
   .glass {
@@ -49,12 +63,15 @@
     box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.06);
     transform: translateY(-2px);
   }
+  /* Derived from --color-brand-glow rather than a hardcoded blue, so changing
+     the brand colour also changes the glow. Previously this was
+     rgba(37, 99, 235, …) inline, which would have stayed blue forever. */
   .btn-glow {
-    box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.15);
+    box-shadow: 0 4px 14px 0 rgb(var(--color-brand-glow) / 0.15);
     transition: all 0.2s ease-out;
   }
   .btn-glow:hover {
-    box-shadow: 0 6px 20px 0 rgba(37, 99, 235, 0.25);
+    box-shadow: 0 6px 20px 0 rgb(var(--color-brand-glow) / 0.25);
   }
   .btn-tactile {
     @apply transition-all duration-150 active:scale-[0.97] hover:scale-[1.01] cursor-pointer;
@@ -81,10 +98,13 @@
     transform: rotateY(180deg);
   }
 
-  /* Remove black box/outline on chart click/focus */
+  /* Remove the black box Recharts draws on chart click/focus.
+     Scoped to Recharts only. The bare `svg` selector used to be in this list,
+     which applied `outline: none !important` to every SVG on the site — far
+     beyond the stated intent, and impossible to override locally because of
+     the !important. */
   .recharts-wrapper,
   .recharts-wrapper *,
-  svg,
   .recharts-surface,
   .recharts-bar-rectangle,
   .recharts-active-dot,

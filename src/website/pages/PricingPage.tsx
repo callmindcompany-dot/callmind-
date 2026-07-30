@@ -144,7 +144,7 @@ export const PricingPage = () => {
               onClick={() => setIsAnnual(!isAnnual)}
               role="switch"
               aria-checked={isAnnual}
-              className="w-14 h-8 bg-slate-200 rounded-full p-1 transition-colors relative focus:outline-none"
+              className="w-14 h-8 bg-slate-200 rounded-full p-1 transition-colors relative focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
               aria-label="Toggle annual billing"
             >
               <motion.div
