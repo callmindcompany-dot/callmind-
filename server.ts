@@ -186,6 +186,35 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
 
+    /**
+     * Routes the SPA actually declares (see the <Route> list in src/App.tsx).
+     *
+     * Used only to decide the HTTP status. Anything not listed gets a 404
+     * status while still receiving the SPA shell, so React renders the proper
+     * 404 page. Previously every unknown URL returned 200 with the shell — a
+     * soft 404, which tells search engines a mistyped URL is a real page.
+     *
+     * Keep in sync when adding a route. Getting this wrong only affects the
+     * status code, never whether the page renders.
+     */
+    const KNOWN_EXACT_ROUTES = new Set([
+      '/', '/platform', '/product', '/mobile-app', '/solutions', '/security',
+      '/pricing', '/company', '/contact', '/integrations', '/docs', '/faq',
+      '/resources', '/legal/privacy', '/legal/terms', '/legal/refund',
+      '/privacy', '/terms', '/refund',
+      '/login', '/signup', '/onboarding', '/join', '/founder-hub',
+      '/account/paused', '/account/expired', '/preview/loader',
+    ]);
+    const KNOWN_ROUTE_PREFIXES = ['/docs/', '/dashboard'];
+
+    const isKnownRoute = (p: string) => {
+      const normalised = p.replace(/\/+$/, '') || '/';
+      return (
+        KNOWN_EXACT_ROUTES.has(normalised) ||
+        KNOWN_ROUTE_PREFIXES.some((prefix) => normalised.startsWith(prefix))
+      );
+    };
+
     // Vite fingerprints everything under /assets (index-D9r9h5eG.js), so those
     // files can never change behind a given URL and are safe to cache forever.
     // They were being served with express.static's default of no cache headers,
@@ -237,6 +266,13 @@ async function startServer() {
         if (prerendered.startsWith(distPath) && fs.existsSync(prerendered)) {
           return res.sendFile(prerendered);
         }
+      }
+
+      // Unknown path: still hand back the SPA shell so React renders the 404
+      // page, but say 404 rather than 200. A 200 here is a soft 404 — it tells
+      // crawlers a mistyped URL is a real page, and they will index it.
+      if (!isKnownRoute(req.path)) {
+        return res.status(404).sendFile(path.join(distPath, 'index.html'));
       }
 
       res.sendFile(path.join(distPath, 'index.html'));
