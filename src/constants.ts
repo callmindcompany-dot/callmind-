@@ -1,4 +1,4 @@
-export const CALLMIND_OFFICIAL_EMAIL = "callmind.company@gmail.com";
+export const CALLMIND_OFFICIAL_EMAIL = "support@callmind.app";
 export const VOOLABS_OFFICIAL_EMAIL = "voolabsofficial@gmail.com";
 
 export const masterFounderEmail = 

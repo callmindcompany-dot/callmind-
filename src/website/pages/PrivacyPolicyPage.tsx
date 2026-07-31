@@ -209,11 +209,11 @@ export const PrivacyPolicyPage = () => {
               <p className="text-xs font-bold mb-1">Privacy Questions?</p>
               <p className="text-xs text-white/70 mb-3">Our team responds within 48 hours.</p>
               <a
-                href="mailto:callmind.company@gmail.com"
+                href="mailto:privacy@callmind.app"
                 className="flex items-center gap-1.5 text-xs font-semibold text-white hover:text-brand-200 transition-colors"
               >
                 <Mail size={12} />
-                callmind.company@gmail.com
+                privacy@callmind.app
               </a>
             </div>
           </aside>
@@ -463,8 +463,8 @@ export const PrivacyPolicyPage = () => {
                     <Mail size={15} className="text-brand-600" />
                     <span className="text-xs font-bold text-slate-700">CallMind Official Email</span>
                   </div>
-                  <a href="mailto:callmind.company@gmail.com" className="text-sm font-semibold text-brand-600 hover:underline">
-                    callmind.company@gmail.com
+                  <a href="mailto:privacy@callmind.app" className="text-sm font-semibold text-brand-600 hover:underline">
+                    privacy@callmind.app
                   </a>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">

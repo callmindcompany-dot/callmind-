@@ -163,11 +163,11 @@ export const RefundPolicyPage = () => {
               <p className="text-xs font-bold mb-1">Billing Questions?</p>
               <p className="text-xs text-slate-400 mb-3">Our team responds within 24 hours.</p>
               <a
-                href="mailto:callmind.company@gmail.com"
+                href="mailto:support@callmind.app"
                 className="flex items-center gap-1.5 text-xs font-semibold text-brand-400 hover:underline"
               >
                 <Mail size={12} />
-                callmind.company@gmail.com
+                support@callmind.app
               </a>
             </div>
           </aside>
@@ -227,7 +227,7 @@ export const RefundPolicyPage = () => {
                 'Razorpay transaction success but license failure (must report within 48 hours)',
               ]} />
               <P>
-                If a duplicate charge occurs, email <strong>callmind.company@gmail.com</strong> with your Razorpay Payment ID. Verified duplicate charges will be refunded to your original payment method within 5–7 business days.
+                If a duplicate charge occurs, email <strong>support@callmind.app</strong> with your Razorpay Payment ID. Verified duplicate charges will be refunded to your original payment method within 5–7 business days.
               </P>
             </Section>
 
@@ -250,8 +250,8 @@ export const RefundPolicyPage = () => {
                     <Mail size={15} className="text-brand-600" />
                     <span className="text-xs font-bold text-slate-700">CallMind Support Email</span>
                   </div>
-                  <a href="mailto:callmind.company@gmail.com" className="text-sm font-semibold text-brand-600 hover:underline">
-                    callmind.company@gmail.com
+                  <a href="mailto:support@callmind.app" className="text-sm font-semibold text-brand-600 hover:underline">
+                    support@callmind.app
                   </a>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">

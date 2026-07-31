@@ -1,7 +1,11 @@
 // Anti-Spam Rate Limiter Constants (Max 5 msgs per 60 seconds)
 export const MAX_CHAT_MESSAGES_PER_MINUTE = 5;
 export const CHAT_LOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes lock
-export const SUPPORT_EMAIL = 'callmind.company@gmail.com';
+// The address customers are actually pointed at. Was a personal gmail, which
+// the chatbot handed out to users while the footer and tests used the domain
+// address — confirmed by the owner that support@callmind.app is the monitored
+// inbox.
+export const SUPPORT_EMAIL = 'support@callmind.app';
 
 // User Session Message Timestamps map for rate limiting
 const userMessageTimestampsMap: Map<string, number[]> = new Map();

@@ -3,13 +3,16 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig(({ isSsrBuild }) => {
   return {
     build: {
       target: 'esnext',
       chunkSizeWarningLimit: 900,
       rollupOptions: {
-        output: {
+        // Chunking is a client-bundle concern only. In the SSR build used by
+        // scripts/prerender.mjs, dependencies stay external, and Rollup refuses
+        // to put an external module in a manual chunk.
+        output: isSsrBuild ? {} : {
           // Only framer-motion is split by hand, because the public marketing
           // pages genuinely use it — it belongs in the eager graph, and naming
           // it lets it stay cached across deploys of app code.

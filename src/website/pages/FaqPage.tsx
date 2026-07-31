@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, ChevronDown, HelpCircle, MessageSquare } from 'lucide-react';
@@ -17,29 +17,27 @@ import { faqsByCategory, FAQS } from '../data/faqs';
  * here, where it also earns a FAQPage JSON-LD block (below) that lets search
  * engines show the questions directly in results.
  */
+/**
+ * FAQPage structured data.
+ *
+ * Rendered into the markup rather than appended from a useEffect, because
+ * effects never run during prerendering — and the crawlers this schema exists
+ * for (Google rich results, and answer engines like ChatGPT and Perplexity) do
+ * not execute JavaScript, so an effect-injected block would be invisible to
+ * every consumer it was written for.
+ */
+const faqSchema = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQS.map((f) => ({
+    '@type': 'Question',
+    name: f.question,
+    acceptedAnswer: { '@type': 'Answer', text: f.answer },
+  })),
+});
+
 export const FaqPage = () => {
   const [openKey, setOpenKey] = useState<string | null>(null);
-
-  // FAQPage structured data. Injected and removed with the page so it never
-  // lingers on other routes, which would misdescribe them to crawlers.
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    script.setAttribute('data-faq-schema', 'true');
-    script.textContent = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'FAQPage',
-      mainEntity: FAQS.map((f) => ({
-        '@type': 'Question',
-        name: f.question,
-        acceptedAnswer: { '@type': 'Answer', text: f.answer },
-      })),
-    });
-    document.head.appendChild(script);
-    return () => {
-      script.remove();
-    };
-  }, []);
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
@@ -48,6 +46,7 @@ export const FaqPage = () => {
         description="Answers about SIM dialing, offline calling, IndiaMART and JustDial lead capture, data privacy under India's DPDP Act, GST invoices and CallMind pricing."
         path="/faq"
       />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: faqSchema }} />
       <Navbar />
 
       <main className="flex-grow">

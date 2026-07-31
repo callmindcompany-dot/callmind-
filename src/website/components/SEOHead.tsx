@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { SITE_URL } from '../siteConfig';
+import { collectSeo, isServerRender } from '../seoCollector';
 
 interface SEOHeadProps {
   /** Page title. Appears in the browser tab and as the primary search/share headline. */
@@ -31,6 +32,13 @@ interface SEOHeadProps {
  * name/property attributes.
  */
 export const SEOHead: React.FC<SEOHeadProps> = ({ title, description, path, image, noindex }) => {
+  // During prerendering there is no DOM and effects never run, so report the
+  // same values to the collector that scripts/prerender.mjs reads. Browser
+  // behaviour below is unchanged.
+  if (isServerRender) {
+    collectSeo({ title, description, path, image, noindex });
+  }
+
   useEffect(() => {
     const canonicalPath = path ?? window.location.pathname;
     const canonicalUrl = `${SITE_URL}${canonicalPath}`;

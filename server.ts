@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import helmet from "helmet";
 import cors from "cors";
@@ -203,6 +204,12 @@ async function startServer() {
     // revalidation rather than an immutable one.
     app.use(express.static(distPath, {
       maxAge: '1h',
+      // Prerendering writes dist/<route>/index.html, so every marketing route is
+      // also a directory on disk. With the default redirect:true, a request for
+      // /platform 301s to /platform/ and the prerendered page is never served by
+      // the handler below. Turning it off makes static skip directories and lets
+      // that handler return the file directly, with no redirect hop.
+      redirect: false,
       setHeaders: (res, filePath) => {
         // index.html must never be cached: it carries the references to the
         // current hashed bundles, so a stale copy points at deleted files.
@@ -212,8 +219,26 @@ async function startServer() {
       },
     }));
 
-    app.get('*', (_req, res) => {
+    // Serve the prerendered HTML for public marketing routes when it exists,
+    // otherwise fall back to the SPA shell. scripts/prerender.mjs writes
+    // dist/<route>/index.html at build time so crawlers (and social/AI bots,
+    // which do not run JavaScript) receive real content and per-page meta tags
+    // instead of an empty <div id="root">. Matched explicitly rather than by
+    // letting express.static handle the directory, so /platform is served
+    // directly instead of 301-redirecting to /platform/.
+    app.get('*', (req, res) => {
       res.setHeader('Cache-Control', 'no-cache');
+
+      const requested = req.path.replace(/\/+$/, '');
+      if (requested) {
+        const prerendered = path.join(distPath, requested, 'index.html');
+        // Confine to distPath: req.path is attacker-controlled, and a crafted
+        // traversal must not be able to read files outside the build output.
+        if (prerendered.startsWith(distPath) && fs.existsSync(prerendered)) {
+          return res.sendFile(prerendered);
+        }
+      }
+
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

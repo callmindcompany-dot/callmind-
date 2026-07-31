@@ -43,7 +43,7 @@ export const AccountPausedPage = () => {
           </button>
 
           <a 
-            href="mailto:callmind.company@gmail.com"
+            href="mailto:support@callmind.app"
             className="block w-full py-5 bg-white text-slate-400 hover:text-brand-600 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 border border-slate-100"
           >
             <Mail size={16} /> Contact Support
