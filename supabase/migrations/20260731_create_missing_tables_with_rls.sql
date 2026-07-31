@@ -97,6 +97,11 @@ CREATE TABLE IF NOT EXISTS public.lead_activity_log (
     activity_type TEXT NOT NULL,
     description TEXT NOT NULL,
     created_by TEXT,
+    -- Populated for activity_type = 'status_change'. useAgentDrillDown selects
+    -- these to build the per-agent "New -> Interested" transition breakdown, so
+    -- without them that query fails with "column does not exist".
+    from_status TEXT,
+    to_status TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

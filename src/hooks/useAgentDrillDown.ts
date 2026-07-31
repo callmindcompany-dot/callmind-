@@ -91,7 +91,10 @@ export function useAgentDrillDown(
         .select('from_status, to_status')
         .eq('company_id', companyId)
         .eq('created_by', agentId)
-        .eq('type', 'status_change');
+        // Column is activity_type, not type — the writers (useLeadNotes,
+        // LeadDetail) and src/types/supabase.ts all use activity_type. This
+        // query would have errored with "column does not exist".
+        .eq('activity_type', 'status_change');
 
       if (dateRange === 'Today') {
         activityQuery = activityQuery.gte('created_at', now.toISOString().split('T')[0]);

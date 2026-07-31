@@ -61,7 +61,8 @@ export function useTelecallerMetrics(
         .from('lead_activity_log')
         .select('created_by')
         .eq('company_id', companyId)
-        .eq('type', 'note');
+        // activity_type, not type — see useAgentDrillDown for the same fix.
+        .eq('activity_type', 'note');
 
       if (dateStart) notesQuery = notesQuery.gte('created_at', dateStart);
       if (dateEnd) notesQuery = notesQuery.lte('created_at', dateEnd);
