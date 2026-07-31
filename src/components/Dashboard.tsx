@@ -97,8 +97,14 @@ interface AgentMomentumProps {
 
 interface HeatMapRowProps {
   row: {
+    /** Start of the 3-hour slot, e.g. "09:00". */
     time: string;
-    data: number[];
+    /** Real number of calls logged in this slot. */
+    count: number;
+    /** 0-4 bucket driving the bar colour. */
+    level: number;
+    /** Bar width as a percentage of the busiest slot. */
+    share: number;
   };
 }
 
@@ -218,21 +224,42 @@ const AgentMomentumItem = React.memo(({ agent, onClick }: AgentMomentumProps) =>
 ));
 AgentMomentumItem.displayName = 'AgentMomentumItem';
 
-const HeatMapRow = React.memo(({ row }: HeatMapRowProps) => (
-  <div className="flex items-center gap-5 group/row">
-    <span className="text-[10px] font-black text-slate-400 w-12 tracking-tight group-hover/row:text-blue-600 transition-colors">{row.time}</span>
-    <div className="flex-1 flex gap-2">
-      {row.data.map((lvl: number, j: number) => (
-        <div 
-          key={j} 
-          className={`flex-1 h-7 rounded-md transition-all hover:scale-125 cursor-pointer border border-white/50 ${
-            lvl === 4 ? 'bg-red-500' : lvl === 3 ? 'bg-emerald-400' : lvl === 2 ? 'bg-blue-400' : lvl === 1 ? 'bg-blue-50' : 'bg-slate-50'
-          }`}
-        />
-      ))}
+/**
+ * One time-slot row: the real call count for that slot, shown as a bar plus the
+ * number.
+ *
+ * This used to render seven coloured cells per row, but those cells were not
+ * data. They were generated from the slot's single count as
+ * [w, w-1, w-2, w, w-1, w, w+1] — the same fixed shape in every row, just
+ * scaled. Unlabelled, they read as a week's worth of variation, so a manager
+ * could conclude one day performs better than another from a pattern that was
+ * arithmetic, not measurement. The count itself was always real, so it is shown
+ * directly instead.
+ */
+const HeatMapRow = React.memo(({ row }: HeatMapRowProps) => {
+  const intensity =
+    row.level === 4 ? 'bg-red-500' :
+    row.level === 3 ? 'bg-emerald-400' :
+    row.level === 2 ? 'bg-blue-400' :
+    row.level === 1 ? 'bg-blue-200' : 'bg-slate-100';
+
+  return (
+    <div className="flex items-center gap-5 group/row">
+      <span className="text-[10px] font-black text-slate-400 w-12 tracking-tight group-hover/row:text-blue-600 transition-colors">{row.time}</span>
+      <div className="flex-1 flex items-center gap-3">
+        <div className="flex-1 h-7 rounded-md bg-slate-50 overflow-hidden border border-slate-100">
+          <div
+            className={`h-full rounded-md transition-all ${intensity}`}
+            style={{ width: `${row.share}%` }}
+          />
+        </div>
+        <span className="text-[11px] font-black text-slate-600 w-12 text-right tabular-nums">
+          {row.count}
+        </span>
+      </div>
     </div>
-  </div>
-));
+  );
+});
 HeatMapRow.displayName = 'HeatMapRow';
 
 const SourceQualityRow = React.memo(({ s }: SourceQualityRowProps) => (
@@ -396,18 +423,30 @@ export const Dashboard = React.memo(({ onTabChange }: { onTabChange: (tab: strin
     toast.success('📊 Dashboard statistics exported successfully!');
   }, [stats]);
 
-  // static mock data pattern for HeatMap Row levels to resolve Math.random layout fluctuations
+  // Calls per 3-hour slot, straight from stats.heatMapData (grouped by call
+  // timestamp in useDashboardStats). Previously each slot's single count was
+  // expanded into seven synthetic cells, which made the chart imply a weekly
+  // pattern that had never been measured.
   const HEAT_MAP_DATA = useMemo(() => {
     const hours = ['09:00', '12:00', '15:00', '18:00', '21:00'];
     const counts = stats?.heatMapData || [];
-    return hours.map((hourBase) => {
-      const dbCount = counts.find(h => h?.hour === hourBase)?.count || 0;
-      const weight = dbCount > 10 ? 4 : dbCount > 5 ? 3 : dbCount > 2 ? 2 : dbCount > 0 ? 1 : 0;
-      return {
-        time: hourBase,
-        data: [weight, Math.max(0, weight - 1), Math.max(0, weight - 2), weight, Math.max(0, weight - 1), weight, Math.min(4, weight + 1)]
-      };
-    });
+    const rows = hours.map((hourBase) => ({
+      time: hourBase,
+      count: counts.find(h => h?.hour === hourBase)?.count || 0,
+    }));
+
+    // Scale bars against the busiest slot so the comparison between rows is
+    // meaningful regardless of overall volume.
+    const busiest = Math.max(...rows.map(r => r.count), 0);
+
+    return rows.map(({ time, count }) => ({
+      time,
+      count,
+      level: count > 10 ? 4 : count > 5 ? 3 : count > 2 ? 2 : count > 0 ? 1 : 0,
+      // Floor of 4% keeps a single call visible, but only when there is one —
+      // a slot with no calls must render as empty, not as a sliver.
+      share: count > 0 && busiest > 0 ? Math.max(4, Math.round((count / busiest) * 100)) : 0,
+    }));
   }, [stats?.heatMapData]);
 
   // Needs Attention Stats Computation
@@ -704,7 +743,9 @@ export const Dashboard = React.memo(({ onTabChange }: { onTabChange: (tab: strin
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-2">
                     <div className="p-1.5 bg-amber-50 text-amber-600 rounded-lg"><Clock size={16} /></div>
-                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Lead Heat Timeline</h3>
+                    {/* Titled for what it measures: heatMapData buckets calls
+                        by their timestamp, not leads. */}
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Calls By Time Of Day</h3>
                   </div>
                 </div>
                 <div className="space-y-4">
