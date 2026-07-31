@@ -748,7 +748,16 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(true); // Mock admin status
+  // Derived from the signed-in user's real role, not hardcoded.
+  //
+  // This was `useState(true)` with a "Mock admin status" comment and setIsAdmin
+  // was never called, so every user counted as an admin. The only thing it
+  // gates is phone/email masking (see dataMasking.ts: `if (isAdmin) return
+  // phone` returns the number unmasked), which meant the "Hide Phone Numbers"
+  // team setting saved fine and did nothing — every telecaller still saw every
+  // full number. That setting exists precisely to stop a telecaller walking off
+  // with the lead database.
+  const isAdmin = isFounder || isGodMode || profile?.role === 'admin' || profile?.role === 'sub_admin';
   const [activeFilters, setActiveFilters] = useState<ModularLeadFilters>({});
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
 
@@ -2039,9 +2048,17 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
                 <button onClick={() => onTabChange?.('Tutorials')} className="px-4 py-2.5 bg-red-600 text-white font-bold rounded-xl text-xs flex items-center gap-2 uppercase tracking-wide shrink-0">
                   Watch Video <div className="bg-white rounded-full p-0.5"><div className="w-2 h-2 ml-0.5 bg-red-600" style={{ clipPath: 'polygon(0 0, 0 100%, 100% 50%)' }}/></div>
                 </button>
-                <button onClick={seedDummyData} className="px-4 py-2.5 bg-emerald-600 text-white font-bold rounded-xl text-xs flex items-center gap-2 uppercase tracking-wide hover:bg-emerald-700 transition-colors shrink-0">
-                  <Database size={14} /> Seed Mock
-                </button>
+                {/* Development only. This writes 30 fabricated leads straight
+                    into the company's real leads table, and it sat next to
+                    "Add Leads" looking like a normal feature — a customer who
+                    clicked it would get fake people in their calling list and
+                    skewed reports. import.meta.env.DEV is statically replaced
+                    at build time, so it is dropped from production entirely. */}
+                {import.meta.env.DEV && (
+                  <button onClick={seedDummyData} className="px-4 py-2.5 bg-emerald-600 text-white font-bold rounded-xl text-xs flex items-center gap-2 uppercase tracking-wide hover:bg-emerald-700 transition-colors shrink-0">
+                    <Database size={14} /> Seed Mock (dev)
+                  </button>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button onClick={() => setShowAddModal(true)} className="px-4 py-2.5 bg-blue-600 text-white font-bold rounded-lg text-xs hover:bg-blue-700 transition-colors uppercase tracking-wide flex items-center gap-2 shrink-0">
