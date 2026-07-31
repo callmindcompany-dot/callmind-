@@ -257,7 +257,7 @@ export const PrivacyPolicyPage = () => {
               <SubHeading>C. Technical & Device Data</SubHeading>
               <Ul items={[
                 'IP address, browser type, and operating system',
-                'Pages visited, time on page, and navigation path (analytics)',
+                'Pages visited and navigation path leading up to an error, captured for diagnostics',
                 'Device identifiers for the CallMind Mobile App',
                 'Error logs and crash reports (to diagnose and fix bugs)',
               ]} />
@@ -266,7 +266,7 @@ export const PrivacyPolicyPage = () => {
               <Ul items={[
                 'Subscription plan, billing cycle, and payment method type',
                 'GST number and billing address (for Indian invoicing)',
-                'Payment transactions processed via Razorpay or Stripe — we do NOT store raw card numbers',
+                'Payment transactions processed via Razorpay — we do NOT store raw card numbers',
               ]} />
 
               <InfoBox variant="info">
@@ -331,9 +331,8 @@ export const PrivacyPolicyPage = () => {
               <Ul items={[
                 'Supabase — Database hosting and authentication',
                 'Google Gemini API — AI-powered insights and chatbot responses',
-                'Razorpay / Stripe — Payment processing (PCI-DSS compliant)',
-                'Vercel / Cloudflare — Hosting, CDN, and DDoS protection',
-                'PostHog — Product analytics (anonymized, no PII sharing)',
+                'Razorpay — Payment processing (PCI-DSS compliant)',
+                'Sentry — Error monitoring and session replay (text and inputs are masked before leaving your browser)',
               ]} />
               <P>All sub-processors are bound by confidentiality agreements and data processing terms.</P>
 
@@ -357,14 +356,14 @@ export const PrivacyPolicyPage = () => {
                 'Session preferences — language, UI state, sidebar collapse',
               ]} />
 
-              <SubHeading>Analytics Cookies (Opt-Out Available)</SubHeading>
+              <SubHeading>Diagnostics</SubHeading>
               <Ul items={[
-                'PostHog session replay and event tracking (anonymized)',
-                'Page view analytics to understand which features are used',
+                'Sentry error monitoring — records the error and the steps that led to it so we can fix it',
+                'Sentry session replay — a sample of sessions is replayed for debugging, with all text and form inputs masked before they leave your browser',
               ]} />
 
               <P>
-                You can disable non-essential cookies from your browser settings. Disabling essential cookies may prevent you from signing in to the platform.
+                We do not run advertising or cross-site tracking cookies. You can disable non-essential cookies from your browser settings; disabling essential cookies may prevent you from signing in to the platform.
               </P>
             </Section>
 
@@ -403,7 +402,7 @@ export const PrivacyPolicyPage = () => {
                       ['Billing & GST invoices', '7 years (as required by Indian tax law)'],
                       ['AI chat history', '24 hours (auto-purged)'],
                       ['Error logs & crash reports', '30 days'],
-                      ['Anonymized analytics', 'Up to 24 months'],
+                      ['Session replays (masked)', '30 days'],
                     ].map(([type, period], i) => (
                       <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
                         <td className="p-3 text-slate-700 border border-slate-200 font-medium">{type}</td>
