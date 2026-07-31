@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CallMindLoader from './CallMindLoader';
+import CallMindPulseLoader from './CallMindPulseLoader';
 import { UpgradeModal } from './UpgradeModal';
 import { DynamicSourceChart } from './DynamicCharts';
 

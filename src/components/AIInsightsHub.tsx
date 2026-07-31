@@ -29,6 +29,22 @@ import { incrementAIUsage, AIFeatureType } from '@/lib/aiUsage';
 import { toast } from 'react-hot-toast';
 import { trackTrialEvent } from '@/utils/trialTracking';
 
+export const CallMind3DTextLoader = ({ text = "CALLMIND" }: { text?: string }) => (
+  <div className="flex flex-col items-center justify-center space-y-4 py-8">
+    <div className="callmind-3d-text-loader">
+      {[...Array(9)].map((_, i) => (
+        <div key={i} className="slice">
+          <span>{text}</span>
+        </div>
+      ))}
+      <div className="line" />
+    </div>
+    <span className="text-xs font-black uppercase tracking-widest text-brand-600 animate-pulse font-sans">
+      AI Insights Synthesizing...
+    </span>
+  </div>
+);
+
 const AIFeatureCard = ({ title, description, icon: Icon, color, stats, onClick, phase = 1, currentPhase = 1, isGodMode }: any) => {
   const isLocked = phase > currentPhase && !isGodMode;
 

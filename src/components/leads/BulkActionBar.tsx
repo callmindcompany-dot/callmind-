@@ -2,6 +2,20 @@ import React, { useState } from 'react';
 import { Trash2, X, Download, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const DominoWaveLoader = () => (
+  <div className="relative w-[48px] h-[16px] flex items-center justify-center overflow-hidden">
+    <div className="flex gap-[3px] items-center">
+      {[0.125, 0.3, 0.425, 0.54, 0.665, 0.79, 0.915, 1].map((delay, i) => (
+        <span
+          key={i}
+          className="w-[2.5px] h-[10px] bg-indigo-300 rounded-xs domino-bar"
+          style={{ animationDelay: `${delay}s`, boxShadow: '0 2px 4px rgba(99, 102, 241, 0.4)' }}
+        />
+      ))}
+    </div>
+  </div>
+);
+
 interface BulkActionBarProps {
   selectedCount: number;
   agents: any[];
@@ -74,7 +88,7 @@ export const BulkActionBar = React.memo(({
               >
                 {isExporting ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" /> Exporting...
+                    <DominoWaveLoader /> Exporting...
                   </>
                 ) : (
                   <>

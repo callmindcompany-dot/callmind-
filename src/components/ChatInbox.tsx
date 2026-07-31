@@ -22,6 +22,17 @@ import { useAuth } from '@/AuthContext';
 import { ChatLead, WhatsAppMessage } from '@/types/settings';
 import { toast } from 'react-hot-toast';
 
+const BouncingDotsLoader = () => (
+  <div className="relative w-24 h-8 flex items-center justify-center">
+    <div className="absolute w-3 h-3 rounded-full bg-brand-600 left-[15%] bouncing-circle"></div>
+    <div className="absolute w-3 h-3 rounded-full bg-brand-600 left-[45%] bouncing-circle [animation-delay:0.2s]"></div>
+    <div className="absolute w-3 h-3 rounded-full bg-brand-600 right-[15%] bouncing-circle [animation-delay:0.3s]"></div>
+    <div className="absolute w-3.5 h-1 rounded-full bg-brand-600/25 top-[24px] left-[15%] filter blur-[1px] bouncing-shadow"></div>
+    <div className="absolute w-3.5 h-1 rounded-full bg-brand-600/25 top-[24px] left-[45%] filter blur-[1px] bouncing-shadow [animation-delay:0.2s]"></div>
+    <div className="absolute w-3.5 h-1 rounded-full bg-brand-600/25 top-[24px] right-[15%] filter blur-[1px] bouncing-shadow [animation-delay:0.3s]"></div>
+  </div>
+);
+
 interface ChatInboxProps {
   companyId: string | null;
 }
@@ -301,8 +312,9 @@ export const ChatInbox: React.FC<ChatInboxProps> = ({ companyId }) => {
             {/* Chat Thread */}
             <div className="flex-1 p-6 overflow-y-auto custom-scrollbar space-y-4">
               {loadingMessages ? (
-                <div className="h-full flex items-center justify-center">
-                  <Loader2 className="animate-spin text-brand-600" size={24} />
+                <div className="h-full flex flex-col items-center justify-center gap-2">
+                  <BouncingDotsLoader />
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">AI & Chat Syncing...</span>
                 </div>
               ) : messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] font-black uppercase tracking-widest gap-2">
