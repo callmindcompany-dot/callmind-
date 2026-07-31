@@ -25,7 +25,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS public.calls (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id TEXT NOT NULL,
-    lead_id UUID REFERENCES public.leads(id) ON DELETE SET NULL,
+    lead_id TEXT REFERENCES public.leads(id) ON DELETE SET NULL,
     agent_id TEXT,
     lead_name TEXT,
     phone TEXT NOT NULL,
@@ -65,7 +65,7 @@ CREATE INDEX IF NOT EXISTS idx_calls_created_at ON public.calls(created_at);
 CREATE TABLE IF NOT EXISTS public.lead_notes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id TEXT NOT NULL,
-    lead_id UUID NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+    lead_id TEXT NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
     author_id TEXT,
     author_name TEXT,
     content TEXT NOT NULL,
@@ -93,7 +93,7 @@ CREATE INDEX IF NOT EXISTS idx_lead_notes_lead_id ON public.lead_notes(lead_id);
 CREATE TABLE IF NOT EXISTS public.lead_activity_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id TEXT NOT NULL,
-    lead_id UUID NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+    lead_id TEXT NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
     activity_type TEXT NOT NULL,
     description TEXT NOT NULL,
     created_by TEXT,
