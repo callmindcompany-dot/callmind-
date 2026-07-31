@@ -14,7 +14,7 @@ import {
   XCircle, PlayCircle, Edit3,
   ShieldAlert, RefreshCw, Activity,
   FileSpreadsheet, ChevronDown, Bug, Send,
-  Sparkles, Copy
+  Sparkles, Copy, Network
 } from 'lucide-react';
 import { useAuth } from '@/AuthContext';
 import { useCompany } from '@/CompanyContext';
@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CallMindLoader from './CallMindLoader';
 import { CleanupWidget } from './CleanupWidget';
 import { SubAdminManagementTab } from './SubAdminManagementTab';
+import { OrganizationHierarchySettings } from './settings/OrganizationHierarchySettings';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -296,8 +297,18 @@ export const SettingsPage = () => {
       whatsappNotifications: false
     },
     developer: {
-      apiKey: 'cm_live_79a2bd8fbc09d846e',
-      webhookUrl: 'https://api.callmind.ai/webhooks/inbound'
+      // NOTE: this key is display-only. Nothing server-side validates a
+      // `cm_live_` token, and "Regenerate" builds a random string in the
+      // browser that is never persisted. It must not be presented as a working
+      // credential until there is an API-key check behind it.
+      apiKey: '',
+      // Filled in from the signed-in company below. The previous literal
+      // pointed at api.callmind.ai/webhooks/inbound — wrong domain, wrong path,
+      // and with no company id, so a customer who copied it into IndiaMART
+      // would have received no leads at all. The real route is
+      // POST /v1/webhooks/incoming/:companyId (src/routes/leads.ts), which is
+      // the path that runs dedup, night-hold and round-robin assignment.
+      webhookUrl: ''
     }
   });
 
@@ -490,11 +501,17 @@ export const SettingsPage = () => {
         },
         developer: {
           apiKey: data.api_key || prev.developer.apiKey,
-          webhookUrl: data.webhook_url || prev.developer.webhookUrl
+          // Fall back to the real ingestion endpoint for this company rather
+          // than a placeholder. Built from the current origin so it always
+          // names the deployment that actually serves the route.
+          webhookUrl:
+            data.webhook_url ||
+            prev.developer.webhookUrl ||
+            (companyId ? `${window.location.origin}/v1/webhooks/incoming/${companyId}` : '')
         }
       }));
     }
-  }, [teamSettingsDbData]);
+  }, [teamSettingsDbData, companyId]);
 
   // ----------------------------------------------------
   // Unsaved Changes & Clean switching
@@ -2132,6 +2149,9 @@ export const SettingsPage = () => {
       case 'sub_admins':
         return <SubAdminManagementTab />;
 
+      case 'organization':
+        return <OrganizationHierarchySettings />;
+
       default:
         return (
           <div className="bg-white border border-gray-100 rounded-2xl p-8 text-center text-gray-500">
@@ -2146,6 +2166,7 @@ export const SettingsPage = () => {
   const SECTIONS = [
     { id: 'profile', icon: User, label: 'My Profile', desc: 'Personal identity', textColorActive: 'text-brand-600' },
     ...(isFounderOrGod ? [{ id: 'company', icon: Building2, label: 'Company', desc: 'Corporate identity', textColorActive: 'text-brand-600' }] : []),
+    ...(isFounderOrGod ? [{ id: 'organization', icon: Network, label: 'Organization & Structure', desc: 'Branches & regions', textColorActive: 'text-brand-600' }] : []),
     { id: 'leads', icon: Target, label: 'Lead Workflow', desc: 'Pipeline & stages', textColorActive: 'text-emerald-600' },
     { id: 'privacy', icon: ShieldCheck, label: 'Privacy & Security', desc: 'Masking & MFA', textColorActive: 'text-amber-600' },
     { id: 'ai', icon: Bot, label: 'AI & Comms', desc: 'Twilio & chatbot', textColorActive: 'text-violet-600' },
