@@ -131,10 +131,29 @@ try {
       ok(`CORS configured for: ${origins.join(', ')}`);
     }
   } catch (err) {
-    bad(
-      'No CORS policy on the bucket',
-      'Browser uploads will fail. Bucket -> Settings -> CORS policy.',
-    );
+    // Reading the CORS config is a *bucket* operation. A token scoped to
+    // "Object Read & Write" -- which is the correct, least-privilege scope for
+    // the server -- cannot read it, and the request comes back as a permission
+    // error rather than as "no CORS". Treating both the same way reports a
+    // policy as missing when it is actually configured and simply invisible.
+    const denied =
+      err.name === 'AccessDenied' ||
+      err.name === 'Unauthorized' ||
+      err.$metadata?.httpStatusCode === 403;
+
+    if (denied) {
+      warn(
+        'Cannot read the CORS policy with this token (expected)',
+        'The token is object-scoped, which is correct. Verify CORS by hand in\n' +
+          '        Cloudflare: R2 -> bucket -> Settings -> CORS Policy. It must allow\n' +
+          '        PUT and GET from your own origins.',
+      );
+    } else {
+      bad(
+        `No CORS policy on the bucket (${err.name})`,
+        'Browser uploads will fail. Bucket -> Settings -> CORS policy.',
+      );
+    }
   }
 } catch (err) {
   bad(`Unexpected error: ${err.name} - ${err.message}`);
