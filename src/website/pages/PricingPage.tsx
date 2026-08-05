@@ -5,12 +5,13 @@ import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SEOHead } from '../components/SEOHead';
 import { useNavigate } from 'react-router-dom';
-import { PRICING_PLANS } from '../../config/pricing';
+import { FREE_TRIAL_CONFIG } from '../../config/pricing';
+import { MARKETING_PLANS } from '../data/planCopy';
 
 const faqs = [
   {
-    question: 'How does the 7-day free trial work?',
-    answer: 'You get full access to CallMind with up to 2 telecaller seats for 7 days. Zero credit card required to start.',
+    question: `How does the ${FREE_TRIAL_CONFIG.trialDays}-day free trial work?`,
+    answer: `You get full access to CallMind with up to ${FREE_TRIAL_CONFIG.includedTelecallers} telecaller seats for ${FREE_TRIAL_CONFIG.trialDays} days. Zero credit card required to start.`,
   },
   {
     question: 'Can I upgrade or downgrade my plan later?',
@@ -39,73 +40,7 @@ export const PricingPage = () => {
   const [isAnnual, setIsAnnual] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const plans = [
-    {
-      id: 'starter',
-      name: PRICING_PLANS.starter.name,
-      monthlyPrice: PRICING_PLANS.starter.monthlyPrice,
-      annualPrice: PRICING_PLANS.starter.annualPrice,
-      seats: `${PRICING_PLANS.starter.minSeats} - ${PRICING_PLANS.starter.maxSeats} seats`,
-      leads: '50,000 leads / month',
-      description: 'Ideal for small sales teams starting with SIM telecalling. Free Trial transitions seamlessly into Starter.',
-      highlight: false,
-      features: [
-        '1 Admin Capacity (Master Founder)',
-        '1 to 10 Telecaller Seats (Min 1 seat)',
-        '50,000 Inbound Lead Storage',
-        'Direct SIM Mobile Dialing',
-        'IndiaMART & Meta Webhooks',
-        '5 Pipeline Board Stages',
-        '2 Automation Rules',
-        'Standard Email Support (48h response)',
-      ],
-    },
-    {
-      id: 'growth',
-      name: PRICING_PLANS.growth.name,
-      monthlyPrice: PRICING_PLANS.growth.monthlyPrice,
-      annualPrice: PRICING_PLANS.growth.annualPrice,
-      seats: `${PRICING_PLANS.growth.minSeats} - ${PRICING_PLANS.growth.maxSeats} seats`,
-      leads: '250,000 leads / month',
-      description: 'For growing sales teams needing Team Lead hierarchy, Lead Rotting Alerts & Auto Allocation.',
-      highlight: true,
-      badge: 'Most Popular',
-      features: [
-        '2 Admins Capacity (Founder + 1 Sub-Admin)',
-        '11 to 25 Telecaller Seats',
-        '250,000 Inbound Lead Limit',
-        'Everything in Starter',
-        'Team Lead (TL) Sub-Teams',
-        'Round-Robin Lead Assignment',
-        'Lead Rotting Alerts (24h+ untouched)',
-        '15 Pipeline Stages & 200 AI Credits',
-        'WhatsApp Business API Integration',
-        'Priority Chat Support (8h response)',
-      ],
-    },
-    {
-      id: 'pro',
-      name: PRICING_PLANS.pro.name,
-      monthlyPrice: PRICING_PLANS.pro.monthlyPrice,
-      annualPrice: PRICING_PLANS.pro.annualPrice,
-      seats: `${PRICING_PLANS.pro.minSeats} - ${PRICING_PLANS.pro.maxSeats} seats`,
-      leads: 'Unlimited leads',
-      description: 'For call centers & high-volume teams requiring multi-team leads & full API access.',
-      highlight: false,
-      features: [
-        '3 Admins Capacity (Founder + 2 Sub-Admins)',
-        '26 to 50 Telecaller Seats (Max Cap)',
-        'Unlimited Inbound Lead Storage',
-        'Everything in Growth',
-        'Multi-Level Team Lead Hierarchy',
-        'Full Read/Write REST API Access',
-        'Unlimited AI Call Summaries',
-        'Advanced AI Lead Quality Scoring',
-        '365 Days Activity Audit Logs',
-        'Priority WhatsApp Support (2h response)',
-      ],
-    },
-  ];
+  const plans = MARKETING_PLANS;
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">

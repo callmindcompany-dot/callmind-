@@ -72,15 +72,15 @@ const PRODUCT_MODULES = [
   },
   {
     id: 'attendance',
-    title: 'GPS & Live Attendance',
+    title: 'Attendance & Live Agent Status',
     icon: MapPin,
     color: 'text-cyan-600 bg-cyan-50 border-cyan-200',
-    description: 'Real-time employee attendance tracking with location coordinates and daily punch-in logs.',
+    description: 'Punch-in and punch-out logs, live agent status, and daily work-hour breakdowns.',
     features: [
-      'One-click Punch In / Punch Out with GPS timestamping',
+      'One-click Punch In / Punch Out with timestamps',
       'Live agent status grid (Active, On-Call, Offline)',
       'Daily work-hours and call volume breakdown',
-      'Geofencing validation for field sales teams'
+      'No selfie and no location permission required'
     ]
   },
   {

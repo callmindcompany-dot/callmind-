@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
 import { Database } from '../types/supabase';
 import { toast } from 'react-hot-toast';
+import { parsePlanLimitError } from '../lib/planErrors';
 
 export type UserRow = Database['public']['Tables']['users']['Row'];
 export type JoinRequestRow = Database['public']['Tables']['join_requests']['Row'];
@@ -297,7 +298,10 @@ export function useApproveRequest(companyId: string | null) {
       toast.success('Onboarding request approved successfully');
     },
     onError: (err: any) => {
-      toast.error(err.message || 'Failed to approve onboarding request');
+      // A seat-limit rejection from the database arrives here as a Postgres
+      // error. Show the plan message rather than the raw string.
+      const planLimit = parsePlanLimitError(err);
+      toast.error(planLimit ? planLimit.message : (err.message || 'Failed to approve onboarding request'));
     }
   });
 }

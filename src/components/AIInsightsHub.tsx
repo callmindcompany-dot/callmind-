@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/AuthContext';
+import { usePlan } from '../hooks/usePlan';
 import { useCompany } from '@/CompanyContext';
 import { UpgradeModal } from './UpgradeModal';
 import CallMindLoader from './CallMindLoader';
@@ -98,10 +99,11 @@ export const AIInsightsHub = () => {
   const { featureFlags = {} as any, isGodMode, profile, isFounder, user } = useAuth();
   const { companyId } = useCompany();
   const updateFeatureFlags = (f: any) => {};
-  const planConfig = { phase: 1 };
+  const plan = usePlan();
+  const aiPlanLimit = plan.limit('aiCredits');
   const aiEnabled = featureFlags.AI_ENABLED;
   const groqEnabled = featureFlags.GROQ_ENABLED;
-  const currentPhase = planConfig?.phase || 1;
+  const currentPhase = 1;
   const [whisperEnabled, setWhisperEnabled] = useState(true);
   const [isConfirmingKillSwitch, setIsConfirmingKillSwitch] = useState(false);
   const [workerStatus] = useState('Connected');
@@ -175,16 +177,20 @@ export const AIInsightsHub = () => {
     }
   }, [companyId, user]);
 
+  // Advisory only. The binding limit is applied server-side by
+  // consume_ai_credit() before the request reaches Gemini; this just keeps the
+  // counter on screen honest. It used to check for 'enterprise' and 'team',
+  // neither of which is a real plan id.
   const getAILimit = () => {
-    if (isGodMode || isFounder) return Infinity;
-    const plan = profile?.plan || 'trial';
-    if (plan === 'enterprise') return Infinity;
-    if (plan === 'team') return 50;
-    return 20; // Default for trial/solo/starter
+    if (isGodMode) return Infinity;
+    return aiPlanLimit;
   };
 
   const checkAILimit = () => {
-    if (isGodMode || isFounder) return true;
+    // `isFounder` used to bypass this, but it is true for the founder of every
+    // customer company -- so the limit never applied to the one person most
+    // likely to hit it. Only CallMind staff (isGodMode) are exempt.
+    if (isGodMode) return true;
 
     const limit = getAILimit();
     if (limit === Infinity) return true;
@@ -193,8 +199,8 @@ export const AIInsightsHub = () => {
 
     if (currentCount >= limit) {
       setUpgradeReason({
-        title: 'Daily AI Limit Reached',
-        description: `You've used all ${limit} AI calls included in your ${profile?.plan || 'trial'} plan today. Upgrade to Professional or Enterprise for higher limits.`
+        title: 'AI Limit Reached',
+        description: `You have used all ${limit} AI credits included in your ${plan.plan.name} plan this month. Upgrade for a higher allowance.`
       });
       setShowUpgradeModal(true);
       return false;

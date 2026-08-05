@@ -1,8 +1,17 @@
 import express from 'express';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
+import { rateLimit } from 'express-rate-limit';
 import { logger } from '../lib/logger';
 import { db, auth, supabaseAdmin, isPlaceholder } from '../lib/dbAdapter';
+import {
+  PRICING_PLANS,
+  calculatePrice,
+  isPurchasablePlanId,
+  isAllowedTerm,
+  ALLOWED_TERM_MONTHS,
+  GST_RATE,
+} from '../config/pricing';
 
 const router = express.Router();
 
@@ -16,6 +25,75 @@ function safeEqual(a: string, b: string): boolean {
 
 // Roles permitted to change a company's subscription state.
 const BILLING_ROLES = ['admin', 'founder'];
+
+// Razorpay Webhook Rate Limiter (Signature & IP scoped)
+const razorpayWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60, // 60 requests per minute
+  keyGenerator: (req: any) => {
+    const sig = req.headers['x-razorpay-signature'] as string;
+    if (sig && sig.trim()) {
+      return `webhook_razorpay_sig_${sig.trim().slice(0, 16)}`;
+    }
+    return `webhook_razorpay_ip_${req.socket?.remoteAddress || req.ip || 'unknown'}`;
+  },
+  message: { error: 'Rate limit exceeded for payment webhooks.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+interface OrderQuote {
+  planId: string;
+  seats: number;
+  durationMonths: number;
+  /** Pre-tax total in rupees for the whole term. */
+  subtotal: number;
+  gst: number;
+  /** What the customer is actually charged, GST included. */
+  amount: number;
+}
+
+/**
+ * Prices an order from src/config/pricing.ts.
+ *
+ * The client sends what it wants to buy; it does not get to say what that
+ * costs. Every figure below comes from the same config that seeds
+ * public.plan_limits, so the price charged, the price displayed and the limits
+ * enforced cannot disagree.
+ */
+function quoteOrder(input: { planId?: unknown; seats?: unknown; durationMonths?: unknown }):
+  OrderQuote | { error: string } {
+  const planId = String(input.planId ?? '').toLowerCase();
+  if (!isPurchasablePlanId(planId)) {
+    return { error: 'Unknown plan.' };
+  }
+
+  const plan = PRICING_PLANS[planId];
+  const seats = Number(input.seats ?? 1);
+  const durationMonths = Number(input.durationMonths ?? 1);
+
+  if (!Number.isInteger(seats) || seats < 1) {
+    return { error: 'Seat count must be a whole number of at least 1.' };
+  }
+  if (seats > plan.maxSeats) {
+    return { error: `The ${plan.name} plan covers up to ${plan.maxSeats} seats.` };
+  }
+  if (!isAllowedTerm(durationMonths)) {
+    return { error: `Billing term must be one of ${ALLOWED_TERM_MONTHS.join(', ')} months.` };
+  }
+
+  // Only the 12-month term earns the annual rate. Quarterly and half-yearly
+  // exist because Indian B2B buyers ask for them, not as a discount tier.
+  const isAnnual = durationMonths === 12;
+  const subtotal = calculatePrice(planId, seats, isAnnual).total * durationMonths;
+
+  // GST is charged, not merely printed on the invoice afterwards. It used to
+  // appear only on the generated invoice while Razorpay collected the pre-tax
+  // figure, which meant the tax came out of our own margin.
+  const gst = Math.round(subtotal * GST_RATE);
+
+  return { planId, seats, durationMonths, subtotal, gst, amount: subtotal + gst };
+}
 
 /**
  * Authenticates the caller and confirms they may act on `companyId`.
@@ -73,28 +151,48 @@ router.post('/create-order', async (req, res) => {
   try {
     const { amount, companyId, planId, seats, durationMonths = 1 } = req.body;
 
-    if (!amount || !companyId || amount <= 0) {
-      return res.status(400).json({ error: 'Invalid payment details or amount' });
+    if (!companyId) {
+      return res.status(400).json({ error: 'Invalid payment details' });
     }
 
     const decodedUser = await authorizeBillingActor(req, res, companyId);
     if (!decodedUser) return;
+
+    // The price is derived here, from the same config the app and the database
+    // use. It used to be taken from the request body, so a modified client
+    // could have bought Pro for a rupee.
+    const quote = quoteOrder({ planId, seats, durationMonths });
+    if ('error' in quote) {
+      return res.status(400).json({ error: quote.error });
+    }
+
+    // Reject a mismatch rather than silently overriding it -- if the client
+    // and the server disagree about the price, the user is about to be shown
+    // one number and charged another, and that should be loud.
+    if (amount !== undefined && Math.round(Number(amount)) !== quote.amount) {
+      logger.warn('[Billing] Client quoted a price the server does not agree with', {
+        companyId, planId, seats, durationMonths, clientAmount: amount, serverAmount: quote.amount,
+      });
+      return res.status(400).json({
+        error: 'The price shown has changed. Please refresh and try again.',
+      });
+    }
 
     const receipt = `rcpt_${companyId.slice(0, 8)}_${Date.now()}`;
     let orderId = `order_${Math.random().toString(36).substring(2, 15)}`;
 
     if (razorpayInstance && !isPlaceholder) {
       const orderOptions = {
-        amount: Math.round(amount * 100), // amount in paise
+        amount: quote.amount * 100, // amount in paise
         currency: 'INR',
         receipt,
         // These notes are the authoritative record of what was purchased.
         // /verify reads the plan back from here, never from the client body.
         notes: {
           companyId,
-          planId: planId || 'growth',
-          seats: String(seats || 1),
-          durationMonths: String(durationMonths || 1),
+          planId: quote.planId,
+          seats: String(quote.seats),
+          durationMonths: String(quote.durationMonths),
           userId: decodedUser.uid,
         },
       };
@@ -109,7 +207,7 @@ router.post('/create-order', async (req, res) => {
     res.json({
       success: true,
       orderId,
-      amount: Math.round(amount * 100),
+      amount: quote.amount * 100,
       currency: 'INR',
       keyId,
       companyId,
@@ -190,6 +288,30 @@ router.post('/verify', async (req, res) => {
     const actor = await authorizeBillingActor(req, res, companyId);
     if (!actor) return;
 
+    // Re-price the order from the config and confirm Razorpay captured that
+    // amount. The notes are ours and the signature proves the order is ours,
+    // but this catches a plan whose price changed between order and capture,
+    // and any attempt to mint an order out of band.
+    const verified = quoteOrder({ planId, seats, durationMonths });
+    if ('error' in verified) {
+      logger.error('[Billing] Paid order does not describe a sellable plan', {
+        razorpay_order_id, planId, seats, durationMonths, reason: verified.error,
+      });
+      return res.status(400).json({ error: 'This order does not match any current plan.' });
+    }
+
+    if (Math.round(Number(amount)) !== verified.amount) {
+      logger.error('[Billing Security Alert] Captured amount does not match the plan price', {
+        razorpay_order_id, captured: amount, expected: verified.amount, planId, seats,
+      });
+      return res.status(400).json({ error: 'The amount paid does not match the selected plan.' });
+    }
+
+    planId = verified.planId;
+    seats = verified.seats;
+    durationMonths = verified.durationMonths;
+    amount = verified.amount;
+
     // Replay guard: a signature stays valid forever, so the same payment must not
     // be redeemable twice for another `durationMonths` of subscription.
     if (razorpay_payment_id) {
@@ -215,16 +337,48 @@ router.post('/verify', async (req, res) => {
       .from('companies')
       .update({
         plan: planId,
-        seat_limit: seats || 10,
-        subscription_status: 'active',
+        seat_limit: seats,
+        // `subscription_status` was written here but declared in no migration,
+        // and every reader looks at `plan_status`. See
+        // 20260802000000_plan_columns_consolidation.sql.
+        plan_status: 'active',
+        billing_cycle: durationMonths === 12 ? 'annual' : 'monthly',
         plan_expires_at: expirationDate.toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', companyId);
 
     if (companyUpdateErr) {
-      logger.error('[Razorpay Activate Plan Error] Failed to update company plan:', companyUpdateErr);
-      throw companyUpdateErr;
+      // The customer's money has already been captured at this point. Throwing
+      // returned a 500 and told them the payment failed, which is both wrong
+      // and the worst possible moment to be wrong. Record it for reconciliation
+      // and tell them the truth instead.
+      logger.error('[Billing] Payment captured but the plan could not be activated', {
+        companyId, planId, razorpay_payment_id, error: companyUpdateErr,
+      });
+
+      await supabaseAdmin.from('billing_intents').insert([{
+        user_id: actor.uid,
+        user_email: actor.email || '',
+        company_id: companyId,
+        plan_id: planId,
+        seats,
+        duration_months: durationMonths,
+        total_amount: amount,
+        status: 'needs_reconciliation',
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+        created_at: new Date().toISOString(),
+      }]).then(({ error }) => {
+        if (error) logger.error('[Billing] Could not record the failed activation either', error);
+      });
+
+      return res.status(202).json({
+        success: false,
+        error: 'Your payment went through, but we could not activate the plan automatically. '
+             + 'Our team has been notified and will apply it shortly.',
+      });
     }
 
     // Insert Invoice Record
@@ -234,7 +388,7 @@ router.post('/verify', async (req, res) => {
       .insert([{
         company_id: companyId,
         invoice_number: invoiceNumber,
-        amount: Number(amount) || 1999,
+        amount: verified.subtotal,
         status: 'paid',
         billing_period_start: new Date().toISOString(),
         billing_period_end: expirationDate.toISOString(),
@@ -271,9 +425,9 @@ router.post('/verify', async (req, res) => {
           user_email: actor.email || '',
           company_id: companyId,
           plan_id: planId,
-          seats: seats || 10,
-          duration_months: durationMonths || 1,
-          total_amount: Number(amount) || 0,
+          seats,
+          duration_months: durationMonths,
+          total_amount: amount,
           status: 'completed',
           razorpay_order_id,
           razorpay_payment_id,
@@ -302,7 +456,7 @@ router.post('/verify', async (req, res) => {
 });
 
 // 3. Razorpay Webhook Ingestion (Excluded from CSRF)
-router.post('/webhooks/razorpay', async (req, res) => {
+router.post('/webhooks/razorpay', razorpayWebhookLimiter, async (req, res) => {
   const signature = req.headers['x-razorpay-signature'] as string;
   const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -342,25 +496,36 @@ router.post('/webhooks/razorpay', async (req, res) => {
   if (event === 'payment.captured' || event === 'subscription.charged') {
     const payload = req.body.payload?.payment?.entity || req.body.payload?.subscription?.entity;
     const companyId = payload?.notes?.companyId;
-    const planId = payload?.notes?.planId || 'growth';
-    const seats = parseInt(payload?.notes?.seats || '10');
 
-    if (companyId) {
+    // These used to default to 'growth' and 10 seats, so a webhook carrying no
+    // notes silently granted a plan nobody bought. Validate instead.
+    const quoted = quoteOrder({
+      planId: payload?.notes?.planId,
+      seats: payload?.notes?.seats,
+      durationMonths: payload?.notes?.durationMonths,
+    });
+
+    if (companyId && !('error' in quoted)) {
       const expirationDate = new Date();
-      expirationDate.setMonth(expirationDate.getMonth() + 1);
+      expirationDate.setMonth(expirationDate.getMonth() + quoted.durationMonths);
 
       await supabaseAdmin
         .from('companies')
         .update({
-          plan: planId,
-          seat_limit: seats,
-          subscription_status: 'active',
+          plan: quoted.planId,
+          seat_limit: quoted.seats,
+          plan_status: 'active',
+          billing_cycle: quoted.durationMonths === 12 ? 'annual' : 'monthly',
           plan_expires_at: expirationDate.toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', companyId);
 
       logger.info(`[Razorpay Webhook Auto-Upgrade] Successfully updated company ${companyId} via webhook.`);
+    } else if (companyId) {
+      logger.error('[Razorpay Webhook] Ignoring a captured payment whose notes do not describe a sellable plan', {
+        companyId, notes: payload?.notes, reason: (quoted as { error: string }).error,
+      });
     }
   }
 

@@ -16,13 +16,23 @@ import {
   FileSpreadsheet, File as FileIcon, Trophy, Mail,
   BarChart3, Loader2, Gauge, ChevronDown, Coffee, Timer, Play, Volume2,
   Lock, Search, Info, ShieldAlert, ShieldCheck, Layers, Network, Boxes, History, UserPlus, Inbox, PlusCircle, MessageSquare,
-  Briefcase, TrendingDown, LayoutDashboard, Database, ArrowLeft, Trash2, Settings, Phone, PhoneOutgoing, AlertOctagon, AlertTriangle
+  Briefcase, TrendingDown, LayoutDashboard, Database, ArrowLeft, Trash2, Settings, Phone, PhoneOutgoing, AlertOctagon, AlertTriangle, MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CallMindLoader from './CallMindLoader';
 import CallMindPulseLoader from './CallMindPulseLoader';
 import { UpgradeModal } from './UpgradeModal';
+import { usePlan } from '@/hooks/usePlan';
 import { DynamicSourceChart } from './DynamicCharts';
+import { 
+  useGeographicDistribution, 
+  useLostReasons, 
+  useLeadStatusPipeline, 
+  useSourceConversions,
+  useAgentTAT,
+  useRevenuePipeline,
+  useDetailedChurn
+} from '@/hooks/useAdvancedReports';
 
 // Supabase Hooks & Types
 import { useHourlyCallsReport } from '@/hooks/useHourlyCallsReport';
@@ -38,12 +48,16 @@ import { useWhatsAppReport } from '@/hooks/useWhatsAppReport';
 import { useReportSchedules } from '@/hooks/useReportSchedules';
 import { useCallDisposition } from '@/hooks/useCallDisposition';
 import { useTelecallerMetrics } from '@/hooks/useTelecallerMetrics';
+import { useDashboardSummary } from '@/hooks/useDashboardSummary';
+import { useStaleLeads } from '@/hooks/useStaleLeads';
 import { supabase } from '@/supabaseClient';
 
 // Drill Down & Custom reporting Components
 import { AgentDrillDownSlider } from './AgentDrillDownSlider';
 import { HeatmapChart } from './HeatmapChart';
 import { ScheduleReportModal } from './ScheduleReportModal';
+import { ExportReportModal } from './ExportReportModal';
+import { HierarchyFilterBar } from './hierarchy/HierarchyFilterBar';
 
 import { 
   HourlyCallDensity,
@@ -139,7 +153,9 @@ ReportFeatureCard.displayName = 'ReportFeatureCard';
 
 export const ReportsPage = () => {
   const navigate = useNavigate();
-  const { isSuperFounder, plan_status, isGodMode } = useAuth();
+  const { isSuperFounder, plan_status, isGodMode, user } = useAuth();
+  const plan = usePlan();
+  const [showExportUpgrade, setShowExportUpgrade] = React.useState(false);
   const { companyId } = useCompany();
   const { data: teamSettings } = useTeamSettingsQuery(companyId);
 
@@ -159,6 +175,7 @@ export const ReportsPage = () => {
   const [selectedDrillDownAgentId, setSelectedDrillDownAgentId] = useState<string | null>(null);
   const [selectedDrillDownAgentName, setSelectedDrillDownAgentName] = useState<string | null>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Stale Leads reactbot state
   const [staleLeads, setStaleLeads] = useState<any[]>([]);
@@ -169,38 +186,15 @@ export const ReportsPage = () => {
   const [selectedColumns, setSelectedColumns] = useState<string[]>(['name', 'phone', 'status', 'source']);
   const [customReportData, setCustomReportData] = useState<any[]>([]);
   const [templateName, setTemplateName] = useState('');
-  const [savedTemplates, setSavedTemplates] = useState<Array<{ name: string; columns: string[] }>>([]);
 
-  // Load saved templates from localStorage on mount
-  useEffect(() => {
-    try {
-      const items = localStorage.getItem('callmind_report_templates');
-      if (items) {
-        setSavedTemplates(JSON.parse(items));
-      }
-    } catch (e) {
-      console.warn("Failed to parse report templates:", e);
-    }
-  }, []);
+  // Pagination for Custom Report
+  const [customReportPage, setCustomReportPage] = useState(1);
+  const [totalCustomReportCount, setTotalCustomReportCount] = useState(0);
+  const [isCustomReportLoading, setIsCustomReportLoading] = useState(false);
+  const CUSTOM_REPORT_PAGE_SIZE = 100;
 
-  // Save report configuration template
-  const handleSaveTemplate = () => {
-    const trimmed = templateName.trim();
-    if (!trimmed) {
-      toast.error('Please enter a template name');
-      return;
-    }
-    const updated = [...savedTemplates, { name: trimmed, columns: selectedColumns }];
-    setSavedTemplates(updated);
-    localStorage.setItem('callmind_report_templates', JSON.stringify(updated));
-    setTemplateName('');
-    toast.success(`Template "${trimmed}" saved!`);
-  };
-
-  const handleLoadTemplate = (cols: string[]) => {
-    setSelectedColumns(cols);
-    toast.success('Report template loaded');
-  };
+  const paginatedCustomReport = customReportData; // Already paginated from DB
+  const totalCustomReportPages = Math.max(1, Math.ceil(totalCustomReportCount / CUSTOM_REPORT_PAGE_SIZE));
 
   // Raw fallback query hook (migrated to Supabase) for secondary components
   const rawData = useReportsData(companyId);
@@ -248,6 +242,18 @@ export const ReportsPage = () => {
     dateRange,
     dateRange === 'Custom' ? customRange : undefined
   );
+
+  const { data: dashboardSummary } = useDashboardSummary(companyId);
+  const { data: staleLeadsQuery = [], isLoading: isLoadingStaleQuery, refetch: refetchStaleLeads } = useStaleLeads(companyId);
+
+  const { data: geoData = [] } = useGeographicDistribution(companyId);
+  const { data: lostReasonsData = [] } = useLostReasons(companyId);
+  const { data: pipelineData = [] } = useLeadStatusPipeline(companyId);
+  const { data: sourceConversionsData = [] } = useSourceConversions(companyId);
+  
+  const { data: agentTAT = [] } = useAgentTAT(companyId);
+  const { data: revenuePipeline = [] } = useRevenuePipeline(companyId);
+  const { data: detailedChurn = [] } = useDetailedChurn(companyId);
 
   // Cohort Analytics helper
   const cohortData = useMemo<UICohortRow[]>(() => {
@@ -298,10 +304,10 @@ export const ReportsPage = () => {
 
   // Dynamic Metrics Summary calculations
   const summaryMetrics = useMemo(() => {
-    const totalLeads = rawData.leads.length;
-    const totalCalls = rawData.calls.length;
-    const conversions = rawData.leads.filter(l => l.status?.toLowerCase() === 'converted').length;
-    const connects = rawData.calls.filter(c => c.outcome === 'Answered' || c.status === 'completed').length;
+    const totalLeads = dashboardSummary?.total_leads || 0;
+    const totalCalls = dashboardSummary?.total_calls || 0;
+    const conversions = dashboardSummary?.conversions || 0;
+    const connects = dashboardSummary?.connects || 0;
     const connectRate = totalCalls > 0 ? Math.round((connects / totalCalls) * 100) : 0;
 
     // Linear Revenue Forecasting projection
@@ -318,7 +324,7 @@ export const ReportsPage = () => {
       connectRate,
       revenueProjection
     };
-  }, [rawData.leads, rawData.calls, teamSettings]);
+  }, [dashboardSummary, teamSettings]);
 
   // Comparison metrics UI helper
   const getComparisonChange = (current: number, previous: number) => {
@@ -336,111 +342,107 @@ export const ReportsPage = () => {
     if (!companyId) return;
     setIsLoadingStale(true);
     try {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('company_id', companyId)
-        .or(`last_contacted_at.lt.${sevenDaysAgo.toISOString()},last_contacted_at.is.null,status.eq.New`);
-
-      if (error) throw error;
-      
-      setStaleLeads(data || []);
+      await refetchStaleLeads();
+      setStaleLeads(staleLeadsQuery);
       setActiveReport('Reactivation Bot');
-      toast.success(`Found ${(data || []).length} stale leads for reactivation.`);
+      toast.success('Bot scan complete. Check active workspace panel.');
     } catch (e: any) {
-      console.error(e);
-      toast.error("Failed to run reactivation analysis.");
+      toast.error('Scan failed');
     } finally {
       setIsLoadingStale(false);
     }
-  }, [companyId]);
+  }, [companyId, staleLeadsQuery, refetchStaleLeads]);
 
-  // Custom Report Generator
+  // Custom Report Generator (Server-Side Paginated)
+  const fetchCustomReportData = useCallback(async () => {
+    if (!companyId) return;
+    setIsCustomReportLoading(true);
+    try {
+      let query = supabase.from('leads').select('*', { count: 'exact' }).eq('company_id', companyId);
+
+      if (selectedAgent !== 'All Agents') query = query.eq('assigned_to', selectedAgent);
+      if (selectedSource !== 'All Sources') query = query.eq('source', selectedSource);
+      if (selectedStatus !== 'All Status') query = query.eq('status', selectedStatus);
+
+      // Server-Side Pagination
+      const start = (customReportPage - 1) * CUSTOM_REPORT_PAGE_SIZE;
+      const end = start + CUSTOM_REPORT_PAGE_SIZE - 1;
+      query = query.range(start, end).order('created_at', { ascending: false });
+
+      const { data, count, error } = await query;
+      if (error) throw error;
+
+      setCustomReportData(data || []);
+      if (count !== null) setTotalCustomReportCount(count);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to fetch custom report data');
+    } finally {
+      setIsCustomReportLoading(false);
+    }
+  }, [companyId, selectedAgent, selectedSource, selectedStatus, customReportPage]);
+
+  // Refetch when filters or page change, ONLY if workspace is active
+  useEffect(() => {
+    if (activeReport === 'Custom Report Workspace') {
+      fetchCustomReportData();
+    }
+  }, [activeReport, fetchCustomReportData]);
+
   const handleGenerateCustomReport = useCallback(() => {
-    if (!rawData.leads) return;
-    let list = [...rawData.leads];
-
-    // Apply active drop-downs filters
-    if (selectedAgent !== 'All Agents') {
-      list = list.filter(l => l.assignedTo === selectedAgent);
-    }
-    if (selectedSource !== 'All Sources') {
-      list = list.filter(l => l.source === selectedSource);
-    }
-    if (selectedStatus !== 'All Status') {
-      list = list.filter(l => l.status === selectedStatus);
-    }
-
-    setCustomReportData(list);
+    setCustomReportPage(1); // Reset to first page
     setIsBuilderOpen(false);
     setActiveReport('Custom Report Workspace');
     toast.success("Custom report compiled successfully!");
-  }, [rawData.leads, selectedAgent, selectedSource, selectedStatus]);
+  }, []);
 
   // Export spreadsheet utility (CSV) with phone masking support
-  const handleExportCSV = useCallback(() => {
-    if (!rawData.leads || rawData.leads.length === 0) {
-      toast.error("No data available to export");
-      return;
+  const handleExportCSV = useCallback(async () => {
+    if (!companyId) return;
+    
+    const toastId = toast.loading("Fetching data for export...");
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('company_id', companyId);
+
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast.error("No data available to export", { id: toastId });
+        return;
+      }
+
+      const headers = ["Name", "Phone", "Email", "Status", "Source", "Assigned To", "Created At"];
+      const rows = data.map(l => {
+        const name = l.name || 'N/A';
+        const phone = teamSettings?.hidePhoneNumbers 
+          ? '********' + (l.phone?.slice(-4) || '****')
+          : (l.phone || 'N/A');
+        const email = l.email || 'N/A';
+        const status = l.status || 'New';
+        const source = l.source || 'Direct';
+        const agent = l.assignedTo || 'Unassigned';
+        const createdAt = l.created_at ? new Date(l.created_at).toLocaleString() : 'N/A';
+
+        return [name, phone, email, status, source, agent, createdAt].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
+      });
+
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `crm_report_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(`CSV download complete! (${data.length} records)`, { id: toastId });
+    } catch (err: any) {
+      console.error("Export Error:", err);
+      toast.error("Failed to export data", { id: toastId });
     }
-
-    const headers = ["Name", "Phone", "Email", "Status", "Source", "Assigned To"];
-    const rows = rawData.leads.map(l => {
-      const name = l.name || 'N/A';
-      const phone = teamSettings?.hidePhoneNumbers 
-        ? '********' + (l.phone?.slice(-4) || '****')
-        : (l.phone || 'N/A');
-      const email = l.email || 'N/A';
-      const status = l.status || 'New';
-      const source = l.source || 'Direct';
-      const agent = l.assignedTo || 'Unassigned';
-
-      return [name, phone, email, status, source, agent].map(v => `"${v.replace(/"/g, '""')}"`).join(",");
-    });
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `crm_report_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("CSV download triggered!");
-  }, [rawData.leads, teamSettings]);
-
-  // PDF Export
-  const handleDownloadPDF = useCallback(() => {
-    toast.success("Generating executive report PDF...");
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-    
-    // Header Banner
-    doc.setFillColor(15, 23, 42); // slate-900
-    doc.rect(0, 0, 595, 80, 'F');
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.text("CALLMIND CRM BI REPORT", 40, 48);
-    
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(14);
-    doc.text("Operational Core Metrics Summary", 40, 130);
-
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Total Leads: ${summaryMetrics.totalLeads}`, 40, 160);
-    doc.text(`Total Calls: ${summaryMetrics.totalCalls}`, 40, 180);
-    doc.text(`Conversions: ${summaryMetrics.conversions}`, 40, 200);
-    doc.text(`Average Connect Rate: ${summaryMetrics.connectRate}%`, 40, 220);
-    doc.text(`Projected Monthly Revenue: $${summaryMetrics.revenueProjection.toLocaleString()}`, 40, 240);
-
-    doc.save(`report_${new Date().toISOString().split('T')[0]}.pdf`);
-    toast.success("PDF saved successfully!");
-  }, [summaryMetrics]);
+  }, [teamSettings, companyId]);
 
   // Report Category List definitions
   const reportTypes = [
@@ -449,6 +451,7 @@ export const ReportsPage = () => {
     { id: 'Calling Performance', label: 'Calling Performance', description: 'Evaluate temporal call volumes, connection ratios, and failures attribution.', icon: PhoneCall, color: 'bg-indigo-500', category: 'primary' },
     { id: 'Agent Performance', label: 'Agent Performance', description: 'Leaderboards detailing individual telecaller dials volume and conversions.', icon: UserCheck, color: 'bg-rose-500', category: 'primary' },
     { id: 'Lead Source Quality', label: 'Source Quality', description: 'Acquisition channel yield metrics and conversion ratios.', icon: Database, color: 'bg-sky-500', category: 'primary' },
+    { id: 'Geographical Analytics', label: 'Geographical Analytics', description: 'Analyze lead distribution and conversions across cities and regions.', icon: MapPin, color: 'bg-teal-500', category: 'primary' },
     { id: 'Conversion Funnel', label: 'Conversion Funnel', description: 'Full-stage pipeline yields and conversion bottlenecks.', icon: Layers, color: 'bg-amber-500', category: 'primary' },
     { id: 'Cohort Analysis', label: 'Cohort Analysis', description: 'Track weekly creation cohort SQL yields over 7, 14, and 30 days.', icon: Boxes, color: 'bg-violet-500', category: 'primary' },
     { id: 'Attendance Summary', label: 'Attendance Metrics', description: 'Monitor daily attendance check-ins, lates, and hours present.', icon: Calendar, color: 'bg-indigo-600', category: 'primary' },
@@ -463,7 +466,8 @@ export const ReportsPage = () => {
 
   return (
     <div className="w-full">
-      <div className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-300">
+      <div id="export-container" className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-300">
+        <HierarchyFilterBar />
         
         {/* Main Toolbar */}
         <div className="bg-white p-6 rounded-3xl border border-gray-150/70 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden">
@@ -566,6 +570,13 @@ export const ReportsPage = () => {
                 className="px-4 py-2 bg-brand-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-brand-700 transition-all flex items-center gap-1.5 shadow-sm"
               >
                 <Calendar size={12} /> Schedule Dispatch
+              </button>
+
+              <button 
+                onClick={() => (plan.can('exports') ? setIsExportModalOpen(true) : setShowExportUpgrade(true))}
+                className="px-4 py-2 bg-white text-slate-700 border border-gray-200 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                <Download size={12} /> Export Report
               </button>
 
               <button 
@@ -709,16 +720,10 @@ export const ReportsPage = () => {
                 </button>
                 <div className="flex items-center gap-3">
                   <button 
-                    onClick={handleDownloadPDF}
-                    className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5"
+                    onClick={() => (plan.can('exports') ? setIsExportModalOpen(true) : setShowExportUpgrade(true))}
+                    className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 hover:bg-slate-800 transition-colors shadow-sm"
                   >
-                    <FileIcon size={12} /> Download PDF
-                  </button>
-                  <button 
-                    onClick={handleExportCSV}
-                    className="px-4 py-2 bg-slate-100 text-slate-700 border border-gray-200 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5"
-                  >
-                    <Download size={12} /> Export CSV
+                    <Download size={12} /> Export Report
                   </button>
                 </div>
               </div>
@@ -773,6 +778,56 @@ export const ReportsPage = () => {
                       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Efficacy Index</h4>
                         <p className="text-2xl font-black text-slate-955">{(summaryMetrics.totalLeads > 0 ? (summaryMetrics.conversions / summaryMetrics.totalLeads) * 100 : 0).toFixed(1)}%</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                      <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
+                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">True Revenue Pipeline</h3>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={revenuePipeline} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                              <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(val) => `₹${val}`} />
+                              <YAxis dataKey="status" type="category" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }} width={80} />
+                              <Tooltip formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Pipeline Value']} />
+                              <Bar dataKey="total_value" radius={[0, 8, 8, 0]}>
+                                {revenuePipeline.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
+                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Detailed Lost Reasons (Churn)</h3>
+                        <div className="h-64">
+                          {detailedChurn.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={detailedChurn}
+                                  cx="50%" cy="50%"
+                                  innerRadius={60} outerRadius={85}
+                                  paddingAngle={5}
+                                  dataKey="count" nameKey="reason"
+                                  label={true}
+                                >
+                                  {detailedChurn.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={['#ef4444', '#f97316', '#f59e0b', '#eab308'][index % 4]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="h-full flex items-center justify-center text-xs font-bold text-gray-400 uppercase">
+                              No churn data available
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -875,14 +930,32 @@ export const ReportsPage = () => {
                 )}
 
                 {activeReport === 'Agent Performance' && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-gray-100">
+                  <div className="space-y-6">
+                    <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
+                      <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Top Performers Leaderboard</h3>
+                      <div className="h-80 overflow-y-auto custom-scrollbar">
+                        <ResponsiveContainer width="100%" height={Math.max(320, agentPerf.length * 40)}>
+                          <BarChart data={agentPerf} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                            <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} />
+                            <YAxis dataKey="agent_name" type="category" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} width={120} />
+                            <Tooltip />
+                            <Bar dataKey="conversions" fill="#10b981" radius={[0, 4, 4, 0]} name="Conversions" />
+                            <Bar dataKey="total_dials" fill="#6366f1" radius={[0, 4, 4, 0]} name="Total Calls" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto bg-white border border-gray-100 rounded-3xl">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-gray-100 bg-slate-50/50">
                           <th className="py-3 text-[10px] font-black text-slate-400 uppercase">Consultant Name</th>
                           <th className="py-3 text-[10px] font-black text-slate-400 uppercase text-center">Total Dials</th>
                           <th className="py-3 text-[10px] font-black text-slate-400 uppercase text-center">Conversions</th>
                           <th className="py-3 text-[10px] font-black text-slate-400 uppercase text-center">Avg Duration</th>
+                          <th className="py-3 text-[10px] font-black text-slate-400 uppercase text-center">Speed-to-Lead (TAT)</th>
                           <th className="py-3 text-[10px] font-black text-slate-400 uppercase text-center">First Call</th>
                           <th className="py-3 text-[10px] font-black text-slate-400 uppercase text-center">Last Call</th>
                           <th className="py-3 text-[10px] font-black text-slate-400 uppercase text-center">Active Hours</th>
@@ -920,6 +993,10 @@ export const ReportsPage = () => {
                             : 'N/A';
 
                           const notesCount = tcMetric ? tcMetric.notes_count : 0;
+                          
+                          const tatMetric = agentTAT.find(t => t.agent_id === agent.agent_id);
+                          const tatMinutes = tatMetric ? tatMetric.avg_tat_minutes : 0;
+                          const tatStr = tatMinutes ? (tatMinutes > 60 ? `${Math.floor(tatMinutes/60)}h ${Math.floor(tatMinutes%60)}m` : `${tatMinutes}m`) : 'N/A';
 
                           return (
                             <tr 
@@ -939,6 +1016,7 @@ export const ReportsPage = () => {
                               <td className="py-3.5 text-center">{agent.total_dials}</td>
                               <td className="py-3.5 text-center text-emerald-600">{agent.conversions}</td>
                               <td className="py-3.5 text-center font-mono text-[11px]">{avgStr}</td>
+                              <td className="py-3.5 text-center font-mono text-[11px] text-brand-600">{tatStr}</td>
                               <td className="py-3.5 text-center font-mono text-[11px] text-gray-500">{firstCallStr}</td>
                               <td className="py-3.5 text-center font-mono text-[11px] text-gray-500">{lastCallStr}</td>
                               <td className="py-3.5 text-center text-slate-600">{activeHoursStr}</td>
@@ -956,45 +1034,70 @@ export const ReportsPage = () => {
                       </tbody>
                     </table>
                   </div>
-                )}
+                </div>
+              )}
 
                 {activeReport === 'Lead Source Quality' && (
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 bg-slate-50 p-6 rounded-3xl border border-gray-100">
-                      <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Leads Count by Source Channel</h3>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={sourceYield}
-                              cx="50%" cy="50%"
-                              innerRadius={70} outerRadius={100}
-                              paddingAngle={6}
-                              dataKey="lead_count"
-                              nameKey="source"
-                            >
-                              {sourceYield.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip />
-                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                          </PieChart>
-                        </ResponsiveContainer>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
+                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Leads Count by Source Channel</h3>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={sourceYield}
+                                cx="50%" cy="50%"
+                                innerRadius={70} outerRadius={100}
+                                paddingAngle={6}
+                                dataKey="lead_count"
+                                nameKey="source"
+                              >
+                                {sourceYield.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                              <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
+                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Conversions by Source (Yield)</h3>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={sourceConversionsData} layout="vertical" margin={{ top: 0, right: 30, left: 30, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                              <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} />
+                              <YAxis dataKey="source" type="category" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} width={80} />
+                              <Tooltip />
+                              <Bar dataKey="conversions" fill="#8b5cf6" radius={[0, 4, 4, 0]} name="Conversions" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
                       </div>
                     </div>
+                  </div>
+                )}
 
-                    <div className="space-y-4">
-                      <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">Source Channels yield ranking</h3>
-                      {sourceYield.map((s, idx) => (
-                        <div key={idx} className="p-4 bg-gray-50 rounded-2xl border border-gray-150/70 flex justify-between items-center">
-                          <div>
-                            <p className="text-xs font-bold text-slate-800 uppercase">{s.source || 'Direct'}</p>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{s.lead_count} Leads</p>
-                          </div>
-                          <span className="text-xs font-black text-brand-600">{s.conversion_rate}% Conv.</span>
-                        </div>
-                      ))}
+                {activeReport === 'Geographical Analytics' && (
+                  <div className="space-y-6">
+                    <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
+                      <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Top Cities by Lead Volume</h3>
+                      <div className="h-80 overflow-y-auto custom-scrollbar">
+                        <ResponsiveContainer width="100%" height={Math.max(320, geoData.length * 40)}>
+                          <BarChart data={geoData} layout="vertical" margin={{ top: 0, right: 30, left: 60, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                            <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} />
+                            <YAxis dataKey="city" type="category" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} width={120} />
+                            <Tooltip />
+                            <Bar dataKey="lead_count" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Leads" />
+                            <Bar dataKey="conversions" fill="#10b981" radius={[0, 4, 4, 0]} name="Conversions" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1165,7 +1268,7 @@ export const ReportsPage = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 text-xs font-bold text-slate-800">
-                          {customReportData.map((row, idx) => (
+                          {paginatedCustomReport.map((row, idx) => (
                             <tr key={idx}>
                               {selectedColumns.map(col => {
                                 let val = row[col];
@@ -1186,6 +1289,31 @@ export const ReportsPage = () => {
                         </tbody>
                       </table>
                     </div>
+                    {/* Pagination Controls */}
+                    {totalCustomReportCount > 0 && (
+                      <div className="mt-4 flex flex-col sm:flex-row items-center justify-between border-t border-gray-100 pt-4 gap-4">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                          Showing {(customReportPage - 1) * CUSTOM_REPORT_PAGE_SIZE + 1} to {Math.min(customReportPage * CUSTOM_REPORT_PAGE_SIZE, totalCustomReportCount)} of {totalCustomReportCount} entries
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCustomReportPage(p => Math.max(1, p - 1))}
+                            disabled={customReportPage === 1}
+                            className="px-3 py-1.5 bg-white border border-gray-150 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors shadow-sm"
+                          >
+                            Previous
+                          </button>
+                          <span className="text-[10px] font-bold text-slate-700 mx-2">Page {customReportPage} of {totalCustomReportPages}</span>
+                          <button
+                            onClick={() => setCustomReportPage(p => Math.min(totalCustomReportPages, p + 1))}
+                            disabled={customReportPage === totalCustomReportPages}
+                            className="px-3 py-1.5 bg-white border border-gray-150 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors shadow-sm"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1203,26 +1331,6 @@ export const ReportsPage = () => {
               <h3 className="text-lg font-black text-slate-955 uppercase tracking-tight">Custom Report Builder</h3>
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Select target columns for customized report lists</p>
             </div>
-            
-            {/* Load Saved Template Dropdown */}
-            {savedTemplates.length > 0 && (
-              <div className="space-y-1">
-                <label className="text-[9px] font-bold text-gray-400 uppercase">Restore Saved Template</label>
-                <select
-                  onChange={(e) => {
-                    const match = savedTemplates.find(t => t.name === e.target.value);
-                    if (match) handleLoadTemplate(match.columns);
-                  }}
-                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-gray-150 rounded-xl outline-none text-xs font-bold"
-                  defaultValue=""
-                >
-                  <option value="" disabled>-- Select a template --</option>
-                  {savedTemplates.map(t => (
-                    <option key={t.name} value={t.name}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             <div className="space-y-3">
               {[
@@ -1252,34 +1360,14 @@ export const ReportsPage = () => {
               ))}
             </div>
 
-            {/* Save Template Config */}
-            <div className="space-y-2 pt-2 border-t border-gray-100">
-              <label className="text-[9px] font-bold text-gray-400 uppercase">Save Selection as Template</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Template Name (e.g. Sales Audit)"
-                  value={templateName}
-                  onChange={(e) => setTemplateName(e.target.value)}
-                  className="flex-1 px-3 py-1.5 bg-slate-50 border border-gray-150 rounded-xl outline-none text-xs font-bold focus:bg-white"
-                />
-                <button
-                  onClick={handleSaveTemplate}
-                  className="px-3 py-1.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-800"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button 
+            <div className="pt-4 flex gap-3">
+              <button
                 onClick={() => setIsBuilderOpen(false)}
-                className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-2xl font-black text-[10px] uppercase tracking-widest"
+                className="flex-1 py-3 bg-white border border-gray-150 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleGenerateCustomReport}
                 className="flex-1 py-3 bg-brand-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand-100"
               >
@@ -1311,6 +1399,27 @@ export const ReportsPage = () => {
           />
         )}
       </AnimatePresence>
+
+      {/* Report export is a paid capability; the modal below was imported
+          but never rendered, so exports were effectively ungated. */}
+      <UpgradeModal
+        isOpen={showExportUpgrade}
+        onClose={() => setShowExportUpgrade(false)}
+        title="Report export is a paid feature"
+        description={`Exporting reports is not included in the ${plan.plan.name} plan.`}
+        limitType="exports"
+      />
+
+      {/* Advanced Export Modal */}
+      <ExportReportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExportCSV={handleExportCSV}
+        activeReport={activeReport}
+        companyName={teamSettings?.team_name || "Company"}
+        userName={user?.displayName || "Admin"}
+        dateRange={dateRange === 'Custom' ? `${customRange.start} to ${customRange.end}` : dateRange}
+      />
     </div>
   );
 };

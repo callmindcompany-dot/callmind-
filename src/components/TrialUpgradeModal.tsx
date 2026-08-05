@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { PRICING_PLANS, PURCHASABLE_PLAN_IDS } from '@/config/pricing';
+import { describePlan } from '@/website/data/planCopy';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Hourglass, Check, Zap, Sparkles, Phone, ShieldCheck, 
@@ -15,10 +17,10 @@ interface PlanCardProps {
   name: string;
   monthlyPrice: number;
   annualPrice: number;
-  minSeats: number;
+  maxSeats: number;
   features: string[];
   isRecommended?: boolean;
-  onSelect: (id: string, minSeats: number) => void;
+  onSelect: (id: string, maxSeats: number) => void;
   isSelected: boolean;
   billingCycle: 'monthly' | 'annual';
 }
@@ -26,14 +28,14 @@ interface PlanCardProps {
 import { trackTrialEvent } from '../utils/trialTracking';
 
 const PlanCard: React.FC<PlanCardProps> = ({ 
-  id, name, monthlyPrice, annualPrice, minSeats, features, isRecommended, onSelect, isSelected, billingCycle 
+  id, name, monthlyPrice, annualPrice, maxSeats, features, isRecommended, onSelect, isSelected, billingCycle 
 }) => {
   const currentPrice = billingCycle === 'annual' ? annualPrice : monthlyPrice;
   const savings = monthlyPrice - annualPrice;
 
   return (
     <div 
-      onClick={() => onSelect(id, minSeats)}
+      onClick={() => onSelect(id, maxSeats)}
       className={`relative cursor-pointer group transition-all duration-300 ${isSelected ? 'scale-[1.02] z-10' : 'hover:scale-[1.01]'}`}
     >
       {isRecommended && (
@@ -92,33 +94,22 @@ export const TrialUpgradeModal = () => {
   const [selectedPlan, setSelectedPlan] = useState('growth');
   const [seats, setSeats] = useState(5);
 
-  const plans = [
-    {
-      id: 'starter',
-      name: 'Starter',
-      monthlyPrice: 399,
-      annualPrice: 299,
-      minSeats: 3,
-      features: ['500 Lead Capacity', '30 Monthly AI Drafts', 'Basic Reports', 'Community Support']
-    },
-    {
-      id: 'growth',
-      name: 'Growth',
-      monthlyPrice: 699,
-      annualPrice: 549,
-      minSeats: 5,
-      isRecommended: true,
-      features: ['5,000 Lead Capacity', 'Unlimited AI Drafting', 'WhatsApp Business API', 'Advanced Reports', 'Email Support']
-    },
-    {
-      id: 'pro',
-      name: 'Pro',
-      monthlyPrice: 999,
-      annualPrice: 799,
-      minSeats: 10,
-      features: ['Unlimited Leads', 'Direct API Access', 'White-labeling', 'Custom Dashboards', 'Priority Founder Support']
-    }
-  ];
+  // These were hardcoded at 399/299, 699/549 and 999/799 -- none of which
+  // matched src/config/pricing.ts, so a trial user about to convert was quoted
+  // one price and charged another. Derived from the config now, like every
+  // other price in the product.
+  const plans = PURCHASABLE_PLAN_IDS.map((id) => {
+    const plan = PRICING_PLANS[id];
+    return {
+      id,
+      name: plan.name,
+      monthlyPrice: plan.monthlyPrice,
+      annualPrice: plan.annualPrice,
+      maxSeats: plan.maxSeats,
+      isRecommended: Boolean(plan.highlight),
+      features: describePlan(plan).slice(0, 5),
+    };
+  });
 
   useEffect(() => {
     if (trial) {
@@ -157,9 +148,11 @@ export const TrialUpgradeModal = () => {
     }
   }, [isOpen, companyId, user?.uid]);
 
-  const handlePlanSelect = (id: string, minSeats: number) => {
+  // Every plan starts at one seat now, so choosing a plan no longer forces a
+  // seat count up. It can only pull it down to the plan's ceiling.
+  const handlePlanSelect = (id: string, maxSeats: number) => {
     setSelectedPlan(id);
-    if (seats < minSeats) setSeats(minSeats);
+    if (seats > maxSeats) setSeats(maxSeats);
   };
 
   const handleClose = () => {
@@ -355,23 +348,23 @@ export const TrialUpgradeModal = () => {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
                 <div className="space-y-1">
                   <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">Select Team Size</h4>
-                  <p className="text-xs font-bold text-slate-400">{currentPlan.name} requires minimum {currentPlan.minSeats} seats.</p>
+                  <p className="text-xs font-bold text-slate-400">{currentPlan.name} covers up to {currentPlan.maxSeats} seats. Start with as few as 1.</p>
                 </div>
 
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-4">
                     <button 
-                      onClick={() => setSeats(Math.max(currentPlan.minSeats, seats - 1))}
+                      onClick={() => setSeats(Math.max(1, seats - 1))}
                       className="w-10 h-10 border border-slate-200 rounded-xl flex items-center justify-center text-slate-600 hover:bg-white transition-all disabled:opacity-30"
-                      disabled={seats <= currentPlan.minSeats}
+                      disabled={seats <= 1}
                     >
                       <Minus size={16} />
                     </button>
                     <span className="text-2xl font-black text-slate-900 min-w-[2ch] text-center">{seats}</span>
                     <button 
-                      onClick={() => setSeats(Math.min(50, seats + 1))}
+                      onClick={() => setSeats(Math.min(currentPlan.maxSeats, seats + 1))}
                       className="w-10 h-10 border border-slate-200 rounded-xl flex items-center justify-center text-slate-600 hover:bg-white transition-all disabled:opacity-30"
-                      disabled={seats >= 50}
+                      disabled={seats >= currentPlan.maxSeats}
                     >
                       <Plus size={16} />
                     </button>

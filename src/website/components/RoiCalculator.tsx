@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { Calculator, ShieldCheck, Crown, UserCheck, Settings } from 'lucide-react';
 import { SectionHeader } from './SectionHeader';
+import { PRICING_PLANS } from '../../config/pricing';
+
+const STARTER_MAX = PRICING_PLANS.starter.maxSeats;
+const GROWTH_MAX = PRICING_PLANS.growth.maxSeats;
+const PRO_MAX = PRICING_PLANS.pro.maxSeats;
 
 export const RoiCalculator = () => {
   const [teamSize, setTeamSize] = useState(30);
@@ -15,20 +20,21 @@ export const RoiCalculator = () => {
   const hoursSavedPerMonth = Math.round((teamSize * dailyCallsPerAgent * minutesSavedPerCall * workingDays) / 60);
   const leadsPreventedFromRotting = Math.round(teamSize * 3.5 * workingDays);
 
-  // Switch tab & sync appropriate default seat range
+  // Switching plan only ever caps the team size. It used to also push the
+  // number *up* -- picking Growth forced at least 11 seats -- back when plans
+  // had minimums. They do not any more: any plan can be bought at one seat.
   const handleTabChange = (tab: 'starter' | 'growth' | 'pro') => {
     setActiveTab(tab);
-    if (tab === 'starter' && teamSize > 10) setTeamSize(8);
-    if (tab === 'growth' && (teamSize < 11 || teamSize > 25)) setTeamSize(20);
-    if (tab === 'pro' && teamSize < 26) setTeamSize(30);
+    setTeamSize((current) => Math.min(current, PRICING_PLANS[tab].maxSeats));
   };
 
-  // Handle slider changes & auto-sync active plan tab
+  // Dragging past a plan's ceiling moves to the smallest plan that fits.
   const handleSliderChange = (newSize: number) => {
     setTeamSize(newSize);
-    if (newSize <= 10) setActiveTab('starter');
-    else if (newSize <= 25) setActiveTab('growth');
-    else setActiveTab('pro');
+    if (newSize > PRICING_PLANS[activeTab].maxSeats) {
+      if (newSize <= GROWTH_MAX) setActiveTab('growth');
+      else setActiveTab('pro');
+    }
   };
 
   // 2-Way Team Split for Growth Tier
@@ -69,7 +75,7 @@ export const RoiCalculator = () => {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Starter (1 - 10 Seats)
+                Starter (up to {STARTER_MAX} seats)
               </button>
               <button
                 onClick={() => handleTabChange('growth')}
@@ -79,7 +85,7 @@ export const RoiCalculator = () => {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Growth (1 - 25 Seats)
+                Growth (up to {GROWTH_MAX} seats)
               </button>
               <button
                 onClick={() => handleTabChange('pro')}
@@ -89,7 +95,7 @@ export const RoiCalculator = () => {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Pro (1 - 50 Seats Max Cap)
+                Pro (up to {PRO_MAX} seats)
               </button>
             </div>
           </div>
@@ -98,7 +104,7 @@ export const RoiCalculator = () => {
           <div className="space-y-3 pt-2">
             <div className="flex justify-between items-center">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500 font-sans">
-                Adjust Telecaller Team Count (1 to 50)
+                Adjust Telecaller Team Count (1 to {PRO_MAX})
               </label>
               <div className="flex items-center gap-2">
                 <span className="text-3xl font-black text-brand-600 font-display">{teamSize}</span>
@@ -109,7 +115,7 @@ export const RoiCalculator = () => {
             <input
               type="range"
               min={1}
-              max={50}
+              max={PRO_MAX}
               value={teamSize}
               onChange={(e) => handleSliderChange(Number(e.target.value))}
               className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-600"
@@ -117,9 +123,9 @@ export const RoiCalculator = () => {
 
             <div className="flex justify-between text-xs text-slate-500 font-sans font-medium">
               <span>1 Agent</span>
-              <span>10 (Starter Max)</span>
-              <span>25 (Growth Max)</span>
-              <span>50 (Pro Max Cap)</span>
+              <span>{STARTER_MAX} (Starter max)</span>
+              <span>{GROWTH_MAX} (Growth max)</span>
+              <span>{PRO_MAX} (Pro max)</span>
             </div>
           </div>
         </div>

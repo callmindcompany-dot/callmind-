@@ -89,8 +89,10 @@ To ensure call durations and dispositions log accurately into the CRM:
 
 1. **CALL_PHONE**: Enables one-tap direct dialing from lead cards.
 2. **READ_CALL_LOG**: Reads call start, end, and duration metrics to log agent call output.
-3. **ACCESS_FINE_LOCATION**: Validates GPS coordinates during attendance clock-in.
-4. **CAMERA**: Captures selfie verification during morning attendance punch-in.
+3. **READ_PHONE_STATE**: Detects which SIM placed the call so it is logged against the right number.
+
+CallMind does not request camera or location permission. Attendance is recorded
+from call activity, not from photographs or GPS.
 
 ---
 
@@ -107,7 +109,7 @@ Android OS power management may suspend background sync tasks if left on default
   {
     id: 'guides',
     title: 'Core Features',
-    description: 'Lead routing rules, Gemini AI summaries, and GPS attendance.',
+    description: 'Lead routing rules, Gemini AI summaries, and attendance tracking.',
     iconName: 'Smartphone',
     articles: [
       {
@@ -157,17 +159,21 @@ CallMind integrates Google Gemini AI (\`gemini-flash-latest\`) to analyze sales 
       {
         id: 'attendance-geofencing',
         slug: 'attendance-geofencing',
-        title: 'Attendance & GPS Verification',
+        title: 'Attendance Tracking',
         category: 'guides',
-        summary: 'Track telecaller clock-in times, geolocation coordinates, and selfie verification photos.',
+        summary: 'How telecaller attendance is recorded, and why it needs no selfie or GPS.',
         readTime: '3 min read',
         lastUpdated: '2026-07-30',
-        tags: ['Attendance', 'GPS', 'Verification'],
+        tags: ['Attendance', 'Telecaller'],
         content: `
-### Dual Verification
-Telecallers clock in on their mobile app via two checks:
-1. **GPS Geolocation**: Captures exact latitude & longitude coordinates.
-2. **Selfie Photo**: Captures live selfie image to prevent proxy clock-ins.
+### How attendance is recorded
+Telecallers punch in and out from the mobile app. CallMind records the time,
+the device, and who punched.
+
+**No selfie. No GPS.** Attendance is evidenced by the work itself -- call
+records carry their own timestamps, so a shift with no calls in it is visible
+in the reports without photographing anyone. That keeps a sensitive permission
+off the app and keeps biometric-adjacent data out of the product entirely.
         `
       }
     ]
@@ -476,24 +482,24 @@ Records completed call details from telecallers or automated dialers.
         apiSpec: {
           method: 'POST',
           path: '/api/payments/create-order',
-          description: 'Creates a signed Razorpay payment order for subscription upgrade.',
+          description: 'Creates a signed Razorpay payment order for a subscription upgrade. The server prices the order from the plan and seat count; `amount` is optional and, if sent, must match or the request is rejected.',
           headers: {
             'Authorization': 'Bearer USER_SESSION_TOKEN',
             'Content-Type': 'application/json'
           },
           requestBody: JSON.stringify({
-            amount: 2499,
+            amount: 107880,
             companyId: "cmp_99a8b7c6",
-            planId: "professional",
+            planId: "growth",
             seats: 10,
             durationMonths: 12
           }, null, 2),
           responseBody: JSON.stringify({
             success: true,
             orderId: "order_Qz9a8b7c6d5e",
-            amount: 249900,
+            amount: 10788000,
             currency: "INR",
-            keyId: "rzp_test_TJbhOtTceUKc5D"
+            keyId: "rzp_test_xxxxxxxxxxxxxx"
           }, null, 2),
           snippets: [
             {
@@ -506,9 +512,9 @@ Records completed call details from telecallers or automated dialers.
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    amount: 2499,
+    amount: 107880,
     companyId: 'cmp_99a8b7c6',
-    planId: 'professional',
+    planId: 'growth',
     seats: 10,
     durationMonths: 12
   })

@@ -70,9 +70,9 @@ export const ContactPage = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-slate-900 font-display">Customer Support</h3>
-                    <p className="text-slate-500 mt-1 font-medium">Need technical help or billing support? We typically reply within 2 hours.</p>
-                    <a href="mailto:support@voolabs.in" className="inline-flex items-center gap-2 mt-3 text-brand-600 font-bold hover:text-brand-700">
-                      support@voolabs.in
+                    <p className="text-slate-500 mt-1 font-medium">Need technical help or billing support? Response time depends on your plan — see pricing.</p>
+                    <a href="mailto:support@callmind.app" className="inline-flex items-center gap-2 mt-3 text-brand-600 font-bold hover:text-brand-700">
+                      support@callmind.app
                     </a>
                   </div>
                 </motion.div>

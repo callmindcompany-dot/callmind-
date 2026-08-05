@@ -43,6 +43,7 @@ export interface Database {
       team_settings: {
         Row: {
           company_id: string;
+          team_name?: string | null;
           field_labels: Record<string, string> | null;
           hide_phone_numbers: boolean;
           rotting_threshold: number;
@@ -121,6 +122,20 @@ export interface Database {
         };
         Insert: Database['public']['Tables']['calls']['Row'];
         Update: Partial<Database['public']['Tables']['calls']['Row']>;
+      };
+      report_templates: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          columns: string[];
+          created_at: string | null;
+        };
+        Insert: Omit<Database['public']['Tables']['report_templates']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['report_templates']['Row']>;
       };
       lead_notes: {
         Row: {
@@ -261,10 +276,12 @@ export interface Database {
         Row: {
           id: string;
           name: string;
-          plan: string | null;
-          plan_status: string | null;
-          seat_limit: number | null;
-          member_limit: number | null;
+          plan: string;
+          plan_status: string;
+          seat_limit: number;
+          billing_cycle: string;
+          plan_expires_at: string | null;
+          trial_ends_at: string | null;
           created_at: string | null;
         };
         Insert: Database['public']['Tables']['companies']['Row'];

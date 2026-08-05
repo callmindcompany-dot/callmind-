@@ -167,7 +167,11 @@ CREATE TABLE IF NOT EXISTS public.companies (
     phone TEXT,
     admin_name TEXT,
     plan TEXT DEFAULT 'trial',
-    seat_limit INTEGER DEFAULT 5,
+    plan_status TEXT DEFAULT 'trialing',
+    plan_expires_at TIMESTAMPTZ,
+    trial_ends_at TIMESTAMPTZ,
+    seat_limit INTEGER DEFAULT 1,
+    billing_cycle TEXT DEFAULT 'monthly',
     logo_url TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -179,7 +183,11 @@ ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS admin_name TEXT;
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'trial';
-ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS seat_limit INTEGER DEFAULT 5;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS plan_status TEXT DEFAULT 'trialing';
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMPTZ;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS seat_limit INTEGER DEFAULT 1;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS billing_cycle TEXT DEFAULT 'monthly';
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS logo_url TEXT;
 
 ALTER TABLE public.companies ALTER COLUMN id TYPE TEXT USING id::text;

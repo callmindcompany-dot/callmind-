@@ -27,9 +27,10 @@ import {
   Save, Bookmark, Trash2, Search,
 } from 'lucide-react';
 import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 import { supabase } from '@/supabaseClient';
 import { useAuth } from '@/AuthContext';
+import { usePlan } from '@/hooks/usePlan';
+import { toast } from 'react-hot-toast';
 import { trackTrialEvent } from '@/utils/trialTracking';
 import { runAiMapper, type AICorrection } from '@/utils/aiMapper';
 import { detectColumnPattern, pickBestPhoneColumn } from '@/utils/fieldPatterns';
@@ -380,6 +381,7 @@ const MappingSelect = React.memo(function MappingSelect({
 
 export const SmartImportModal = ({ isOpen, onClose, companyId }: SmartImportModalProps) => {
   const { user } = useAuth();
+  const plan = usePlan();
 
   // ── Wizard step
   const [step, setStep] = useState<WizardStep>('upload');
@@ -486,21 +488,8 @@ export const SmartImportModal = ({ isOpen, onClose, companyId }: SmartImportModa
           if (results.meta.fields) setupParsedData(results.meta.fields, results.data as ParsedRow[]);
         },
       });
-    } else if (ext === 'xlsx' || ext === 'xls') {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const buf = e.target?.result;
-        if (buf) {
-          const wb  = XLSX.read(buf, { type: 'array' });
-          const ws  = wb.Sheets[wb.SheetNames[0]];
-          const json = XLSX.utils.sheet_to_json<ParsedRow>(ws, { defval: '' });
-          if (json.length > 0) setupParsedData(Object.keys(json[0]), json);
-          else alert('The Excel sheet appears to be empty.');
-        }
-      };
-      reader.readAsArrayBuffer(f);
     } else {
-      alert('Unsupported format. Please upload a .csv, .xlsx, or .xls file.');
+      alert('Excel imports are temporarily unavailable for security. Please export the file as CSV and upload the CSV file.');
     }
   };
 
@@ -785,6 +774,37 @@ export const SmartImportModal = ({ isOpen, onClose, companyId }: SmartImportModa
 
     const rowsToProcess = retryRows ?? validatedRows.filter(r => r.isValid);
     const total = rowsToProcess.length;
+
+    // Pre-flight the plan limits before uploading anything.
+    //
+    // The database enforces both of these too, and its lead-limit trigger is
+    // statement-level so an over-limit chunk rolls back whole rather than
+    // half-importing. But finding out after pushing ten thousand rows is a
+    // miserable way to learn you are on the wrong plan, so check here first.
+    if (!plan.can('bulkImport')) {
+      setIsImporting(false);
+      toast.error(`Bulk import is not included in the ${plan.plan.name} plan. Upgrade to import a file.`);
+      return;
+    }
+
+    const importCap = plan.limit('bulkImport');
+    if (total > importCap) {
+      setIsImporting(false);
+      toast.error(
+        `Your plan allows ${importCap.toLocaleString('en-IN')} rows per import; this file has ${total.toLocaleString('en-IN')}.`,
+      );
+      return;
+    }
+
+    const leadHeadroom = plan.remaining('leads');
+    if (total > leadHeadroom) {
+      setIsImporting(false);
+      toast.error(
+        `This import would exceed your lead limit. You have room for ${leadHeadroom.toLocaleString('en-IN')} more leads.`,
+      );
+      return;
+    }
+
     let success = 0; let failed = 0; let skipped = 0; let updated = 0;
     const newFailedRows: FailedRow[] = [];
 
@@ -1075,7 +1095,7 @@ export const SmartImportModal = ({ isOpen, onClose, companyId }: SmartImportModa
                   <input
                     type="file"
                     ref={fileInputRef}
-                    accept=".csv,.xlsx,.xls"
+                    accept=".csv,text/csv"
                     className="hidden"
                     onChange={e => e.target.files?.[0] && processFile(e.target.files[0])}
                   />
@@ -1085,8 +1105,8 @@ export const SmartImportModal = ({ isOpen, onClose, companyId }: SmartImportModa
                   >
                     <Upload size={26} />
                   </motion.div>
-                  <h3 className="text-lg font-black text-gray-800">Upload CSV or Excel File</h3>
-                  <p className="text-sm text-gray-400 font-medium mt-1.5">Drag & drop or click to browse · .csv .xlsx .xls</p>
+                  <h3 className="text-lg font-black text-gray-800">Upload CSV File</h3>
+                  <p className="text-sm text-gray-400 font-medium mt-1.5">Drag & drop or click to browse · .csv</p>
                   <p className="text-xs text-gray-300 mt-1">Up to 10,000 rows supported</p>
                 </div>
 

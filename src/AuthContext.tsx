@@ -29,8 +29,9 @@ export interface UserProfile {
   intendedUserCount?: number;
   goals?: string[];
   role?: "founder" | "tester" | "user" | "sub_admin";
-  plan?: "trial" | "solo" | "team" | "enterprise" | "Growth";
-  plan_status?: "active" | "expired" | "canceled";
+  // Mirrors the CHECK constraints on public.companies.
+  plan?: "trial" | "starter" | "growth" | "pro";
+  plan_status?: "trialing" | "active" | "past_due" | "expired" | "cancelled";
   trialEndsAt?: any;
   trialStartDate?: any;
   trialEndDate?: any;
@@ -211,8 +212,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           email: normalizedEmail,
           role: isTesterAccount ? 'tester' : 'founder',
           onboardingStatus: isInternal ? "completed" : "pending",
-          plan: isInternal ? "enterprise" : "trial",
-          plan_status: "active",
+          plan: "trial",
+          plan_status: "trialing",
           createdAt: new Date().toISOString(),
         };
 
@@ -287,8 +288,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         name: isFounderOwner ? "CallMind Founder (Mock)" : (normalizedEmail.split('@')[0] + " (Demo)"),
         role: isFounderOwner ? 'founder' : (isTesterAccount ? 'tester' : 'user'),
         onboardingStatus: "completed",
-        plan: isFounderOwner ? "enterprise" : "trial",
-        plan_status: "active",
+        plan: "trial",
+        plan_status: "trialing",
         createdAt: new Date().toISOString(),
       };
 
@@ -331,7 +332,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         onboardingStatus: "completed",
         role: 'user',
         plan: 'trial',
-        plan_status: "active",
+        plan_status: "trialing",
         createdAt: new Date().toISOString(),
         ...safeData
       };
@@ -535,14 +536,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   /**
    * COMPUTED LOGIC & ACCESSORS
    */
-  const profileWithOverrides = useMemo((): UserProfile | null => {
-    if (!profile) return null;
-    return {
-      ...profile,
-      plan: 'Growth',
-      plan_status: 'active'
-    };
-  }, [profile]);
+  // This used to overwrite every profile with `plan: 'Growth'` and
+  // `plan_status: 'active'`, which meant no customer was ever on the plan they
+  // paid for and every limit downstream was dead. Entitlement now comes from
+  // the company row via usePlan(); this is a plain pass-through kept only so
+  // the existing references below do not all have to change at once.
+  const profileWithOverrides = profile;
 
   const isAuthenticated = !!user;
   const isEmailVerified = user?.email_confirmed_at !== undefined || user?.emailVerified || false;
@@ -590,22 +589,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return new Date('2030-01-01');
   }, [isGodMode, profileWithOverrides]);
 
-  const canAccessSequences = isGodMode || plan_status === 'active';
+  /**
+   * @deprecated Use `usePlan().can('sequences')`.
+   *
+   * Kept for one release so the remaining call sites in LeadsPage can migrate
+   * separately. It is no longer an entitlement check -- it only says the
+   * account is in good standing.
+   */
+  const canAccessSequences = isGodMode || plan_status === 'active' || plan_status === 'trialing';
 
-  const planConfig = useMemo(() => {
-    return {
-      plan: 'Growth',
-      phase: 3,
-      maxLeads: Infinity,
-      maxSeats: Infinity,
-      aiDrafts: Infinity,
-      automationRules: Infinity,
-      sequences: true,
-      analytics: true,
-      exports: true
-    };
-  }, []);
-  
+
   const trialDaysRemaining = useMemo(() => {
     if (isGodMode) return 365;
     if (trialApiStatus?.daysRemaining !== undefined) return trialApiStatus.daysRemaining;
@@ -658,14 +651,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       resetTrial,
       refreshTrialStatus,
       canAccessSequences,
-      planConfig,
     }),
     [
       user, profileWithOverrides, loading, profileLoading, isReady, initialized, onboardingStatus, 
       resetTrial, trialStatus, accountStatus, trialDaysRemaining, trialApiStatus, 
       refreshTrialStatus, isSuperFounder, isFounder, isSubAdmin, isTester, isInternal, 
       hasFounderHubAccess, isGodMode, plan_status, hasExpiredTrial, 
-      canAccessSequences, planConfig
+      canAccessSequences
     ]
   );
 

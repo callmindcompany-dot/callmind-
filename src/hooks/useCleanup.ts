@@ -152,18 +152,21 @@ export function useExecuteCleanupRule() {
           if (error) throw error;
           deletedCount = count ?? 0;
         } else if (ruleKey === 'trials') {
-          // Wipe Expired Trial Data — company-scoped (only own tenant)
-          const cutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
-          const { count, error } = await supabase
-            .from('companies')
-            .delete({ count: 'exact' })
-            .eq('id', companyId)
-            .eq('plan', 'Trial')
-            .eq('paid', false)
-            .lt('trial_ends_at', cutoff);
-
-          if (error) throw error;
-          deletedCount = count ?? 0;
+          // Disabled on purpose.
+          //
+          // This rule used to issue DELETE on `companies` for the caller's own
+          // id -- i.e. it deleted the tenant itself, taking every cascading
+          // row with it. It never actually fired, because it filtered on
+          // `plan = 'Trial'` (the stored value is lowercase) and on a `paid`
+          // column that exists in no migration, so the query errored out.
+          //
+          // Normalising plan casing in 20260802000000 would have armed it.
+          // Wiping a whole tenant is not something a client-side cleanup job
+          // gets to do; if trial reaping is wanted it belongs in a
+          // service-role job with its own review.
+          throw new Error(
+            'Trial cleanup is disabled. Deleting a company is not available from this screen.'
+          );
         }
 
         // Insert log record

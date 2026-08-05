@@ -40,6 +40,8 @@ import {
   useVerifyRazorpayPayment 
 } from '@/hooks/useBilling';
 import { useTeamMembers } from '@/hooks/useTeam';
+import { PRICING_PLANS, PURCHASABLE_PLAN_IDS, GST_RATE, ALLOWED_TERM_MONTHS } from '@/config/pricing';
+import { describePlan } from '@/website/data/planCopy';
 
 // --- STYLED ODOMETER COMPONENT ---
 // ... (rest remains unchanged)
@@ -186,47 +188,6 @@ const MonthStepper = ({ value, onChange, options }: { value: number; onChange: (
   );
 };
 
-// --- ADDON MARKETPLACE ---
-const AddonMarketplace = ({ activeAddons, onToggle, items }: any) => {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {items.map((item: any) => {
-        const isActive = activeAddons.includes(item.id);
-        return (
-          <motion.button
-            key={item.id}
-            whileHover={{ y: -4, scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onToggle(item.id)}
-            className={`p-6 rounded-2xl border text-left transition-all relative overflow-hidden group h-full flex flex-col ${
-              isActive 
-                ? 'bg-white border-blue-600 shadow-xl shadow-blue-600/5' 
-                : 'bg-white border-slate-100 hover:border-blue-200 shadow-sm'
-            }`}
-          >
-            <div className={`w-10 h-10 rounded-xl mb-4 flex items-center justify-center transition-transform group-hover:scale-110 ${item.color} bg-slate-50`}>
-               <item.icon size={20} strokeWidth={1.5} />
-            </div>
-            
-            <div className="flex-1">
-              <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-tighter mb-1">{item.name}</h4>
-              <p className="text-[9px] font-medium text-slate-400 leading-tight mb-4">{item.benefit}</p>
-            </div>
-
-            <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50">
-               <span className="text-[10px] font-black text-slate-900">₹{item.price}</span>
-               <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
-                 isActive ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-200'
-               }`}>
-                  {isActive && <CheckCircle2 size={12} className="text-white" />}
-               </div>
-            </div>
-          </motion.button>
-        );
-      })}
-    </div>
-  );
-};
 const PlanCard = ({ plan, isSelected, onSelect }: any) => {
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -360,20 +321,21 @@ const PlanCard = ({ plan, isSelected, onSelect }: any) => {
 
 // --- CONSTANTS ---
 const BASE_PRICES: Record<string, number> = {
-  professional: 599,
-  enterprise: 999,
+  starter: PRICING_PLANS.starter.monthlyPrice,
+  growth: PRICING_PLANS.growth.monthlyPrice,
+  pro: PRICING_PLANS.pro.monthlyPrice,
 };
 
-const ADDON_DATA = [
-  { id: "whatsapp", name: "WhatsApp Business", price: 199, icon: MessageCircle, color: "text-emerald-500", desc: "Automated Enterprise Sync", benefit: "2.5x Higher Conversion", pattern: "bg-[radial-gradient(#10b981_0.5px,transparent_0.5px)] bg-[size:10px_10px]" },
-  { id: "exotel", name: "Exotel Cloud VoIP", price: 299, icon: PhoneCall, color: "text-blue-500", desc: "Native Voice Cluster Units", benefit: "99.9% Call Uptime", pattern: "bg-[radial-gradient(#3b82f6_0.5px,transparent_0.5px)] bg-[size:10px_10px]" },
-  { id: "indiamart", name: "IndiaMart Bridge", price: 149, icon: Sparkles, color: "text-orange-500", desc: "Live Lead Ingestion", benefit: "Zero Lead Leakage", pattern: "bg-[radial-gradient(#f97316_0.5px,transparent_0.5px)] bg-[size:10px_10px]" },
-  { id: "tally", name: "Tally ERP Sync", price: 399, icon: Gem, color: "text-indigo-500", desc: "Financial Ledger Sync", benefit: "Audit-Ready Logs", pattern: "bg-[radial-gradient(#6366f1_0.5px,transparent_0.5px)] bg-[size:10px_10px]" },
-  { id: "googleads", name: "Google Ads Bridge", price: 149, icon: Search, color: "text-red-500", desc: "Performance Cognitive Sync", benefit: "Real-time ROI Tracking", pattern: "bg-[radial-gradient(#ef4444_0.5px,transparent_0.5px)] bg-[size:10px_10px]" },
-  { id: "smsgateway", name: "SMS Gateway Pro", price: 99, icon: Zap, color: "text-yellow-500", desc: "Transactional Alerts", benefit: "Global Delivery Servers", pattern: "bg-[radial-gradient(#eab308_0.5px,transparent_0.5px)] bg-[size:10px_10px]" },
-  { id: "custom_api", name: "Custom API Units", price: 499, icon: Rocket, color: "text-purple-500", desc: "Third-Party Logic Glue", benefit: "Infinite Integration", pattern: "bg-[radial-gradient(#a855f7_0.5px,transparent_0.5px)] bg-[size:10px_10px]" },
-  { id: "security_shield", name: "L-13 Shield Defense", price: 499, icon: ShieldCheck, color: "text-slate-900", desc: "Cognitive Forensic Guard", benefit: "Bulletproof Security", pattern: "bg-[radial-gradient(#0f172a_0.5px,transparent_0.5px)] bg-[size:10px_10px]" },
-];
+// The add-on marketplace was removed.
+//
+// It listed eight paid add-ons. None of them granted anything: the selection
+// was written to billing_intents.addons and never read again, so the money was
+// charged and no capability changed. Three of them (WhatsApp Business,
+// IndiaMart Bridge, Custom API) were already included in the plans that could
+// buy them, and four described integrations that do not exist in the codebase.
+//
+// Everything a customer can buy now lives in src/config/pricing.ts. The only
+// planned add-on is extra storage, and it ships when we can measure storage.
 
 export const BillingPage = () => {
   const { user, isGodMode } = useAuth() as any;
@@ -391,10 +353,9 @@ export const BillingPage = () => {
   const usedSeats = teamMembersQuery.data?.length || 0;
   const isLoading = subscriptionQuery.isLoading || teamMembersQuery.isLoading;
 
-  const [selectedPlan, setSelectedPlan] = useState('professional');
+  const [selectedPlan, setSelectedPlan] = useState('growth');
   const [seats, setSeats] = useState(5);
-  const [durationMonths, setDurationMonths] = useState(4);
-  const [activeAddons, setActiveAddons] = useState<string[]>([]);
+  const [durationMonths, setDurationMonths] = useState(1);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
@@ -407,14 +368,16 @@ export const BillingPage = () => {
   }, [companyData]);
 
   useEffect(() => {
-    if (selectedPlan === 'professional' && seats > 50) setSeats(50);
+    const cap = (PRICING_PLANS[selectedPlan] || PRICING_PLANS.growth).maxSeats;
+    if (seats > cap) setSeats(cap);
   }, [selectedPlan, seats]);
 
   const seatLimit = useMemo(() => {
     if (companyData?.seat_limit) return companyData.seat_limit;
     const plan = companyData?.plan || 'trial';
-    if (plan === 'enterprise') return 1000;
-    if (plan === 'professional') return 50;
+    if (plan === 'pro') return PRICING_PLANS.pro.maxSeats;
+    if (plan === 'growth') return PRICING_PLANS.growth.maxSeats;
+    if (plan === 'starter') return PRICING_PLANS.starter.maxSeats;
     return 3; // Trial default
   }, [companyData]);
 
@@ -453,7 +416,7 @@ export const BillingPage = () => {
           plan_id: selectedPlan,
           seats,
           duration_months: durationMonths,
-          addons: activeAddons,
+          addons: [],
           total_amount: totals.grandTotal
         });
         toast.success('Upgrade registered! Our team will contact you.', { icon: '💎' });
@@ -480,6 +443,35 @@ export const BillingPage = () => {
         },
         theme: {
           color: '#3b82f6',
+        },
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: 'Pay via UPI (No Extra Charges)',
+                instruments: [
+                  {
+                    method: 'upi'
+                  }
+                ]
+              },
+              other: {
+                name: 'Other Payment Methods',
+                instruments: [
+                  {
+                    method: 'card'
+                  },
+                  {
+                    method: 'netbanking'
+                  }
+                ]
+              }
+            },
+            sequence: ['block.upi', 'block.other'],
+            preferences: {
+              show_default_blocks: true
+            }
+          }
         },
         handler: async (response: any) => {
           try {
@@ -608,48 +600,55 @@ export const BillingPage = () => {
 
   const isSubmittingIntent = registerIntentMutation.isPending;
 
-  const PLANS = [
-    { 
-      id: 'professional', 
-      title: 'PROFESSIONAL', 
-      tagline: 'Strategic Operational Cluster',
-      price: 599, 
-      icon: Rocket, 
-      color: 'text-blue-600', 
-      highlights: ['Up to 50 active users', 'Priority nano-core', 'Advanced monitoring'],
-      features: ['Unified WhatsApp Business API', 'Groq 70B AI Linguistics', 'Native Exotel VoIP Sync', 'Real-time Column Inference', 'Biometric Forensic Logs']
-    },
-    { 
-      id: 'enterprise', 
-      title: 'ENTERPRISE', 
-      tagline: 'Sovereign Structural Architecture',
-      price: 999, 
-      icon: Gem, 
-      color: 'text-blue-600',
-      popular: true,
-      highlights: ['Infinite user capacity', 'Dedicated logic manager', 'Forensic audit trails'],
-      features: ['Imperial Shield 2.0 Guard', 'Custom Sovereignty Bridge', '99.999% Architecture Uptime', 'Infinite API Provisioning', 'On-Premise Cognitive Sync']
-    }
-  ];
+  // Seat counts, lead caps, stage counts and rule counts were typed by hand
+  // here and had already fallen out of step with src/config/pricing.ts. They
+  // are derived now, so the billing screen cannot advertise limits the product
+  // does not enforce.
+  const PLAN_PRESENTATION = {
+    starter: { tagline: 'Essential SIM Telecalling', icon: PhoneCall, color: 'text-slate-600' },
+    growth:  { tagline: 'Strategic Sales Operations', icon: Rocket, color: 'text-blue-600' },
+    pro:     { tagline: 'Sovereign Structural Architecture', icon: Gem, color: 'text-blue-600' },
+  } as const;
+
+  const PLANS = PURCHASABLE_PLAN_IDS.map((id) => {
+    const plan = PRICING_PLANS[id];
+    const copy = describePlan(plan);
+    return {
+      id,
+      title: plan.name.toUpperCase(),
+      tagline: PLAN_PRESENTATION[id].tagline,
+      price: plan.monthlyPrice,
+      icon: PLAN_PRESENTATION[id].icon,
+      color: PLAN_PRESENTATION[id].color,
+      popular: Boolean(plan.highlight),
+      highlights: copy.slice(0, 3),
+      features: copy.slice(3, 8),
+    };
+  });
+
+  const planMaxSeats = (PRICING_PLANS[selectedPlan] || PRICING_PLANS.growth).maxSeats;
 
   const totals = useMemo(() => {
-    const baseRate = BASE_PRICES[selectedPlan] || 0;
-    const baseSubtotal = baseRate * seats * durationMonths;
+    const plan = PRICING_PLANS[selectedPlan] || PRICING_PLANS.growth;
     const isYearly = durationMonths === 12;
-    const discountAmount = isYearly ? Math.round(baseSubtotal * 0.27) : 0;
-    const baseAfterDiscount = baseSubtotal - discountAmount;
+    const actualMonthlyRate = isYearly ? plan.annualPrice : plan.monthlyPrice;
 
-    const addonsSubtotal = activeAddons.reduce((acc, id) => {
-      const addon = ADDON_DATA.find(a => a.id === id);
-      return acc + ((addon?.price || 0) * durationMonths);
-    }, 0);
+    // What it would cost at the monthly rate, for showing the annual saving.
+    const baseSubtotal = plan.monthlyPrice * seats * durationMonths;
+    const subtotal = actualMonthlyRate * seats * durationMonths;
+    const discountAmount = baseSubtotal - subtotal;
 
-    const subtotal = baseAfterDiscount + addonsSubtotal;
-    const infraCharge = Math.round(subtotal * 0.02);
-    const grandTotal = isWhitelisted ? 0 : subtotal + infraCharge;
+    // GST was shown on the invoice but never added to the amount charged, so
+    // we were collecting the pre-tax figure and owing the tax ourselves. It is
+    // part of the total now, and the customer sees it before paying.
+    //
+    // The 2% "platform fee" that used to be added here is gone; it was never
+    // disclosed on the pricing page. It is folded into the plan prices.
+    const gstAmount = isWhitelisted ? 0 : Math.round(subtotal * GST_RATE);
+    const grandTotal = isWhitelisted ? 0 : subtotal + gstAmount;
 
-    return { baseRate, baseSubtotal, discountAmount, baseAfterDiscount, addonsSubtotal, subtotal, infraCharge, grandTotal, isYearly, isWhitelisted };
-  }, [selectedPlan, seats, durationMonths, activeAddons, isWhitelisted]);
+    return { baseSubtotal, subtotal, discountAmount, gstAmount, grandTotal, isYearly, isWhitelisted };
+  }, [selectedPlan, seats, durationMonths, isWhitelisted]);
 
   return (
     <div className="w-full text-slate-900 font-sans selection:bg-blue-100 pb-10">
@@ -700,7 +699,7 @@ export const BillingPage = () => {
                     <Headphones size={20} strokeWidth={1} />
                  </div>
                  <div>
-                    <p className="text-[11px] font-black text-slate-900 leading-tight">24/7 Support</p>
+                    <p className="text-[11px] font-black text-slate-900 leading-tight">Priority Support</p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Dedicated Experts</p>
                  </div>
                </div>
@@ -723,7 +722,7 @@ export const BillingPage = () => {
           
           {/* CORE ARCHITECTURE PLANS */}
           <div className="lg:col-span-8 space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {PLANS.map(plan => (
                 <PlanCard 
                   key={plan.id} 
@@ -747,11 +746,7 @@ export const BillingPage = () => {
                    </div>
                 </div>
               </div>
-              <AddonMarketplace 
-                items={ADDON_DATA} 
-                activeAddons={activeAddons} 
-                onToggle={(id: string) => setActiveAddons(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])} 
-              />
+              {/* Add-on marketplace removed -- see the note above ADDON_DATA. */}
             </div>
           </div>
 
@@ -788,7 +783,9 @@ export const BillingPage = () => {
                       </div>
 
                       <button 
-                        onClick={() => setSeats(selectedPlan === 'professional' ? Math.min(50, seats + 1) : seats + 1)} 
+                        onClick={() => setSeats(Math.min(planMaxSeats, seats + 1))}
+                        disabled={seats >= planMaxSeats}
+                        
                         className="w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center text-slate-900 hover:bg-blue-600 hover:text-white transition-all active:scale-95"
                       >
                          <Plus size={20} strokeWidth={3} />
@@ -801,7 +798,7 @@ export const BillingPage = () => {
                    <MonthStepper 
                      value={durationMonths} 
                      onChange={setDurationMonths} 
-                     options={[1, 2, 3, 4, 5, 6, 12]} 
+                     options={[...ALLOWED_TERM_MONTHS]} 
                    />
                    <div className="flex items-center gap-4 p-5 bg-emerald-50 rounded-lg border border-emerald-100/30">
                       <div className="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center">
@@ -848,17 +845,9 @@ export const BillingPage = () => {
                  <div className="bg-white p-6 md:p-8 hover:bg-slate-50 transition-colors">
                     <div className="flex items-center gap-3 mb-3">
                        <Box size={14} className="text-[#0052FF]" />
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Add-ons ({activeAddons.length})</p>
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">GST (18%)</p>
                     </div>
-                    <p className="text-2xl font-black text-slate-900 tracking-tighter tabular-nums">₹{totals.addonsSubtotal.toLocaleString()}</p>
-                 </div>
-
-                 <div className="bg-white p-6 md:p-8 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-3 mb-3">
-                       <Settings2 size={14} className="text-[#0052FF]" />
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Platform Fee</p>
-                    </div>
-                    <p className="text-2xl font-black text-slate-900 tracking-tighter tabular-nums">₹{totals.infraCharge.toLocaleString()}</p>
+                    <p className="text-2xl font-black text-slate-900 tracking-tighter tabular-nums">₹{totals.gstAmount.toLocaleString()}</p>
                  </div>
 
                  <div className="bg-white p-6 md:p-8 hover:bg-slate-50 transition-colors">
@@ -879,31 +868,12 @@ export const BillingPage = () => {
                  <div className="flex flex-wrap gap-3">
                     <div className="px-4 py-2 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-3">
                        <Rocket size={14} className="text-[#0052FF]" />
-                       <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">{selectedPlan === 'professional' ? 'Professional' : 'Enterprise'} (×{seats})</span>
+                       <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">{(PRICING_PLANS[selectedPlan] || PRICING_PLANS.growth).name} (×{seats})</span>
                     </div>
                     <div className="px-4 py-2 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-3">
                        <Calendar size={14} className="text-slate-400" />
                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">{durationMonths} Month Term</span>
                     </div>
-                    {activeAddons.length > 0 ? activeAddons.map(id => {
-                       const addon = ADDON_DATA.find(a => a.id === id);
-                       return (
-                          <motion.div 
-                             initial={{ scale: 0.9, opacity: 0 }}
-                             animate={{ scale: 1, opacity: 1 }}
-                             key={id} 
-                             className="px-4 py-2 bg-blue-50 rounded-xl border border-blue-100 flex items-center gap-3"
-                          >
-                             {addon?.icon && <addon.icon size={14} className="text-[#0052FF]" />}
-                             <span className="text-[10px] font-black text-blue-900 uppercase tracking-tighter">{addon?.name}</span>
-                          </motion.div>
-                       );
-                    }) : (
-                       <div className="px-4 py-2 bg-slate-50 rounded-xl border border-slate-100/50 flex items-center gap-3 opacity-50">
-                          <ShoppingBag size={14} className="text-slate-300" />
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter whitespace-nowrap">No Extensions Active</span>
-                       </div>
-                    )}
                  </div>
               </div>
            </div>
@@ -948,6 +918,9 @@ export const BillingPage = () => {
                        )}
                     </div>
                  </motion.button>
+                 <p className="text-center text-xs font-bold text-white/90 tracking-wide -mt-2">
+                    Pay by UPI — no extra charges.
+                 </p>
                  
                  <div className="flex items-center justify-between px-6">
                     <div className="flex items-center gap-2">

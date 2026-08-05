@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS public.companies (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     plan TEXT DEFAULT 'trial',
-    plan_status TEXT DEFAULT 'active',
-    seat_limit INTEGER DEFAULT 10,
+    plan_status TEXT DEFAULT 'trialing',
+    seat_limit INTEGER DEFAULT 1,
     active_members_count INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

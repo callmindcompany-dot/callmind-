@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/AuthContext';
+import { usePlan } from '@/hooks/usePlan';
 import { useCompany } from '@/CompanyContext';
 import { TelecallerInviteModal } from './TelecallerInviteModal';
 import { 
@@ -1071,6 +1072,7 @@ ReassignSection.displayName = 'ReassignSection';
 
 export const TeamPage = ({ onTabChange }: { onTabChange?: (tab: string) => void }) => {
   const { user, profile, isSuperFounder, plan_status, trialDaysRemaining } = useAuth();
+  const plan = usePlan();
   const { companyId } = useCompany();
   const location = useLocation();
   const navigate = useNavigate();
@@ -1136,24 +1138,13 @@ export const TeamPage = ({ onTabChange }: { onTabChange?: (tab: string) => void 
   const updateSettingsMutation = useUpdateTeamSettings(companyId);
 
   // Seat Logic
-  const memberLimit = React.useMemo(() => {
-    if (companyData) {
-      if (typeof companyData.seat_limit === 'number') return companyData.seat_limit;
-      if (typeof companyData.member_limit === 'number') return companyData.member_limit;
-      
-      const plan = (companyData.plan || companyData.plan_status || '').toLowerCase();
-      if (plan.includes('enterprise')) return 1000;
-      if (plan.includes('professional')) return 50;
-      if (plan.includes('team')) return 20;
-      if (plan.includes('trial') || plan.includes('trialing')) return 1000;
-    }
-    // Backup fallbacks
-    const legacyPlan = (plan_status || '').toLowerCase();
-    if (legacyPlan.includes('enterprise')) return 1000;
-    if (legacyPlan.includes('trial') || legacyPlan.includes('trialing')) return 1000;
-    if (legacyPlan.includes('professional')) return 50;
-    return 1000; // Default to safe maximum
-  }, [companyData, plan_status]);
+  //
+  // This used to guess a cap by substring-matching plan names that do not
+  // exist ('enterprise', 'professional'), and fall back to `return 1000` --
+  // so in practice nobody ever ran out of seats. The cap now comes from the
+  // plan, and a BEFORE INSERT trigger on `users` enforces the same number in
+  // the database, which is what actually stops an over-limit invite.
+  const memberLimit = plan.limit('seats');
 
   const usedSeats = React.useMemo(() => {
     return members.filter(m => {

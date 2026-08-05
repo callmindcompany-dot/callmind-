@@ -64,7 +64,7 @@ export const PricingPreview = () => {
       desc: copy.desc,
       monthlyPrice: plan.monthlyPrice,
       annualPrice: plan.annualPrice,
-      seats: `${plan.minSeats}–${plan.maxSeats} telecallers`,
+      seats: `1–${plan.maxSeats} telecallers`,
       popular: copy.popular,
       features: copy.features,
     };

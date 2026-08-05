@@ -59,9 +59,8 @@ router.post('/generate', async (req, res) => {
     }
 
     const userData = userDoc.data() || {};
-    const plan = userData.plan_status || "Team Essential";
-    const aiUsage = userData.aiCallsCount || 0;
-    
+    const companyId: string | undefined = userData.company_id || userData.companyId;
+
     const MASTER_FOUNDER = masterFounderEmail;
     const TESTER_EMAILS = FOUNDER_OWNERS;
     
@@ -72,37 +71,44 @@ router.post('/generate', async (req, res) => {
                       userData.role === "tester";
     const isWhatsAppDraft = targetTask === 'draft';
 
-    // 2. Fetch Plan Config
-    const configDoc = await db.collection("app_config").doc("features").get();
-    const configData = configDoc.data();
-    const planConfig = configData?.plans?.[plan];
-
-    if (!planConfig && !isGodMode) {
-      return res.status(400).json({ error: "Invalid plan configuration." });
+    // 2. Global kill-switch
+    if (!isGodMode && process.env.AI_ENABLED === 'false') {
+      return res.status(503).json({ error: "AI features are currently disabled by administrator." });
     }
 
-    // 2b. Global Kill-Switch Check
+    // 3. Meter the request against the company's plan.
+    //
+    // This used to read an `app_config/features` document that no migration
+    // ever created, and keyed it on `plan_status` -- a status, not a plan --
+    // defaulting to the string "Team Essential", which matched nothing. The
+    // limit therefore never applied. consume_ai_credit resolves the real plan
+    // from plan_limits and increments ai_usage atomically in one roundtrip,
+    // so two concurrent requests cannot both slip past the cap.
+    //
+    // WhatsApp drafts are metered too; they were previously exempt entirely.
     if (!isGodMode) {
-      if (!configData?.AI_ENABLED) {
-        return res.status(503).json({ error: "AI features are currently disabled by administrator." });
-      }
-    }
-
-    // 3. Check Limits
-    if (!isGodMode && !isWhatsAppDraft) {
-      if (userData.trial_start_date) {
-        const startDate = (userData.trial_start_date as unknown as MockTimestamp).toDate();
-        const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
-        if (Date.now() > startDate.getTime() + threeDaysInMs) {
-          return res.status(403).json({ error: "Trial Expired" });
-        }
+      if (!companyId) {
+        return res.status(400).json({ error: "No company is associated with this account." });
       }
 
-      if (planConfig.ai_limit !== -1 && aiUsage >= planConfig.ai_limit) {
-        return res.status(403).json({ 
-          error: "AI Limit Reached", 
-          limit: planConfig.ai_limit,
-          usage: aiUsage 
+      const { data: credit, error: creditError } = await supabaseAdmin.rpc('consume_ai_credit', {
+        p_company_id: companyId,
+        p_kind: isWhatsAppDraft ? 'draft' : 'total',
+      });
+
+      if (creditError) {
+        logger.error('[AI] Could not check the AI usage allowance', creditError);
+        return res.status(503).json({ error: "Could not verify your AI allowance. Please try again." });
+      }
+
+      if (!credit?.allowed) {
+        return res.status(403).json({
+          error: credit?.reason === 'unknown_company'
+            ? "No plan is active for this company."
+            : "You have used all the AI credits included in your plan this month.",
+          metric: credit?.metric,
+          limit: credit?.limit,
+          usage: credit?.used,
         });
       }
     }
@@ -165,10 +171,9 @@ router.post('/generate', async (req, res) => {
     }
 
     const { sanitizeAiOutput } = await import('../lib/aiGuardrail');
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       response: sanitizeAiOutput(aiResponse),
-      usage: aiUsage + 1
     });
 
   } catch (error: any) {

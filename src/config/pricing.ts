@@ -1,22 +1,79 @@
+/**
+ * The single source of truth for plans, prices and limits.
+ *
+ * Nothing else in the codebase may hardcode a rupee figure or a plan limit.
+ * The database gets the same numbers from `public.plan_limits`, which is
+ * generated from this file by `npm run gen:plans`; a test
+ * (src/__tests__/planLimits.sync.test.ts) fails the build if the two drift
+ * apart. That guard exists because they already had: the website, the billing
+ * page, the trial upgrade modal and the docs each carried a different price.
+ */
+
 export interface PlanDetails {
   id: string;
   name: string;
   monthlyPrice: number;
   annualPrice: number;
-  minSeats: number;
+  /**
+   * Every paid plan is purchasable from a single seat. Plans differ by
+   * capability, not by team size -- a five-person team that wants AI scoring
+   * buys Growth. `maxSeats` is the only seat-based boundary.
+   */
   maxSeats: number;
   maxAdmins: number; // Tiered Admin Capacity (1, 2, or 3 Admins)
   leadLimit: number | "unlimited";
   leadWarning?: number;
   aiDraftLimit: number | "unlimited";
-  aiCreditLimit?: number | "unlimited";
+  aiCreditLimit: number | "unlimited";
   pipelineStages: number | "unlimited";
   automationRules: number;
-  bulkImport: number | boolean | "unlimited";
+  bulkImport: number | false | "unlimited";
   aiLeadScoring: boolean | "advanced";
   teamTargets: boolean;
   apiAccess: boolean | "read_only" | "full_read_write";
   pdfExport: boolean;
+  /**
+   * Document storage included per seat, pooled across the whole company.
+   *
+   * Sized from real demand rather than a round guess. One telecaller works
+   * roughly 400 leads a month; about 8% of those ever reach documentation, and
+   * a documented Indian lending or insurance file (Aadhaar, PAN, bank
+   * statement, signed agreement) is about 5 MB. That is ~2 GB per telecaller
+   * per year, so the figures below carry real headroom on top.
+   *
+   * Per seat rather than a flat pool because a 5-seat and a 40-seat company on
+   * the same plan do not generate remotely similar volumes, and seats are
+   * already the unit everything else is priced in.
+   *
+   * Files live in Cloudflare R2, not Supabase Storage -- R2 charges nothing
+   * for egress, which is what previews and downloads actually cost. At about
+   * Rs 1.32 per GB per month, even a completely full allowance is under 0.7%
+   * of what the seat earns.
+   */
+  storageGbPerSeat: number;
+  /**
+   * A fixed storage grant for the whole company, in MB, instead of a per-seat
+   * allowance. Only the trial uses this: seven days is not long enough for
+   * seat count to mean anything, and a flat "500 MB" is easier to state than
+   * a fraction of a gigabyte per seat.
+   */
+  storageFlatMb?: number;
+  maxFileSizeMb: number;
+  videoUpload: boolean;
+  filesPerLead: number | "unlimited";
+  recycleBinDays: number;
+  /** How many lead-source integrations may be active at once. */
+  leadSources: number | "unlimited";
+  /**
+   * Sending email from the customer's own domain.
+   *
+   * False on every plan because it is not built: supabase/functions/send-email
+   * reads company_settings.smtp_config and then does nothing --
+   * `// TODO: Connect SMTP server relay`. Flip this on only when that function
+   * actually dispatches mail, or the plan will be selling a feature that
+   * silently does nothing, which is what the eight removed add-ons did.
+   */
+  emailFromOwnDomain: boolean;
   whatsappType: "manual" | "business_api" | "api_templates";
   supportType: "email" | "chat" | "whatsapp_priority";
   supportHours: number;
@@ -29,23 +86,58 @@ export interface PlanDetails {
 
 export const FREE_TRIAL_CONFIG = {
   trialDays: 7,
-  includedTelecallers: 3, // 3 Telecallers + 1 Admin = 4 Total Users
-  leadLimit: 1000,
+  includedTelecallers: 2, // 2 Telecallers + 1 Admin = 3 Total Users
+  leadLimit: 500,
   pipelineStages: 5,
 };
 
 export const PRICING_PLANS: Record<string, PlanDetails> = {
+  /**
+   * Not sold -- this is the entitlement set a company holds during the free
+   * trial, and the one it falls back to if a subscription lapses. It exists
+   * here so `companies.plan` has a config entry for all four of its legal
+   * values and the enforcement layer never has to special-case "no plan".
+   */
+  trial: {
+    id: "trial",
+    name: "Free Trial",
+    monthlyPrice: 0,
+    annualPrice: 0,
+    maxSeats: FREE_TRIAL_CONFIG.includedTelecallers + 1, // telecallers + 1 admin
+    maxAdmins: 1,
+    leadLimit: FREE_TRIAL_CONFIG.leadLimit,
+    aiDraftLimit: 30,
+    aiCreditLimit: 50,
+    pipelineStages: FREE_TRIAL_CONFIG.pipelineStages,
+    automationRules: 1,
+    bulkImport: false,
+    aiLeadScoring: false,
+    teamTargets: false,
+    apiAccess: false,
+    pdfExport: false,
+    storageGbPerSeat: 0,
+    storageFlatMb: 500,
+    maxFileSizeMb: 5,
+    videoUpload: false,
+    filesPerLead: 5,
+    recycleBinDays: 7,
+    leadSources: 2,
+    emailFromOwnDomain: false,
+    whatsappType: "manual",
+    supportType: "email",
+    supportHours: 48,
+  },
   starter: {
     id: "starter",
     name: "Starter",
-    monthlyPrice: 499,
-    annualPrice: 399,
-    minSeats: 1,
+    monthlyPrice: 699,
+    annualPrice: 599,
     maxSeats: 10,
     maxAdmins: 1, // Master Founder only
     leadLimit: 50000,
     leadWarning: 40000,
     aiDraftLimit: 30,
+    aiCreditLimit: 50,
     pipelineStages: 5,
     automationRules: 2,
     bulkImport: false,
@@ -53,6 +145,13 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     teamTargets: false,
     apiAccess: false,
     pdfExport: false,
+    storageGbPerSeat: 3,
+    maxFileSizeMb: 10,
+    videoUpload: false,
+    filesPerLead: 10,
+    recycleBinDays: 15,
+    leadSources: 2,
+    emailFromOwnDomain: false,
     whatsappType: "manual",
     supportType: "email",
     supportHours: 48,
@@ -60,9 +159,8 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
   growth: {
     id: "growth",
     name: "Growth",
-    monthlyPrice: 799,
-    annualPrice: 599,
-    minSeats: 11,
+    monthlyPrice: 1199,
+    annualPrice: 999,
     maxSeats: 25,
     maxAdmins: 2, // Founder + 1 Sub-Admin Co-Manager
     leadLimit: 250000,
@@ -76,6 +174,13 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     teamTargets: true,
     apiAccess: "read_only",
     pdfExport: true,
+    storageGbPerSeat: 5,
+    maxFileSizeMb: 25,
+    videoUpload: true,
+    filesPerLead: 25,
+    recycleBinDays: 30,
+    leadSources: 5,
+    emailFromOwnDomain: false,
     whatsappType: "business_api",
     supportType: "chat",
     supportHours: 8,
@@ -84,9 +189,8 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
   pro: {
     id: "pro",
     name: "Pro",
-    monthlyPrice: 1099,
-    annualPrice: 899,
-    minSeats: 26,
+    monthlyPrice: 1499,
+    annualPrice: 1299,
     maxSeats: 50,
     maxAdmins: 3, // Founder + 2 Sub-Admins Co-Managers
     leadLimit: "unlimited",
@@ -99,6 +203,13 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     teamTargets: true,
     apiAccess: "full_read_write",
     pdfExport: true,
+    storageGbPerSeat: 8,
+    maxFileSizeMb: 100,
+    videoUpload: true,
+    filesPerLead: "unlimited",
+    recycleBinDays: 90,
+    leadSources: "unlimited",
+    emailFromOwnDomain: false,
     whatsappType: "api_templates",
     supportType: "whatsapp_priority",
     supportHours: 2,
@@ -110,23 +221,121 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
 };
 
 /**
- * Returns plan details by ID
+ * Billing terms a customer may choose, in months.
+ *
+ * The UI used to offer 1-6 and 12 with no discount on anything except 12, so
+ * the middle terms gave the customer nothing and only complicated renewals.
+ * Quarterly and half-yearly stay because Indian B2B buyers ask for them.
  */
+export const ALLOWED_TERM_MONTHS = [1, 3, 6, 12] as const;
+export type TermMonths = (typeof ALLOWED_TERM_MONTHS)[number];
+
+export const isAllowedTerm = (months: unknown): months is TermMonths =>
+  (ALLOWED_TERM_MONTHS as readonly number[]).includes(Number(months));
+
+/**
+ * GST applies to everything we sell -- subscriptions and storage alike. There
+ * is no exemption for add-ons: storage is a supply of service under the same
+ * SAC as the subscription. Selling it without GST would mean paying it out of
+ * our own margin later, with interest.
+ */
+export const GST_RATE = 0.18;
+
+/**
+ * Extra storage, bought on a slider rather than as fixed packs.
+ *
+ * One rate, no slabs, so the price updates as the customer drags and needs no
+ * arithmetic to understand. Cloudflare R2 costs us about Rs 1.32 per GB per
+ * month, so this holds a ~74% margin at every position on the slider.
+ *
+ * Above `maxGb` the slider stops and we talk to the customer -- at that size
+ * the per-GB rate should be negotiated, not automated.
+ */
+export const STORAGE_ADDON = {
+  pricePerGbMonth: 5,
+  minGb: 5,
+  maxGb: 500,
+  stepGb: 5,
+  /** Show a warning banner once usage crosses this share of the quota. */
+  warnAtPercent: 80,
+};
+
+export const MB_PER_GB = 1024;
+
+/**
+ * Storage included with a subscription, in MB.
+ *
+ * Pooled: the company gets one bucket sized by how many seats it bought, not a
+ * separate quota per person. Nobody has to think about who owns which
+ * gigabyte, and buying a seat visibly buys room.
+ *
+ * The trial is the exception -- a flat grant, because seven days is too short
+ * for seat count to mean anything.
+ *
+ * Note this is what we *allow*, not what we pay for. Cloudflare R2 bills the
+ * bytes actually stored, so a company using 200 MB of its 30 GB costs us 200
+ * MB. That is why the allowances can be generous.
+ */
+export const includedStorageMb = (planId: string, seats: number): number => {
+  const plan = getPlanById(planId);
+  if (!plan) return 0;
+  if (plan.storageFlatMb) return plan.storageFlatMb;
+  return plan.storageGbPerSeat * MB_PER_GB * Math.max(1, seats);
+};
+
+/** Human-readable quota, e.g. "500 MB" or "30 GB". */
+export const formatStorage = (mb: number): string =>
+  mb >= MB_PER_GB ? `${+(mb / MB_PER_GB).toFixed(1)} GB` : `${Math.round(mb)} MB`;
+
+export const calculateStorageAddonPrice = (gb: number, months: number) => {
+  const monthly = gb * STORAGE_ADDON.pricePerGbMonth;
+  const subtotal = monthly * months;
+  const gst = Math.round(subtotal * GST_RATE);
+  return { monthly, subtotal, gst, total: subtotal + gst };
+};
+
+/** The plans a customer can actually buy, cheapest first. */
+export const PURCHASABLE_PLAN_IDS = ["starter", "growth", "pro"] as const;
+export type PurchasablePlanId = (typeof PURCHASABLE_PLAN_IDS)[number];
+
+/** Every value `companies.plan` is allowed to hold. */
+export const ALL_PLAN_IDS = ["trial", ...PURCHASABLE_PLAN_IDS] as const;
+export type PlanId = (typeof ALL_PLAN_IDS)[number];
+
+export const isPurchasablePlanId = (id: unknown): id is PurchasablePlanId =>
+  typeof id === "string" && (PURCHASABLE_PLAN_IDS as readonly string[]).includes(id.toLowerCase());
+
+/**
+ * Turns a config limit into a number for comparison.
+ *
+ * `"unlimited"` becomes Infinity and `false` becomes 0, matching the
+ * convention used in `plan_limits`, where NULL is unlimited and 0 is off.
+ */
+export const resolveLimit = (value: number | false | "unlimited" | undefined): number => {
+  if (value === "unlimited") return Infinity;
+  if (value === false || value === undefined) return 0;
+  return value;
+};
+
+/** Returns plan details by ID. */
 export const getPlanById = (planId: string): PlanDetails | undefined => {
+  if (!planId) return undefined;
   return PRICING_PLANS[planId.toLowerCase()];
 };
 
 /**
- * Determines appropriate plan by seat count
+ * The cheapest plan that can hold this many seats.
+ *
+ * Use this only to validate a *downgrade* -- "can this company fit on Starter
+ * if it drops to Starter?" It is not a plan recommendation: since every plan
+ * starts at one seat, seat count no longer implies a tier.
  */
-export const getPlanForSeatCount = (seats: number): PlanDetails => {
-  if (seats <= 10) return PRICING_PLANS.starter;
-  if (seats <= 25) return PRICING_PLANS.growth;
-  return PRICING_PLANS.pro;
-};
+export const getMinimumPlanForSeatCount = (seats: number): PlanDetails | undefined =>
+  PURCHASABLE_PLAN_IDS.map((id) => PRICING_PLANS[id]).find((plan) => seats <= plan.maxSeats);
 
 /**
- * Calculates total price, savings, and per-seat cost
+ * Calculates the per-seat rate, the total for one month, and what choosing
+ * annual billing saves over a full year.
  */
 export const calculatePrice = (planId: string, seats: number, isAnnual: boolean) => {
   const plan = getPlanById(planId);
@@ -134,14 +343,9 @@ export const calculatePrice = (planId: string, seats: number, isAnnual: boolean)
 
   const pricePerSeat = isAnnual ? plan.annualPrice : plan.monthlyPrice;
   const total = pricePerSeat * seats;
-  
-  // Calculate savings compared to monthly plan if billing annually
+
   const monthlyTotalEquivalent = plan.monthlyPrice * seats;
   const savings = isAnnual ? (monthlyTotalEquivalent - total) * 12 : 0;
 
-  return {
-    pricePerSeat,
-    total,
-    savings,
-  };
+  return { pricePerSeat, total, savings };
 };

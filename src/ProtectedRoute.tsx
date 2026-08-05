@@ -108,9 +108,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // 6. Subscription Gate: Optional logic for premium/active plan locks
   if (requireSubscription) {
-    const hasActivePlan = profile?.plan_status === 'active' || profile?.plan === 'enterprise';
-    if (!hasActivePlan && location.pathname !== '/billing') {
-      return <Navigate to="/billing" replace />;
+    const hasActivePlan =
+      profile?.plan_status === 'active' || profile?.plan_status === 'trialing';
+    const isAllowedExpiredPath =
+      location.pathname.includes('/billing') ||
+      location.pathname.includes('/reports') ||
+      location.pathname.includes('/settings') ||
+      location.pathname.includes('/leads') ||
+      location.pathname.includes('/privacy') ||
+      location.pathname.includes('/terms');
+
+    if (!hasActivePlan && !isAllowedExpiredPath) {
+      return <Navigate to="/dashboard/settings?tab=subscription" replace />;
     }
   }
 

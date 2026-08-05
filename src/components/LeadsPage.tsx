@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/AuthContext';
+import { usePlan } from '../hooks/usePlan';
 import { useCompany } from '@/CompanyContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { PipelineBoard } from './PipelineBoard';
@@ -735,7 +736,8 @@ const LeadManagementKPIs = ({ leads, currentFilter, onFilterChange }: any) => {
 };
 
 export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void }) => {
-  const { isGodMode, isFounder, profile, planConfig, canAccessSequences, user, isTester, isUserView } = useAuth() as any;
+  const { isGodMode, isFounder, profile, canAccessSequences, user, isTester, isUserView } = useAuth() as any;
+  const plan = usePlan();
   const { companyId } = useCompany();
   
   const isWhitelisted = isFounder || isTester;
@@ -1577,11 +1579,14 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
       return;
     }
 
-    // Check Lead Limit
-    const currentCount = profile?.leadsCount || 0;
-    const limit = profile?.lead_limit || 50;
-
-    if (!isFounder && !isGodMode && !canAccessSequences && currentCount >= limit) {
+    // Lead limit.
+    //
+    // This used to read `profile.leadsCount` and `profile.lead_limit`, neither
+    // of which is ever written, and skipped itself entirely when
+    // `canAccessSequences` was true -- which it always was. It never fired.
+    // The counts now come from usePlan, and the database enforces the same
+    // limit independently if this is somehow bypassed.
+    if (plan.atLimit('leads')) {
       setShowUpgradeModal(true);
       return;
     }
