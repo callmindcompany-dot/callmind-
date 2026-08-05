@@ -5,6 +5,7 @@ import { Database } from '../types/supabase';
 type TeamSettingsRow = Database['public']['Tables']['team_settings']['Row'];
 
 export interface TeamSettingsData {
+  team_name?: string;
   fieldLabels: Record<string, string>;
   hidePhoneNumbers: boolean;
   rottingThreshold: number;
@@ -49,8 +50,11 @@ export function useTeamSettingsQuery(companyId: string | null) {
         };
       }
 
+      const rawData = data as TeamSettingsRow & { team_name?: string };
+
       // Map DB snake_case structure to camelCase UI expectations
       return {
+        team_name: rawData.team_name || undefined,
         fieldLabels: (data.field_labels as Record<string, string>) || {},
         hidePhoneNumbers: data.hide_phone_numbers || false,
         rottingThreshold: data.rotting_threshold !== undefined ? data.rotting_threshold : 3,

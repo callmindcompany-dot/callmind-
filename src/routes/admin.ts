@@ -1,8 +1,53 @@
 import { logger } from '../lib/logger';
 import express from 'express';
-import { db, auth, FieldValue, Timestamp } from '../lib/dbAdapter';
+import { db, auth, FieldValue, Timestamp, supabaseAdmin } from '../lib/dbAdapter';
 
 const router = express.Router();
+
+export async function runTrialExpirationJob(): Promise<number> {
+  try {
+    const { data, error } = await supabaseAdmin.rpc('expire_trials');
+    if (error) {
+      const nowIso = new Date().toISOString();
+      const { data: rawData, error: rawError } = await supabaseAdmin
+        .from('companies')
+        .update({ plan_status: 'expired' })
+        .eq('plan_status', 'trialing')
+        .not('trial_ends_at', 'is', null)
+        .lt('trial_ends_at', nowIso)
+        .select('id');
+
+      if (rawError) {
+        logger.error('[Cron] Failed to run trial expiration fallback:', rawError);
+        return 0;
+      }
+      const count = rawData?.length || 0;
+      logger.info(`[Cron] Expired ${count} trialing companies whose trial_ends_at passed.`);
+      return count;
+    }
+    const count = typeof data === 'number' ? data : Number(data || 0);
+    logger.info(`[Cron] Expired ${count} trialing companies whose trial_ends_at passed.`);
+    return count;
+  } catch (err: any) {
+    logger.error('[Cron] Error running trial expiration job:', err);
+    return 0;
+  }
+}
+
+// Protected cron endpoint for trial expiration
+router.all('/cron/expire-trials', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const cronSecretHeader = req.headers['x-cron-secret'];
+  const expectedSecret = process.env.CRON_SECRET || 'callmind-cron-secret-2026';
+
+  const providedSecret = cronSecretHeader || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null);
+  if (providedSecret !== expectedSecret && process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ error: 'Unauthorized cron request' });
+  }
+
+  const count = await runTrialExpirationJob();
+  res.json({ success: true, expiredCount: count, timestamp: new Date().toISOString() });
+});
 
 // API Route for Remote Wipe
 router.post('/remote-wipe', async (req, res) => {

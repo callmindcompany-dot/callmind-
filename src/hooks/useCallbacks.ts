@@ -82,13 +82,19 @@ export function useDeleteCallback() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (callbackId: string) => {
-      const { error } = await supabase
-        .from('callbacks')
-        .delete()
-        .eq('id', callbackId);
+    mutationFn: async (arg: string | { id: string; companyId?: string }) => {
+      const callbackId = typeof arg === 'string' ? arg : arg.id;
+      const companyId = typeof arg === 'string' ? undefined : arg.companyId;
+
+      let query = supabase.from('callbacks').delete({ count: 'exact' }).eq('id', callbackId);
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { error, count } = await query;
 
       if (error) throw error;
+      if (!count) throw new Error('Nothing was deleted — the record may already be gone.');
       return callbackId;
     },
     onSuccess: () => {

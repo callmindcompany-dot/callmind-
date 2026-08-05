@@ -3,8 +3,19 @@ import {createRoot} from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Sentry from "@sentry/react";
+import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
+
+// Register PWA Service Worker
+const updateSW = registerSW({
+  onNeedRefresh() {
+    console.log('CallMind CRM: New content available, please refresh.');
+  },
+  onOfflineReady() {
+    console.log('CallMind CRM: App is ready to work offline.');
+  },
+});
 
 // Initialize Sentry client-side error tracking.
 //

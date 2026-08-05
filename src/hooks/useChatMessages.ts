@@ -17,7 +17,7 @@ export function useChatMessages(companyId: string | null, selectedLeadId: string
 
       if (error) {
         console.warn('Failed to query messages list:', error);
-        return [];
+        throw error;
       }
 
       // Mark incoming messages as read when fetched/opened in window

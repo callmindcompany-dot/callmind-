@@ -34,7 +34,8 @@ import {
   PlayCircle,
   Rocket,
   Menu,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
@@ -129,7 +130,19 @@ const SidebarItem = ({
   return content;
 };
 
-export const Sidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (tab: string) => void }) => {
+export interface SidebarProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  logoUrl?: string;
+  companyName?: string;
+}
+
+export const Sidebar = ({ 
+  activeTab, 
+  onTabChange,
+  logoUrl: propLogoUrl,
+  companyName: propCompanyName,
+}: SidebarProps) => {
   const { 
     signOut, 
     user, 
@@ -293,6 +306,15 @@ export const Sidebar = ({ activeTab, onTabChange }: { activeTab: string, onTabCh
       hoverClass: 'hover:bg-indigo-50/50 hover:text-indigo-600',
       iconActiveColor: 'text-indigo-600',
       iconHoverColor: 'group-hover:text-indigo-600'
+    },
+    { 
+      icon: FileText, 
+      label: 'Documents', 
+      phase: 'P1', 
+      activeClass: 'bg-amber-50 text-amber-700 border-amber-600', 
+      hoverClass: 'hover:bg-amber-50/50 hover:text-amber-600',
+      iconActiveColor: 'text-amber-600',
+      iconHoverColor: 'group-hover:text-amber-600'
     },
     { 
       icon: BarChart3, 

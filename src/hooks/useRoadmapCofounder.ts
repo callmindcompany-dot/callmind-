@@ -95,12 +95,13 @@ export function useDeleteRoadmapFeature() {
 
   return useMutation({
     mutationFn: async (featureId: string) => {
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('feature_roadmap')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', featureId);
 
       if (error) throw error;
+      if (!count) throw new Error('Nothing was deleted — the record may already be gone.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feature_roadmap'] });

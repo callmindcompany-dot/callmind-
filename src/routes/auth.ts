@@ -2,6 +2,7 @@ import { logger } from '../lib/logger';
 import express from 'express';
 import { db, auth, FieldValue, Timestamp, MockTimestamp } from '../lib/dbAdapter';
 import { supabaseAdmin } from '../lib/dbAdapter';
+import { AuditService } from '../services/audit.service';
 
 const router = express.Router();
 
@@ -274,7 +275,7 @@ router.post('/trial/upgrade-intent', async (req, res) => {
 
 // POST /auth/sync-app-metadata
 // Called after onboarding to inject company_id + role into the Supabase JWT app_metadata.
-// This makes RLS policies (get_my_company_id / get_my_role) return real values.
+// Resolves company_id and role server-side from public.users to prevent privilege escalation.
 router.post('/auth/sync-app-metadata', async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
@@ -286,9 +287,30 @@ router.post('/auth/sync-app-metadata', async (req, res) => {
     const decodedToken = await auth.verifyIdToken(idToken);
     const userId = decodedToken.uid;
 
-    const { companyId, role } = req.body;
-    if (!companyId || !role) {
-      return res.status(400).json({ error: 'Missing companyId or role in request body' });
+    // Fetch user profile server-side from public.users
+    const { data: userProfile, error: profileErr } = await supabaseAdmin
+      .from('users')
+      .select('id, company_id, role, email')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profileErr || !userProfile) {
+      logger.warn(`[sync-app-metadata] User profile not found for uid=${userId}`);
+      return res.status(404).json({ error: 'User profile not found' });
+    }
+
+    const companyId = userProfile.company_id;
+    const role = userProfile.role || 'telecaller';
+
+    if (!companyId) {
+      logger.warn(`[sync-app-metadata] Attempted sync for user ${userId} without assigned company_id`);
+      await AuditService.logEvent({
+        action: 'SYNC_APP_METADATA_FAILED',
+        targetId: userId,
+        targetType: 'user',
+        details: { outcome: 'CONFLICT_MISSING_COMPANY', userId, role }
+      });
+      return res.status(409).json({ error: 'User has no assigned company_id' });
     }
 
     const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
@@ -297,11 +319,24 @@ router.post('/auth/sync-app-metadata', async (req, res) => {
 
     if (updateErr) {
       logger.error('[sync-app-metadata] Failed to update app_metadata:', updateErr);
+      await AuditService.logEvent({
+        action: 'SYNC_APP_METADATA_FAILED',
+        targetId: userId,
+        targetType: 'user',
+        details: { outcome: 'SUPABASE_UPDATE_ERROR', error: updateErr.message, userId, companyId, role }
+      });
       return res.status(500).json({ error: 'Failed to sync app_metadata' });
     }
 
+    await AuditService.logEvent({
+      action: 'SYNC_APP_METADATA_SUCCESS',
+      targetId: userId,
+      targetType: 'user',
+      details: { outcome: 'SUCCESS', userId, companyId, role }
+    });
+
     logger.info(`[sync-app-metadata] Synced company_id=${companyId} role=${role} for user ${userId}`);
-    res.json({ success: true });
+    res.json({ success: true, companyId, role });
   } catch (error: any) {
     logger.error('[sync-app-metadata] Error:', error);
     res.status(500).json({ error: 'Internal server error' });

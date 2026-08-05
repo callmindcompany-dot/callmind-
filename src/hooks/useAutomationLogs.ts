@@ -28,7 +28,7 @@ export function useAutomationLogs(companyId: string | null) {
 
       if (error) {
         console.warn('Failed to query automation_logs:', error);
-        return [];
+        throw error;
       }
 
       if (!logs || logs.length === 0) return [];

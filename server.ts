@@ -14,11 +14,18 @@ import { logger } from "./src/lib/logger";
 
 // Import modular routes
 import aiRouter from "./src/routes/ai";
-import adminRouter from "./src/routes/admin";
+import adminRouter, { runTrialExpirationJob } from "./src/routes/admin";
 import authRouter from "./src/routes/auth";
 import leadsRouter, { startLeadsBackgroundCrons } from "./src/routes/leads";
 import callsRouter from "./src/routes/calls";
 import paymentsRouter from "./src/routes/payments";
+import notificationsRouter from "./src/routes/notifications";
+import searchRouter from "./src/routes/search";
+import hierarchyRouter from "./src/routes/hierarchy";
+import documentsRouter from "./src/routes/documents";
+import slaRouter from "./src/routes/sla";
+import { integrationHealthRouter } from "./src/routes/integrationHealth";
+import { whatsappInboxRouter } from "./src/routes/whatsappInbox";
 import { supabaseAdmin } from "./src/lib/dbAdapter";
 
 const __filename_resolved = typeof import.meta !== "undefined" && import.meta.url ? fileURLToPath(import.meta.url) : "";
@@ -54,9 +61,9 @@ async function startServer() {
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         // F-17 FIX: Allow Google Fonts static assets
         fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-        // F-17 FIX: Allow self + data URIs for inline SVGs/base64 images
-        imgSrc: ["'self'", "data:", "https:"],
-        // F-17 FIX: Allow Supabase API + Sentry + Razorpay endpoints
+        // F-17 FIX: Allow self + data URIs for inline SVGs/base64 images + blob URIs
+        imgSrc: ["'self'", "data:", "https:", "blob:"],
+        // F-17 FIX: Allow Supabase API + Sentry + Razorpay + Cloudflare R2 endpoints
         connectSrc: [
           "'self'",
           "https://*.supabase.co",
@@ -64,9 +71,11 @@ async function startServer() {
           "https://sentry.io",
           "https://*.sentry.io",
           "https://lumberjack.razorpay.com",
-          "https://api.razorpay.com"
+          "https://api.razorpay.com",
+          "https://*.r2.cloudflarestorage.com"
         ],
-        frameSrc: ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com"],
+        frameSrc: ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com", "blob:"],
+        objectSrc: ["'self'", "blob:"],
         frameAncestors: ["'none'"],
         // F-17 FIX: Report CSP violations to a log endpoint so we can see breakage
         reportUri: ["/api/csp-report"]
@@ -91,6 +100,7 @@ async function startServer() {
   // Mount API & webhook routes (webhooks must be mounted before CSRF to exclude them)
   app.use('/v1', leadsRouter); // Covers /v1/webhooks/* and /v1/routing/*
   app.use('/v1', paymentsRouter); // Covers /v1/webhooks/razorpay
+  app.use('/v1/documents', documentsRouter); // Covers /v1/documents/*
 
   const {
     generateCsrfToken: generateToken,
@@ -135,6 +145,12 @@ async function startServer() {
   app.use('/api', authRouter); // Covers /api/trial/* and /api/auth/*
   app.use('/api/calls', callsRouter);
   app.use('/api/payments', paymentsRouter);
+  app.use('/api/notifications', notificationsRouter);
+  app.use('/api/search', searchRouter);
+  app.use('/api/hierarchy', hierarchyRouter);
+  app.use('/api/sla', slaRouter);
+  app.use('/api/integration-health', integrationHealthRouter);
+  app.use('/api/whatsapp', whatsappInboxRouter);
 
   // Health check endpoint
   app.get("/api/health", async (req, res) => {
@@ -281,6 +297,15 @@ async function startServer() {
 
   const server = app.listen(PORT, "0.0.0.0", () => {
     logger.info(`Server running on http://localhost:${PORT}`);
+    
+    // Start automated background crons for trial expiration (hourly)
+    setInterval(() => {
+      runTrialExpirationJob().catch(err => logger.error('[Cron] Hourly trial expiration error:', err));
+    }, 60 * 60 * 1000);
+    
+    setTimeout(() => {
+      runTrialExpirationJob().catch(err => logger.error('[Cron] Initial trial expiration error:', err));
+    }, 5000);
   });
 
   // Graceful Shutdown handling (SIGTERM/SIGINT)

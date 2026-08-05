@@ -28,7 +28,7 @@ export function useCommLogs(companyId: string | null) {
 
       if (error) {
         console.warn('Failed to query comm_logs from Supabase:', error);
-        return [];
+        throw error;
       }
       return data || [];
     },
@@ -58,6 +58,9 @@ export function useCommLogs(companyId: string | null) {
   return {
     logs: logsQuery.data || [],
     isLoading: logsQuery.isLoading,
+    isError: logsQuery.isError,
+    error: logsQuery.error,
+    refetch: logsQuery.refetch,
     addLog: addLogMutation.mutateAsync,
   };
 }

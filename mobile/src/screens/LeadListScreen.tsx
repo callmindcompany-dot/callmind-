@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Search, SlidersHorizontal, Phone, MessageSquare, FileText, Plus, ChevronDown } from 'lucide-react-native';
 import { EmptyStateComponent } from '../components/EmptyStateComponent';
 
@@ -13,19 +13,54 @@ export interface LeadItem {
   color: string;
   bgColor: string;
   initials: string;
+  branch?: string;
+  status?: string;
+  email?: string;
+  priority?: string;
+  address?: string;
+  comment?: string;
 }
 
 interface LeadListScreenProps {
   onSelectLead: (leadId: string) => void;
+  onCallLead?: (lead: LeadItem) => void;
   onBack: () => void;
   leads?: LeadItem[];
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }
 
-export const LeadListScreen: React.FC<LeadListScreenProps> = ({ onSelectLead, leads = [] }) => {
+export const LeadListScreen: React.FC<LeadListScreenProps> = ({
+  onSelectLead,
+  onCallLead,
+  onBack,
+  leads = [],
+  refreshing = false,
+  onRefresh,
+}) => {
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
   const tabs = ['All', 'New', 'Contacted', 'Interested', 'Follow-up'];
+
+  const filteredLeads = leads.filter((lead) => {
+    // Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchName = lead.name.toLowerCase().includes(q);
+      const matchPhone = lead.phone.toLowerCase().includes(q);
+      const matchCity = lead.city.toLowerCase().includes(q);
+      if (!matchName && !matchPhone && !matchCity) return false;
+    }
+
+    // Tab filter
+    if (activeTab === 'All') return true;
+    if (activeTab === 'New') return lead.tag === 'New' || lead.status === 'New';
+    if (activeTab === 'Contacted') return lead.tag === 'Contacted' || lead.status === 'Contacted';
+    if (activeTab === 'Interested') return lead.tag === 'Interested' || lead.status === 'Interested';
+    if (activeTab === 'Follow-up') return lead.tag === 'Follow-up' || lead.status === 'Call Back' || lead.status === 'Call Back Later';
+    return true;
+  });
 
   return (
     <View style={styles.container}>
@@ -72,7 +107,7 @@ export const LeadListScreen: React.FC<LeadListScreenProps> = ({ onSelectLead, le
       {/* Sort Row */}
       <View style={styles.sortRow}>
         <TouchableOpacity style={styles.sortDropdown}>
-          <Text style={styles.sortText}>Sort by: <Text style={styles.sortBold}>AI Score</Text></Text>
+          <Text style={styles.sortText}>Sort by: <Text style={styles.sortBold}>Latest</Text></Text>
           <ChevronDown size={14} color="#0f172a" style={{ marginLeft: 4 }} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.sortIconBtn}>
@@ -81,9 +116,17 @@ export const LeadListScreen: React.FC<LeadListScreenProps> = ({ onSelectLead, le
       </View>
 
       {/* Lead Cards List */}
-      <ScrollView contentContainerStyle={styles.leadListContent} showsVerticalScrollIndicator={false}>
-        {leads.length > 0 ? (
-          leads.map((lead) => (
+      <ScrollView
+        contentContainerStyle={styles.leadListContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />
+          ) : undefined
+        }
+      >
+        {filteredLeads.length > 0 ? (
+          filteredLeads.map((lead) => (
             <TouchableOpacity key={lead.id} style={styles.card} onPress={() => onSelectLead(lead.id)} activeOpacity={0.75}>
               <View style={[styles.cardAvatar, { backgroundColor: lead.bgColor }]}>
                 <Text style={[styles.avatarText, { color: lead.color }]}>{lead.initials}</Text>
@@ -97,13 +140,16 @@ export const LeadListScreen: React.FC<LeadListScreenProps> = ({ onSelectLead, le
                   </View>
                 </View>
                 <Text style={styles.cardPhone}>{lead.phone}</Text>
-                <Text style={styles.cardCity}>{lead.city}</Text>
+                <Text style={styles.cardCity}>{lead.city}{lead.branch ? ` • 📍 ${lead.branch}` : ''}</Text>
               </View>
 
               <View style={styles.cardRight}>
                 <Text style={styles.cardTime}>{lead.time}</Text>
                 <View style={styles.actionRow}>
-                  <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#eff6ff' }]}>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: '#eff6ff' }]}
+                    onPress={() => onCallLead ? onCallLead(lead) : onSelectLead(lead.id)}
+                  >
                     <Phone size={14} color="#2563eb" />
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#f0fdf4' }]}>

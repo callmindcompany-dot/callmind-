@@ -167,13 +167,19 @@ export function useDeleteSequence() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (sequenceId: string) => {
-      const { error } = await supabase
-        .from('sequences')
-        .delete()
-        .eq('id', sequenceId);
+    mutationFn: async (arg: string | { id: string; companyId?: string }) => {
+      const sequenceId = typeof arg === 'string' ? arg : arg.id;
+      const companyId = typeof arg === 'string' ? undefined : arg.companyId;
+
+      let query = supabase.from('sequences').delete({ count: 'exact' }).eq('id', sequenceId);
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { error, count } = await query;
 
       if (error) throw error;
+      if (!count) throw new Error('Nothing was deleted — the record may already be gone.');
       return sequenceId;
     },
     onSuccess: () => {

@@ -106,12 +106,12 @@ export const CommunicationPage: React.FC = () => {
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceType>(null);
 
   // Load custom hooks
-  const { templates, createTemplate, updateTemplate, deleteTemplate, isLoading: loadingTemplates } = useMessageTemplates(companyId);
+  const { templates, createTemplate, updateTemplate, deleteTemplate, isLoading: loadingTemplates, isError: isTemplatesError, refetch: refetchTemplates } = useMessageTemplates(companyId);
   const { settings, updateSettings, isLoading: loadingSettings } = useCompanySettings(companyId);
-  const { logs, addLog, isLoading: loadingLogs } = useCommLogs(companyId);
-  const { rules, createRule, updateRule, deleteRule, isLoading: loadingRules } = useAutomationRules(companyId);
-  const { data: chatLeads = [] } = useChatLeads(companyId);
-  const { scheduledMessages, scheduleMessage, cancelScheduledMessage } = useScheduledMessages(companyId);
+  const { logs, addLog, isLoading: loadingLogs, isError: isLogsError, refetch: refetchLogs } = useCommLogs(companyId);
+  const { rules, createRule, updateRule, deleteRule, isLoading: loadingRules, isError: isRulesError, refetch: refetchRules } = useAutomationRules(companyId);
+  const { data: chatLeads = [], isError: isChatLeadsError, refetch: refetchChatLeads } = useChatLeads(companyId);
+  const { scheduledMessages, scheduleMessage, cancelScheduledMessage, isError: isScheduledError, refetch: refetchScheduled } = useScheduledMessages(companyId);
 
   // States for Notification Preferences
   const [notifSound, setNotifSound] = useState(true);
@@ -1817,13 +1817,28 @@ export const CommunicationPage: React.FC = () => {
                                 </td>
                               </tr>
                             ))}
-                            {scheduledMessages.length === 0 && (
+                            {isScheduledError ? (
+                              <tr>
+                                <td colSpan={5} className="py-12 text-center">
+                                  <div className="flex flex-col items-center justify-center gap-2">
+                                    <AlertTriangle className="text-rose-500" size={24} />
+                                    <p className="text-rose-600 font-bold text-xs">Failed to query scheduled messages from Supabase.</p>
+                                    <button 
+                                      onClick={() => refetchScheduled()} 
+                                      className="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-600 rounded-lg text-xs font-bold transition-all border border-brand-200 flex items-center gap-1"
+                                    >
+                                      <RefreshCw size={12} /> Retry Query
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : scheduledMessages.length === 0 ? (
                               <tr>
                                 <td colSpan={5} className="py-12 text-center text-gray-400 uppercase tracking-widest">
                                   No scheduled messages found.
                                 </td>
                               </tr>
-                            )}
+                            ) : null}
                           </tbody>
                         </table>
                       </div>

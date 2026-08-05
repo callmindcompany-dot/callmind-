@@ -1,0 +1,1178 @@
+{
+  "totalUiFiles": 164,
+  "filesByFolder": {
+    "root": 6,
+    "components": 73,
+    "components\\docs": 3,
+    "components\\documents": 3,
+    "components\\founder": 4,
+    "components\\hierarchy": 1,
+    "components\\integrations": 19,
+    "components\\leads": 4,
+    "components\\leads\\__tests__": 1,
+    "components\\notifications": 3,
+    "components\\search": 2,
+    "components\\settings": 1,
+    "components\\__tests__": 1,
+    "features\\leads": 5,
+    "website\\components": 20,
+    "website": 1,
+    "website\\pages": 15,
+    "__tests__": 2
+  },
+  "totalLines": 57301,
+  "totalWords": 212872,
+  "totalLetters": 1395507,
+  "totalDigits": 70060,
+  "totalSymbols": 364676,
+  "fileList": [
+    {
+      "name": "LeadsPage.tsx",
+      "folder": "components",
+      "lines": 2874,
+      "words": 10157,
+      "sizeBytes": 128336
+    },
+    {
+      "name": "CommunicationPage.tsx",
+      "folder": "components",
+      "lines": 2370,
+      "words": 8355,
+      "sizeBytes": 119074
+    },
+    {
+      "name": "SettingsPage.tsx",
+      "folder": "components",
+      "lines": 2235,
+      "words": 7744,
+      "sizeBytes": 104284
+    },
+    {
+      "name": "TeamPage.tsx",
+      "folder": "components",
+      "lines": 2117,
+      "words": 7599,
+      "sizeBytes": 99799
+    },
+    {
+      "name": "SmartImportModal.tsx",
+      "folder": "components",
+      "lines": 1639,
+      "words": 6363,
+      "sizeBytes": 79658
+    },
+    {
+      "name": "ReportsPage.tsx",
+      "folder": "components",
+      "lines": 1426,
+      "words": 5718,
+      "sizeBytes": 80356
+    },
+    {
+      "name": "CallsPage.tsx",
+      "folder": "components",
+      "lines": 1188,
+      "words": 4023,
+      "sizeBytes": 54066
+    },
+    {
+      "name": "BillingPage.tsx",
+      "folder": "components",
+      "lines": 1107,
+      "words": 4117,
+      "sizeBytes": 53735
+    },
+    {
+      "name": "AutomationPage.tsx",
+      "folder": "components",
+      "lines": 1001,
+      "words": 3496,
+      "sizeBytes": 48111
+    },
+    {
+      "name": "Dashboard.tsx",
+      "folder": "components",
+      "lines": 999,
+      "words": 4270,
+      "sizeBytes": 50295
+    },
+    {
+      "name": "FoundersLab.tsx",
+      "folder": "components",
+      "lines": 994,
+      "words": 4208,
+      "sizeBytes": 52169
+    },
+    {
+      "name": "FounderDashboard.tsx",
+      "folder": "components",
+      "lines": 973,
+      "words": 3482,
+      "sizeBytes": 48923
+    },
+    {
+      "name": "AIInsightsHub.tsx",
+      "folder": "components",
+      "lines": 972,
+      "words": 3815,
+      "sizeBytes": 47485
+    },
+    {
+      "name": "SequencesPage.tsx",
+      "folder": "components",
+      "lines": 806,
+      "words": 2813,
+      "sizeBytes": 35357
+    },
+    {
+      "name": "LeadDetail.tsx",
+      "folder": "features\\leads",
+      "lines": 792,
+      "words": 2833,
+      "sizeBytes": 39379
+    },
+    {
+      "name": "AuthModal.tsx",
+      "folder": "website\\components",
+      "lines": 712,
+      "words": 2634,
+      "sizeBytes": 31453
+    },
+    {
+      "name": "SchedulerPage.tsx",
+      "folder": "components",
+      "lines": 685,
+      "words": 2440,
+      "sizeBytes": 31589
+    },
+    {
+      "name": "AuthContext.tsx",
+      "folder": "root",
+      "lines": 672,
+      "words": 2040,
+      "sizeBytes": 22099
+    },
+    {
+      "name": "Sidebar.tsx",
+      "folder": "components",
+      "lines": 670,
+      "words": 1755,
+      "sizeBytes": 22821
+    },
+    {
+      "name": "Login.tsx",
+      "folder": "components",
+      "lines": 648,
+      "words": 2499,
+      "sizeBytes": 33774
+    },
+    {
+      "name": "AnnouncementsPage.tsx",
+      "folder": "components",
+      "lines": 639,
+      "words": 2614,
+      "sizeBytes": 32755
+    },
+    {
+      "name": "RoadmapPage.tsx",
+      "folder": "components",
+      "lines": 583,
+      "words": 1826,
+      "sizeBytes": 25418
+    },
+    {
+      "name": "PrivacyPage.tsx",
+      "folder": "components",
+      "lines": 552,
+      "words": 2402,
+      "sizeBytes": 28654
+    },
+    {
+      "name": "DocumentReviewQueue.tsx",
+      "folder": "components\\documents",
+      "lines": 549,
+      "words": 1616,
+      "sizeBytes": 21955
+    },
+    {
+      "name": "AITrainingPage.tsx",
+      "folder": "components",
+      "lines": 545,
+      "words": 1975,
+      "sizeBytes": 24975
+    },
+    {
+      "name": "VideoTutorialsPage.tsx",
+      "folder": "components",
+      "lines": 545,
+      "words": 1977,
+      "sizeBytes": 26630
+    },
+    {
+      "name": "TermsOfServicePage.tsx",
+      "folder": "website\\pages",
+      "lines": 545,
+      "words": 3064,
+      "sizeBytes": 29599
+    },
+    {
+      "name": "JoinPage.tsx",
+      "folder": "components",
+      "lines": 512,
+      "words": 1743,
+      "sizeBytes": 24222
+    },
+    {
+      "name": "LeadDocumentCard.tsx",
+      "folder": "components\\documents",
+      "lines": 510,
+      "words": 1634,
+      "sizeBytes": 20636
+    },
+    {
+      "name": "LeadFilterBar.tsx",
+      "folder": "components\\leads",
+      "lines": 507,
+      "words": 1519,
+      "sizeBytes": 21130
+    },
+    {
+      "name": "HelpCenterPage.tsx",
+      "folder": "components",
+      "lines": 504,
+      "words": 1811,
+      "sizeBytes": 23543
+    },
+    {
+      "name": "PrivacyPolicyPage.tsx",
+      "folder": "website\\pages",
+      "lines": 496,
+      "words": 2523,
+      "sizeBytes": 25617
+    },
+    {
+      "name": "TermsPage.tsx",
+      "folder": "components",
+      "lines": 485,
+      "words": 2186,
+      "sizeBytes": 26470
+    },
+    {
+      "name": "CoFounderManagement.tsx",
+      "folder": "components",
+      "lines": 451,
+      "words": 1530,
+      "sizeBytes": 20356
+    },
+    {
+      "name": "DocumentViewerModal.tsx",
+      "folder": "components\\documents",
+      "lines": 439,
+      "words": 1380,
+      "sizeBytes": 17335
+    },
+    {
+      "name": "App.tsx",
+      "folder": "root",
+      "lines": 433,
+      "words": 1804,
+      "sizeBytes": 19810
+    },
+    {
+      "name": "ChatInbox.tsx",
+      "folder": "components",
+      "lines": 424,
+      "words": 1488,
+      "sizeBytes": 19229
+    },
+    {
+      "name": "OnboardingForm.tsx",
+      "folder": "components",
+      "lines": 421,
+      "words": 1357,
+      "sizeBytes": 18010
+    },
+    {
+      "name": "RefundPage.tsx",
+      "folder": "components",
+      "lines": 412,
+      "words": 1990,
+      "sizeBytes": 23566
+    },
+    {
+      "name": "DocsPage.tsx",
+      "folder": "website\\pages",
+      "lines": 409,
+      "words": 1365,
+      "sizeBytes": 20250
+    },
+    {
+      "name": "TrialUpgradeModal.tsx",
+      "folder": "components",
+      "lines": 408,
+      "words": 1583,
+      "sizeBytes": 19048
+    },
+    {
+      "name": "OrganizationTenants.tsx",
+      "folder": "components",
+      "lines": 407,
+      "words": 1396,
+      "sizeBytes": 18741
+    },
+    {
+      "name": "LeadTable.tsx",
+      "folder": "components\\leads",
+      "lines": 403,
+      "words": 1674,
+      "sizeBytes": 19695
+    },
+    {
+      "name": "PipelineBoard.tsx",
+      "folder": "components",
+      "lines": 403,
+      "words": 1293,
+      "sizeBytes": 14932
+    },
+    {
+      "name": "AuditLogPage.tsx",
+      "folder": "components",
+      "lines": 401,
+      "words": 1465,
+      "sizeBytes": 19348
+    },
+    {
+      "name": "PlatformAuditLog.tsx",
+      "folder": "components",
+      "lines": 396,
+      "words": 1327,
+      "sizeBytes": 17075
+    },
+    {
+      "name": "TeamTargetsSection.tsx",
+      "folder": "components",
+      "lines": 390,
+      "words": 1372,
+      "sizeBytes": 16324
+    },
+    {
+      "name": "OrganizationHierarchySettings.tsx",
+      "folder": "components\\settings",
+      "lines": 383,
+      "words": 1188,
+      "sizeBytes": 14634
+    },
+    {
+      "name": "CleanupWidget.tsx",
+      "folder": "components",
+      "lines": 381,
+      "words": 1459,
+      "sizeBytes": 17496
+    },
+    {
+      "name": "NotificationsPage.tsx",
+      "folder": "components\\notifications",
+      "lines": 379,
+      "words": 1134,
+      "sizeBytes": 14954
+    },
+    {
+      "name": "IntegrationsPage.tsx",
+      "folder": "components",
+      "lines": 371,
+      "words": 1083,
+      "sizeBytes": 18534
+    },
+    {
+      "name": "AgentLiveMonitor.tsx",
+      "folder": "components",
+      "lines": 368,
+      "words": 1382,
+      "sizeBytes": 19455
+    },
+    {
+      "name": "LeadForm.tsx",
+      "folder": "features\\leads",
+      "lines": 359,
+      "words": 1188,
+      "sizeBytes": 16091
+    },
+    {
+      "name": "TeamJoinToolsSection.tsx",
+      "folder": "components",
+      "lines": 336,
+      "words": 1307,
+      "sizeBytes": 16917
+    },
+    {
+      "name": "CompanyDetail.tsx",
+      "folder": "components\\founder",
+      "lines": 334,
+      "words": 1170,
+      "sizeBytes": 15416
+    },
+    {
+      "name": "ProductPage.tsx",
+      "folder": "website\\pages",
+      "lines": 332,
+      "words": 1295,
+      "sizeBytes": 16050
+    },
+    {
+      "name": "RoiCalculator.tsx",
+      "folder": "website\\components",
+      "lines": 318,
+      "words": 1524,
+      "sizeBytes": 17763
+    },
+    {
+      "name": "MobileAppPage.tsx",
+      "folder": "website\\pages",
+      "lines": 318,
+      "words": 1246,
+      "sizeBytes": 15006
+    },
+    {
+      "name": "LeadFilters.tsx",
+      "folder": "features\\leads",
+      "lines": 315,
+      "words": 1047,
+      "sizeBytes": 14203
+    },
+    {
+      "name": "AgentDrillDownSlider.tsx",
+      "folder": "components",
+      "lines": 304,
+      "words": 1008,
+      "sizeBytes": 15638
+    },
+    {
+      "name": "DynamicCharts.tsx",
+      "folder": "components",
+      "lines": 300,
+      "words": 1355,
+      "sizeBytes": 14988
+    },
+    {
+      "name": "CompanyTable.tsx",
+      "folder": "components\\founder",
+      "lines": 298,
+      "words": 935,
+      "sizeBytes": 12888
+    },
+    {
+      "name": "CustomFieldManager.tsx",
+      "folder": "components",
+      "lines": 288,
+      "words": 948,
+      "sizeBytes": 14037
+    },
+    {
+      "name": "RefundPolicyPage.tsx",
+      "folder": "website\\pages",
+      "lines": 288,
+      "words": 1317,
+      "sizeBytes": 13882
+    },
+    {
+      "name": "IntegrationHub.tsx",
+      "folder": "components\\integrations",
+      "lines": 285,
+      "words": 1032,
+      "sizeBytes": 14097
+    },
+    {
+      "name": "AttendanceSection.tsx",
+      "folder": "components",
+      "lines": 276,
+      "words": 1115,
+      "sizeBytes": 12949
+    },
+    {
+      "name": "FacebookConfigPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 270,
+      "words": 1350,
+      "sizeBytes": 16132
+    },
+    {
+      "name": "ExportReportModal.tsx",
+      "folder": "components",
+      "lines": 267,
+      "words": 854,
+      "sizeBytes": 10755
+    },
+    {
+      "name": "ErrorBoundary.tsx",
+      "folder": "components",
+      "lines": 266,
+      "words": 791,
+      "sizeBytes": 10780
+    },
+    {
+      "name": "LeadImport.tsx",
+      "folder": "features\\leads",
+      "lines": 257,
+      "words": 920,
+      "sizeBytes": 11869
+    },
+    {
+      "name": "TicketDetail.tsx",
+      "folder": "components\\founder",
+      "lines": 252,
+      "words": 869,
+      "sizeBytes": 11385
+    },
+    {
+      "name": "WebsiteFormPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 241,
+      "words": 1050,
+      "sizeBytes": 13996
+    },
+    {
+      "name": "SupportPage.tsx",
+      "folder": "components",
+      "lines": 240,
+      "words": 1083,
+      "sizeBytes": 12197
+    },
+    {
+      "name": "GlobalSearchModal.tsx",
+      "folder": "components\\search",
+      "lines": 233,
+      "words": 782,
+      "sizeBytes": 9528
+    },
+    {
+      "name": "FounderHub.tsx",
+      "folder": "components",
+      "lines": 231,
+      "words": 822,
+      "sizeBytes": 10431
+    },
+    {
+      "name": "LeadList.tsx",
+      "folder": "features\\leads",
+      "lines": 230,
+      "words": 856,
+      "sizeBytes": 10212
+    },
+    {
+      "name": "SubAdminManagementTab.tsx",
+      "folder": "components",
+      "lines": 229,
+      "words": 811,
+      "sizeBytes": 11293
+    },
+    {
+      "name": "PlatformPage.tsx",
+      "folder": "website\\pages",
+      "lines": 229,
+      "words": 846,
+      "sizeBytes": 10368
+    },
+    {
+      "name": "Footer.tsx",
+      "folder": "website\\components",
+      "lines": 217,
+      "words": 852,
+      "sizeBytes": 10900
+    },
+    {
+      "name": "IntegrationsPage.tsx",
+      "folder": "website\\pages",
+      "lines": 211,
+      "words": 1051,
+      "sizeBytes": 11760
+    },
+    {
+      "name": "GeminiKeysManager.tsx",
+      "folder": "components",
+      "lines": 210,
+      "words": 772,
+      "sizeBytes": 10147
+    },
+    {
+      "name": "PricingPreview.tsx",
+      "folder": "website\\components",
+      "lines": 210,
+      "words": 776,
+      "sizeBytes": 8948
+    },
+    {
+      "name": "AnnouncementModal.tsx",
+      "folder": "components\\founder",
+      "lines": 209,
+      "words": 712,
+      "sizeBytes": 8927
+    },
+    {
+      "name": "WebAppShowcase.tsx",
+      "folder": "website\\components",
+      "lines": 201,
+      "words": 750,
+      "sizeBytes": 9406
+    },
+    {
+      "name": "TeamAnnouncementsSection.tsx",
+      "folder": "components",
+      "lines": 199,
+      "words": 701,
+      "sizeBytes": 8311
+    },
+    {
+      "name": "Hero.tsx",
+      "folder": "website\\components",
+      "lines": 199,
+      "words": 786,
+      "sizeBytes": 8831
+    },
+    {
+      "name": "ProductSimulator.tsx",
+      "folder": "website\\components",
+      "lines": 197,
+      "words": 752,
+      "sizeBytes": 10583
+    },
+    {
+      "name": "TrialBanner.tsx",
+      "folder": "components",
+      "lines": 195,
+      "words": 707,
+      "sizeBytes": 7396
+    },
+    {
+      "name": "PricingPage.tsx",
+      "folder": "website\\pages",
+      "lines": 194,
+      "words": 807,
+      "sizeBytes": 9504
+    },
+    {
+      "name": "DocsHero3D.tsx",
+      "folder": "components\\docs",
+      "lines": 188,
+      "words": 801,
+      "sizeBytes": 6361
+    },
+    {
+      "name": "DuplicateResolutionModal.tsx",
+      "folder": "components",
+      "lines": 181,
+      "words": 635,
+      "sizeBytes": 9790
+    },
+    {
+      "name": "NotificationDropdown.tsx",
+      "folder": "components\\notifications",
+      "lines": 181,
+      "words": 568,
+      "sizeBytes": 7028
+    },
+    {
+      "name": "ScheduleReportModal.tsx",
+      "folder": "components",
+      "lines": 177,
+      "words": 562,
+      "sizeBytes": 7448
+    },
+    {
+      "name": "SubAdminInviteModal.tsx",
+      "folder": "components",
+      "lines": 177,
+      "words": 588,
+      "sizeBytes": 7414
+    },
+    {
+      "name": "ApiPlaygroundModal.tsx",
+      "folder": "components\\docs",
+      "lines": 176,
+      "words": 585,
+      "sizeBytes": 7632
+    },
+    {
+      "name": "GoogleAdsConfigPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 176,
+      "words": 803,
+      "sizeBytes": 9373
+    },
+    {
+      "name": "MobileAppShowcase.tsx",
+      "folder": "website\\components",
+      "lines": 174,
+      "words": 738,
+      "sizeBytes": 8072
+    },
+    {
+      "name": "AnalyticsPage.tsx",
+      "folder": "components",
+      "lines": 173,
+      "words": 653,
+      "sizeBytes": 8363
+    },
+    {
+      "name": "ImportLogsTable.tsx",
+      "folder": "components\\integrations",
+      "lines": 171,
+      "words": 593,
+      "sizeBytes": 7767
+    },
+    {
+      "name": "ProtectedRoute.tsx",
+      "folder": "root",
+      "lines": 170,
+      "words": 613,
+      "sizeBytes": 5881
+    },
+    {
+      "name": "FaqPage.tsx",
+      "folder": "website\\pages",
+      "lines": 168,
+      "words": 661,
+      "sizeBytes": 7616
+    },
+    {
+      "name": "SolutionsPage.tsx",
+      "folder": "website\\pages",
+      "lines": 165,
+      "words": 708,
+      "sizeBytes": 7707
+    },
+    {
+      "name": "DocsSearchModal.tsx",
+      "folder": "components\\docs",
+      "lines": 164,
+      "words": 566,
+      "sizeBytes": 7044
+    },
+    {
+      "name": "HealthDashboard.tsx",
+      "folder": "components\\integrations",
+      "lines": 164,
+      "words": 708,
+      "sizeBytes": 8922
+    },
+    {
+      "name": "DashboardLayout.tsx",
+      "folder": "components",
+      "lines": 163,
+      "words": 703,
+      "sizeBytes": 8080
+    },
+    {
+      "name": "ContactPage.tsx",
+      "folder": "website\\pages",
+      "lines": 158,
+      "words": 691,
+      "sizeBytes": 8818
+    },
+    {
+      "name": "SecurityPage.tsx",
+      "folder": "website\\pages",
+      "lines": 157,
+      "words": 797,
+      "sizeBytes": 7943
+    },
+    {
+      "name": "LeadsPage.test.tsx",
+      "folder": "__tests__",
+      "lines": 155,
+      "words": 449,
+      "sizeBytes": 4278
+    },
+    {
+      "name": "IndiaMartConfigPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 154,
+      "words": 675,
+      "sizeBytes": 7812
+    },
+    {
+      "name": "JustdialConfigPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 154,
+      "words": 673,
+      "sizeBytes": 7809
+    },
+    {
+      "name": "TradeIndiaConfigPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 154,
+      "words": 668,
+      "sizeBytes": 7778
+    },
+    {
+      "name": "Navbar.tsx",
+      "folder": "website\\components",
+      "lines": 149,
+      "words": 478,
+      "sizeBytes": 5461
+    },
+    {
+      "name": "CompanyPage.tsx",
+      "folder": "website\\pages",
+      "lines": 148,
+      "words": 582,
+      "sizeBytes": 7226
+    },
+    {
+      "name": "TelecallerInviteModal.tsx",
+      "folder": "components",
+      "lines": 147,
+      "words": 496,
+      "sizeBytes": 6384
+    },
+    {
+      "name": "SubscriptionStatusHeader.tsx",
+      "folder": "components",
+      "lines": 142,
+      "words": 560,
+      "sizeBytes": 6594
+    },
+    {
+      "name": "AISetupBot.tsx",
+      "folder": "components",
+      "lines": 134,
+      "words": 507,
+      "sizeBytes": 6118
+    },
+    {
+      "name": "FAQSection.tsx",
+      "folder": "website\\components",
+      "lines": 133,
+      "words": 700,
+      "sizeBytes": 6813
+    },
+    {
+      "name": "AuthContext.test.tsx",
+      "folder": "__tests__",
+      "lines": 130,
+      "words": 362,
+      "sizeBytes": 4042
+    },
+    {
+      "name": "BulkActionBar.tsx",
+      "folder": "components\\leads",
+      "lines": 129,
+      "words": 403,
+      "sizeBytes": 4898
+    },
+    {
+      "name": "UpgradeModal.tsx",
+      "folder": "components",
+      "lines": 128,
+      "words": 509,
+      "sizeBytes": 5590
+    },
+    {
+      "name": "IndiaFirstSection.tsx",
+      "folder": "website\\components",
+      "lines": 120,
+      "words": 573,
+      "sizeBytes": 5216
+    },
+    {
+      "name": "HeatmapChart.tsx",
+      "folder": "components",
+      "lines": 113,
+      "words": 449,
+      "sizeBytes": 4483
+    },
+    {
+      "name": "LeadDistributionPanel.tsx",
+      "folder": "components\\leads",
+      "lines": 110,
+      "words": 379,
+      "sizeBytes": 5052
+    },
+    {
+      "name": "CallMindLoader.tsx",
+      "folder": "components",
+      "lines": 108,
+      "words": 308,
+      "sizeBytes": 3386
+    },
+    {
+      "name": "FounderSection.tsx",
+      "folder": "website\\components",
+      "lines": 108,
+      "words": 468,
+      "sizeBytes": 5681
+    },
+    {
+      "name": "BeforeAfterComparison.tsx",
+      "folder": "website\\components",
+      "lines": 106,
+      "words": 442,
+      "sizeBytes": 4940
+    },
+    {
+      "name": "GlobalSearchResultItem.tsx",
+      "folder": "components\\search",
+      "lines": 100,
+      "words": 325,
+      "sizeBytes": 3637
+    },
+    {
+      "name": "Features.tsx",
+      "folder": "website\\components",
+      "lines": 100,
+      "words": 371,
+      "sizeBytes": 3648
+    },
+    {
+      "name": "LeadsPagination.tsx",
+      "folder": "components",
+      "lines": 95,
+      "words": 337,
+      "sizeBytes": 3499
+    },
+    {
+      "name": "CompanyAboutSection.tsx",
+      "folder": "website\\components",
+      "lines": 95,
+      "words": 421,
+      "sizeBytes": 4638
+    },
+    {
+      "name": "DynamicFieldRenderer.tsx",
+      "folder": "components",
+      "lines": 93,
+      "words": 306,
+      "sizeBytes": 4604
+    },
+    {
+      "name": "TrialWidgets.tsx",
+      "folder": "components",
+      "lines": 91,
+      "words": 376,
+      "sizeBytes": 3913
+    },
+    {
+      "name": "LeadTable.test.tsx",
+      "folder": "components\\leads\\__tests__",
+      "lines": 90,
+      "words": 411,
+      "sizeBytes": 3234
+    },
+    {
+      "name": "EmailConfigPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 88,
+      "words": 508,
+      "sizeBytes": 5960
+    },
+    {
+      "name": "SEOHead.tsx",
+      "folder": "website\\components",
+      "lines": 88,
+      "words": 404,
+      "sizeBytes": 3464
+    },
+    {
+      "name": "NotFoundPage.tsx",
+      "folder": "website\\pages",
+      "lines": 88,
+      "words": 356,
+      "sizeBytes": 3600
+    },
+    {
+      "name": "FieldAliasesPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 87,
+      "words": 392,
+      "sizeBytes": 4640
+    },
+    {
+      "name": "ProtectedRoute.test.tsx",
+      "folder": "components\\__tests__",
+      "lines": 87,
+      "words": 232,
+      "sizeBytes": 2449
+    },
+    {
+      "name": "HierarchyFilterBar.tsx",
+      "folder": "components\\hierarchy",
+      "lines": 86,
+      "words": 266,
+      "sizeBytes": 3037
+    },
+    {
+      "name": "ConfirmModal.tsx",
+      "folder": "components",
+      "lines": 85,
+      "words": 233,
+      "sizeBytes": 2932
+    },
+    {
+      "name": "RoutingConfigPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 85,
+      "words": 434,
+      "sizeBytes": 5625
+    },
+    {
+      "name": "WaitlistPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 83,
+      "words": 276,
+      "sizeBytes": 3325
+    },
+    {
+      "name": "WebhookConfigPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 83,
+      "words": 351,
+      "sizeBytes": 4248
+    },
+    {
+      "name": "SecurityHighlight.tsx",
+      "folder": "website\\components",
+      "lines": 82,
+      "words": 341,
+      "sizeBytes": 4371
+    },
+    {
+      "name": "LandingPage.tsx",
+      "folder": "website",
+      "lines": 82,
+      "words": 408,
+      "sizeBytes": 4039
+    },
+    {
+      "name": "WhatsAppConfigPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 73,
+      "words": 415,
+      "sizeBytes": 4794
+    },
+    {
+      "name": "SectionHeader.tsx",
+      "folder": "website\\components",
+      "lines": 71,
+      "words": 269,
+      "sizeBytes": 2199
+    },
+    {
+      "name": "SkeletonLoader.tsx",
+      "folder": "components",
+      "lines": 70,
+      "words": 262,
+      "sizeBytes": 2794
+    },
+    {
+      "name": "AccountPausedPage.tsx",
+      "folder": "components",
+      "lines": 69,
+      "words": 265,
+      "sizeBytes": 2877
+    },
+    {
+      "name": "main.tsx",
+      "folder": "root",
+      "lines": 64,
+      "words": 247,
+      "sizeBytes": 2176
+    },
+    {
+      "name": "NotificationBell.tsx",
+      "folder": "components\\notifications",
+      "lines": 62,
+      "words": 203,
+      "sizeBytes": 2191
+    },
+    {
+      "name": "AccountExpiredPage.tsx",
+      "folder": "components",
+      "lines": 56,
+      "words": 217,
+      "sizeBytes": 2374
+    },
+    {
+      "name": "CallMindPulseLoader.tsx",
+      "folder": "components",
+      "lines": 55,
+      "words": 214,
+      "sizeBytes": 2481
+    },
+    {
+      "name": "TechnicalFeatures.tsx",
+      "folder": "website\\components",
+      "lines": 55,
+      "words": 231,
+      "sizeBytes": 2349
+    },
+    {
+      "name": "entry-server.tsx",
+      "folder": "root",
+      "lines": 49,
+      "words": 235,
+      "sizeBytes": 1701
+    },
+    {
+      "name": "CompanyContext.tsx",
+      "folder": "root",
+      "lines": 46,
+      "words": 182,
+      "sizeBytes": 1605
+    },
+    {
+      "name": "ProviderCard.tsx",
+      "folder": "components\\integrations",
+      "lines": 43,
+      "words": 195,
+      "sizeBytes": 2176
+    },
+    {
+      "name": "IntegrationsBar.tsx",
+      "folder": "website\\components",
+      "lines": 43,
+      "words": 187,
+      "sizeBytes": 1953
+    },
+    {
+      "name": "IntegrationCard.tsx",
+      "folder": "components\\integrations",
+      "lines": 41,
+      "words": 180,
+      "sizeBytes": 2072
+    },
+    {
+      "name": "ActionProgressBar.tsx",
+      "folder": "components",
+      "lines": 38,
+      "words": 111,
+      "sizeBytes": 1146
+    },
+    {
+      "name": "CommunicationRedirectPanel.tsx",
+      "folder": "components\\integrations",
+      "lines": 37,
+      "words": 109,
+      "sizeBytes": 1414
+    },
+    {
+      "name": "WorkflowCard.tsx",
+      "folder": "components\\integrations",
+      "lines": 35,
+      "words": 131,
+      "sizeBytes": 1623
+    },
+    {
+      "name": "FeatureGate.tsx",
+      "folder": "components",
+      "lines": 16,
+      "words": 49,
+      "sizeBytes": 383
+    },
+    {
+      "name": "TrialLockOverlay.tsx",
+      "folder": "components",
+      "lines": 16,
+      "words": 60,
+      "sizeBytes": 461
+    }
+  ]
+}

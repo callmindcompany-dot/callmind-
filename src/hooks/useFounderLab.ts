@@ -196,8 +196,9 @@ export function useManageResourceMutation() {
         const { error } = await supabase.from('resources').insert([action.resource]);
         if (error) throw error;
       } else if (action.type === 'delete') {
-        const { error } = await supabase.from('resources').delete().eq('id', action.id);
+        const { error, count } = await supabase.from('resources').delete({ count: 'exact' }).eq('id', action.id);
         if (error) throw error;
+        if (!count) throw new Error('Nothing was deleted — the record may already be gone.');
       } else if (action.type === 'seed') {
         const { error } = await supabase.from('resources').insert(action.videos);
         if (error) throw error;

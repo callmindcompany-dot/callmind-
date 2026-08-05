@@ -1,10 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import { AppState, Linking, StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 import { Home, Users, PhoneCall, Inbox, BarChart3, Settings, Grid } from 'lucide-react-native';
+import NetInfo from '@react-native-community/netinfo';
 
 // Services & Context
 import { MobileAuthProvider, useMobileAuth } from './src/services/AuthContext';
+import { leadService } from './src/services/leadService';
+import { callService } from './src/services/callService';
+import { syncService } from './src/services/sync';
+import { attendanceService, FormattedAttendanceDay } from './src/services/attendanceService';
+import { targetService, TelecallerStats } from './src/services/targetService';
+import { callLogService } from './src/services/callLogService';
+import { LeadItem } from './src/screens/LeadListScreen';
+import { CallLogItem } from './src/screens/54_CallLogScreen';
+import { CallbackItem } from './src/screens/CallbacksScreen';
 
 // Auth & Onboarding Screens
 import { SplashScreen } from './src/screens/01_SplashScreen';
@@ -106,6 +116,11 @@ type AppScreen =
 
 type BottomTab = 'home' | 'leads' | 'callbacks' | 'performance' | 'inbox' | 'settings';
 
+const formatElapsedDuration = (startedAt: number): string => {
+  const totalSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+  return `${Math.floor(totalSeconds / 60).toString().padStart(2, '0')}:${(totalSeconds % 60).toString().padStart(2, '0')}`;
+};
+
 function MainAppContent() {
   const {
     user,
@@ -142,6 +157,10 @@ function MainAppContent() {
   const [showScheduleCallback, setShowScheduleCallback] = useState(false);
   const [showLeadFilter, setShowLeadFilter] = useState(false);
   const [callingLeadName, setCallingLeadName] = useState('');
+  const [callDuration, setCallDuration] = useState('00:00');
+  const dialerStartedAtRef = useRef<number | null>(null);
+  const awaitingDialerReturnRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
 
   // Priority 2 Overlays & Modals
   const [showCallCompleted, setShowCallCompleted] = useState(false);
@@ -151,6 +170,200 @@ function MainAppContent() {
   const [showDeviceVerification, setShowDeviceVerification] = useState(false);
   const [legalDocType, setLegalDocType] = useState<'privacy' | 'terms'>('privacy');
   const [checkingApproval, setCheckingApproval] = useState(false);
+
+  // Real Database Leads State
+  const [leads, setLeads] = useState<LeadItem[]>([]);
+  const [refreshingLeads, setRefreshingLeads] = useState(false);
+  const [activeCallingLead, setActiveCallingLead] = useState<LeadItem | null>(null);
+
+  // Phase 2 Database State (Call Logs, Callbacks, Attendance, Targets)
+  const [callLogs, setCallLogs] = useState<CallLogItem[]>([]);
+  const [callbacks, setCallbacks] = useState<CallbackItem[]>([]);
+  const [attendanceHistory, setAttendanceHistory] = useState<FormattedAttendanceDay[]>([]);
+  const [isPunchedIn, setIsPunchedIn] = useState(false);
+  const [lastPunchTime, setLastPunchTime] = useState('09:00 AM');
+  const [telecallerStats, setTelecallerStats] = useState<TelecallerStats>({
+    totalCalls: 0,
+    connectedCalls: 0,
+    interestedLeads: 0,
+    conversions: 0,
+    callTarget: 100,
+    callTargetProgress: 0,
+  });
+  const [refreshingSecondary, setRefreshingSecondary] = useState(false);
+
+  // Function to load assigned leads for logged-in telecaller
+  const loadLeads = useCallback(async () => {
+    if (!profile?.companyId || !profile?.uid) return;
+    setRefreshingLeads(true);
+    const fetched = await leadService.fetchAssignedLeads(profile.companyId, profile.uid);
+    setLeads(fetched);
+    setRefreshingLeads(false);
+  }, [profile?.companyId, profile?.uid]);
+
+  // Function to load secondary data (Call Logs, Callbacks, Attendance, Targets)
+  const loadSecondaryData = useCallback(async () => {
+    if (!profile?.companyId || !profile?.uid) return;
+    setRefreshingSecondary(true);
+
+    const [logs, cbs, attHist, punchStatus, stats] = await Promise.all([
+      callLogService.fetchCallLogs(profile.companyId, profile.uid),
+      callLogService.fetchCallbacks(profile.companyId, profile.uid),
+      attendanceService.fetchAttendanceHistory(profile.companyId, profile.uid),
+      attendanceService.getLatestPunchStatus(profile.companyId, profile.uid),
+      targetService.fetchTelecallerStats(profile.companyId, profile.uid),
+    ]);
+
+    setCallLogs(logs);
+    setCallbacks(cbs);
+    setAttendanceHistory(attHist);
+    setIsPunchedIn(punchStatus.isPunchedIn);
+    if (punchStatus.lastPunchTime) {
+      setLastPunchTime(punchStatus.lastPunchTime);
+    }
+    setTelecallerStats(stats);
+    setRefreshingSecondary(false);
+  }, [profile?.companyId, profile?.uid]);
+
+  // Handle punch in
+  const handlePunchIn = async () => {
+    if (!profile?.companyId || !profile?.uid) return;
+    const userName = profile.name || 'Telecaller';
+    const ok = await attendanceService.punchIn(profile.companyId, profile.uid, userName);
+    if (ok) {
+      toastSuccess('Punched In', 'Attendance record logged successfully.');
+      loadSecondaryData();
+    } else {
+      toastError('Error', 'Failed to log punch in.');
+    }
+  };
+
+  // Handle punch out
+  const handlePunchOut = async () => {
+    if (!profile?.companyId || !profile?.uid) return;
+    const userName = profile.name || 'Telecaller';
+    const ok = await attendanceService.punchOut(profile.companyId, profile.uid, userName);
+    if (ok) {
+      toastInfo('Punched Out', 'Attendance punch out logged.');
+      loadSecondaryData();
+    } else {
+      toastError('Error', 'Failed to log punch out.');
+    }
+  };
+
+  // Load leads & secondary data on profile ready
+  useEffect(() => {
+    if (isAuthenticated && profile?.companyId && profile?.uid) {
+      loadLeads();
+      loadSecondaryData();
+      syncService.getPendingCount().then((count) => setPendingSyncCount(count));
+    }
+  }, [isAuthenticated, profile?.companyId, profile?.uid, loadLeads, loadSecondaryData]);
+
+  // Subscribe to real network status changes via NetInfo
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const offline = !state.isConnected || state.isInternetReachable === false;
+      setIsOffline(offline);
+
+      if (!offline) {
+        // Automatically sync pending offline logs when internet is restored
+        syncService.syncPendingLogs().then(async ({ successCount }) => {
+          const remaining = await syncService.getPendingCount();
+          setPendingSyncCount(remaining);
+          if (successCount > 0) {
+            toastSuccess('Sync Complete', `Synced ${successCount} offline call logs to cloud.`);
+            loadLeads();
+          }
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [loadLeads]);
+
+  // Open the device's native dialer. This does not read call history or record audio.
+  const handleCallLead = async (lead: LeadItem) => {
+    const phone = lead.phone.replace(/[^\d+]/g, '');
+    if (!phone) {
+      toastError('Invalid phone number', 'This lead does not have a valid phone number.');
+      return;
+    }
+
+    setActiveCallingLead(lead);
+    setCallingLeadName(lead.name);
+    setCallDuration('00:00');
+
+    try {
+      const dialerUrl = `tel:${phone}`;
+      if (!(await Linking.canOpenURL(dialerUrl))) {
+        toastError('Dialer unavailable', 'No phone dialer is available on this device.');
+        return;
+      }
+
+      dialerStartedAtRef.current = Date.now();
+      awaitingDialerReturnRef.current = true;
+      await Linking.openURL(dialerUrl);
+    } catch {
+      awaitingDialerReturnRef.current = false;
+      dialerStartedAtRef.current = null;
+      toastError('Could not start call', 'Please try again or call the lead manually.');
+    }
+  };
+
+  // Handle post-call feedback submit
+  const handleFeedbackSubmit = async (feedback: { outcome: string; interest: string; notes: string }) => {
+    setShowFeedback(false);
+    if (!profile?.companyId || !profile?.uid) {
+      toastError('Error', 'Missing user profile or company session.');
+      return;
+    }
+
+    const res = await callService.logCallOutcome({
+      companyId: profile.companyId,
+      agentId: profile.uid,
+      leadId: activeCallingLead?.id,
+      leadName: activeCallingLead?.name || callingLeadName || 'Lead',
+      phone: activeCallingLead?.phone || '+91 98765 43210',
+      duration: callDuration,
+      outcome: feedback.outcome,
+      interest: feedback.interest,
+      notes: feedback.notes,
+    });
+
+    const pending = await syncService.getPendingCount();
+    setPendingSyncCount(pending);
+
+    if (res.queued) {
+      toastInfo('Saved Offline', 'Call logged locally in queue. Will sync when connection returns.');
+    } else {
+      toastSuccess('Feedback Saved', 'Call disposition logged successfully.');
+      loadLeads();
+      loadSecondaryData();
+    }
+  };
+
+  // Display the feedback sheet when the agent returns from the system dialer.
+  // This is dialer elapsed time, not carrier-verified call duration.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      const returnedToApp =
+        awaitingDialerReturnRef.current &&
+        (appStateRef.current === 'inactive' || appStateRef.current === 'background') &&
+        nextState === 'active';
+
+      if (returnedToApp) {
+        setCallDuration(dialerStartedAtRef.current ? formatElapsedDuration(dialerStartedAtRef.current) : '00:00');
+        awaitingDialerReturnRef.current = false;
+        dialerStartedAtRef.current = null;
+        setShowFeedback(true);
+      }
+
+      appStateRef.current = nextState;
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   // Auto-advance auth steps based on authenticated & profile state
   useEffect(() => {
@@ -235,6 +448,8 @@ function MainAppContent() {
   };
 
   const renderScreen = () => {
+    const selectedLead = leads.find((l) => l.id === selectedLeadId);
+
     switch (currentScreen) {
       case 'home':
         return (
@@ -246,6 +461,10 @@ function MainAppContent() {
               setSelectedLeadId(id);
               setCurrentScreen('lead_detail');
             }}
+            onCallLead={handleCallLead}
+            recentLeads={leads}
+            refreshing={refreshingLeads}
+            onRefresh={loadLeads}
           />
         );
 
@@ -256,7 +475,11 @@ function MainAppContent() {
               setSelectedLeadId(id);
               setCurrentScreen('lead_detail');
             }}
+            onCallLead={handleCallLead}
             onBack={() => navigateToTab('home')}
+            leads={leads}
+            refreshing={refreshingLeads}
+            onRefresh={loadLeads}
           />
         );
 
@@ -264,10 +487,15 @@ function MainAppContent() {
         return (
           <LeadDetailScreen
             leadId={selectedLeadId}
+            lead={selectedLead}
             onBack={() => setCurrentScreen('leads')}
-            onCall={() => {
-              setCallingLeadName('Selected Lead');
-              setShowCallingScreen(true);
+            onCall={(phone) => {
+              if (selectedLead) {
+                handleCallLead(selectedLead);
+              } else {
+                setCallingLeadName('Selected Lead');
+                setShowCallingScreen(true);
+              }
             }}
           />
         );
@@ -280,6 +508,9 @@ function MainAppContent() {
               setSelectedLeadId(id);
               setCurrentScreen('lead_detail');
             }}
+            callLogs={callLogs}
+            refreshing={refreshingSecondary}
+            onRefresh={loadSecondaryData}
           />
         );
 
@@ -372,6 +603,13 @@ function MainAppContent() {
               setSelectedLeadId(id);
               setCurrentScreen('lead_detail');
             }}
+            onCallLead={(phone, name) => {
+              setCallingLeadName(name);
+              setShowCallingScreen(true);
+            }}
+            callbacks={callbacks}
+            refreshing={refreshingSecondary}
+            onRefresh={loadSecondaryData}
           />
         );
 
@@ -396,7 +634,12 @@ function MainAppContent() {
 
       case 'performance':
         return (
-          <PerformanceScreen onBack={() => navigateToTab('home')} />
+          <PerformanceScreen
+            onBack={() => navigateToTab('home')}
+            stats={telecallerStats}
+            refreshing={refreshingSecondary}
+            onRefresh={loadSecondaryData}
+          />
         );
 
       case 'leaderboard':
@@ -406,12 +649,26 @@ function MainAppContent() {
 
       case 'attendance':
         return (
-          <AttendanceScreen onBack={() => navigateToTab('home')} />
+          <AttendanceScreen
+            onBack={() => navigateToTab('home')}
+            isPunchedIn={isPunchedIn}
+            lastPunchTime={lastPunchTime}
+            history={attendanceHistory}
+            onPunchIn={handlePunchIn}
+            onPunchOut={handlePunchOut}
+            refreshing={refreshingSecondary}
+            onRefresh={loadSecondaryData}
+          />
         );
 
       case 'target':
         return (
-          <TargetScreen onBack={() => navigateToTab('home')} />
+          <TargetScreen
+            onBack={() => navigateToTab('home')}
+            stats={telecallerStats}
+            refreshing={refreshingSecondary}
+            onRefresh={loadSecondaryData}
+          />
         );
 
       case 'documents':
@@ -477,8 +734,20 @@ function MainAppContent() {
       <StatusBar style="auto" />
 
       {/* Offline Banner */}
-      {isOffline && (
-        <OfflineSyncBanner isOffline={isOffline} pendingCount={pendingSyncCount} onSyncNow={() => setPendingSyncCount(0)} />
+      {(isOffline || pendingSyncCount > 0) && (
+        <OfflineSyncBanner
+          isOffline={isOffline}
+          pendingCount={pendingSyncCount}
+          onSyncNow={async () => {
+            const { successCount } = await syncService.syncPendingLogs();
+            const count = await syncService.getPendingCount();
+            setPendingSyncCount(count);
+            if (successCount > 0) {
+              toastSuccess('Sync Complete', `Synced ${successCount} offline call logs.`);
+              loadLeads();
+            }
+          }}
+        />
       )}
 
       {/* Screen Body */}
@@ -521,8 +790,8 @@ function MainAppContent() {
 
       {showCallingScreen && (
         <CallingScreen
-          leadName={callingLeadName || 'Lead'}
-          leadPhone="+91 98765 43210"
+          leadName={callingLeadName || activeCallingLead?.name || 'Lead'}
+          leadPhone={activeCallingLead?.phone || '+91 98765 43210'}
           sim="SIM 1"
           onCallConnected={() => {
             setShowCallingScreen(false);
@@ -538,8 +807,8 @@ function MainAppContent() {
 
       {showActiveCall && (
         <ActiveCallOverlay
-          leadName={callingLeadName || 'Lead'}
-          leadPhone="+91 98765 43210"
+          leadName={callingLeadName || activeCallingLead?.name || 'Lead'}
+          leadPhone={activeCallingLead?.phone || '+91 98765 43210'}
           sim="SIM 1"
           onEndCall={() => {
             setShowActiveCall(false);
@@ -551,11 +820,9 @@ function MainAppContent() {
 
       {showFeedback && (
         <PostCallFeedbackSheet
-          leadName={callingLeadName || 'Lead'}
-          onSubmit={() => {
-            setShowFeedback(false);
-            toastSuccess('Feedback Saved', 'Call disposition logged successfully.');
-          }}
+          leadName={callingLeadName || activeCallingLead?.name || 'Lead'}
+          callDuration={callDuration}
+          onSubmit={handleFeedbackSubmit}
           onDismiss={() => setShowFeedback(false)}
         />
       )}

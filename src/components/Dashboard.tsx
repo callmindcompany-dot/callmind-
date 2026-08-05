@@ -21,6 +21,8 @@ import CallMindLoader from './CallMindLoader';
 import { TrialBanner } from './TrialBanner';
 import { TrialProgressBar, TrialUsageSummary } from './TrialWidgets';
 import { toast } from 'react-hot-toast';
+import { HierarchyFilterBar } from './hierarchy/HierarchyFilterBar';
+import { SlaDashboardWidget } from './sla/SlaDashboardWidget';
 
 // Types and Interfaces
 export interface Lead {
@@ -536,6 +538,7 @@ export const Dashboard = React.memo(({ onTabChange }: { onTabChange: (tab: strin
   return (
     <>
       <div className="space-y-6">
+        <HierarchyFilterBar />
         {/* Header Section */}
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
@@ -666,6 +669,9 @@ export const Dashboard = React.memo(({ onTabChange }: { onTabChange: (tab: strin
         </div>
 
         <TrialProgressBar />
+
+        {/* SLA & Auto-Reassignment Intelligence Widget */}
+        <SlaDashboardWidget />
         <TrialBanner />
 
         {/* Main Dashboard Bento Grid */}

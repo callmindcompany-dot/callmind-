@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Zap, Sparkles, History, ShieldCheck } from 'lucide-react';
+import { Clock, Zap, Sparkles, History, ShieldCheck, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SubscriptionStatusHeaderProps {
   isSubscribed?: boolean;
+  isExpired?: boolean;
   planName?: string;
   expiryDays?: number;
   onOpenHistory?: () => void;
@@ -11,10 +12,30 @@ interface SubscriptionStatusHeaderProps {
 
 export const SubscriptionStatusHeader: React.FC<SubscriptionStatusHeaderProps> = ({
   isSubscribed = false,
+  isExpired = false,
   planName = "Professional Tier",
   expiryDays = 28,
   onOpenHistory,
 }) => {
+  if (isExpired) {
+    return (
+      <div className="sticky top-14 md:top-0 z-[60] w-full bg-amber-500/10 border-b border-amber-500/20 backdrop-blur-xl px-6 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <AlertCircle size={16} className="text-amber-600 shrink-0" />
+          <span className="text-xs font-bold text-amber-900">
+            Free Trial Expired (Read-Only Mode) — Upgrade your subscription to resume adding leads, members, and rules.
+          </span>
+        </div>
+        <button
+          onClick={onOpenHistory}
+          className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0 ml-4"
+        >
+          Upgrade Now
+        </button>
+      </div>
+    );
+  }
+
   if (isSubscribed) return null;
 
   // Live 5-day countdown logic

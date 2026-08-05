@@ -16,9 +16,8 @@ export function useReportSchedules(companyId: string | null) {
         .eq('company_id', companyId);
 
       if (error) {
-        // Return empty array if table does not exist or has RLS restrictions during testing
         console.warn("Error fetching report schedules:", error);
-        return [];
+        throw error;
       }
       return data || [];
     },

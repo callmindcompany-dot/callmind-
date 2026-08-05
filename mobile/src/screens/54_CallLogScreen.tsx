@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Menu, Search, SlidersHorizontal, ArrowUpRight, ArrowDownLeft, Phone, MoreVertical } from 'lucide-react-native';
 import { EmptyStateComponent } from '../components/EmptyStateComponent';
 
@@ -22,9 +22,17 @@ interface CallLogScreenProps {
   onBack: () => void;
   onSelectLead: (leadId: string) => void;
   callLogs?: CallLogItem[];
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }
 
-export const CallLogScreen: React.FC<CallLogScreenProps> = ({ onBack, onSelectLead, callLogs = [] }) => {
+export const CallLogScreen: React.FC<CallLogScreenProps> = ({
+  onBack,
+  onSelectLead,
+  callLogs = [],
+  refreshing = false,
+  onRefresh,
+}) => {
   const [activeTab, setActiveTab] = useState<'all' | 'today' | 'missed' | 'scheduled'>('all');
 
   const tabs = [
@@ -33,6 +41,14 @@ export const CallLogScreen: React.FC<CallLogScreenProps> = ({ onBack, onSelectLe
     { key: 'missed' as const, label: 'Missed' },
     { key: 'scheduled' as const, label: 'Scheduled' },
   ];
+
+  const filteredLogs = callLogs.filter((log) => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'today') return log.time.toLowerCase().includes('today') || log.time.toLowerCase().includes('recently');
+    if (activeTab === 'missed') return log.direction === 'missed' || log.duration === '00:00';
+    if (activeTab === 'scheduled') return log.tag.toLowerCase().includes('call back') || log.tag.toLowerCase().includes('scheduled');
+    return true;
+  });
 
   return (
     <View style={styles.container}>
@@ -67,12 +83,20 @@ export const CallLogScreen: React.FC<CallLogScreenProps> = ({ onBack, onSelectLe
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {callLogs.length > 0 ? (
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />
+          ) : undefined
+        }
+      >
+        {filteredLogs.length > 0 ? (
           <>
-            <Text style={styles.dateSectionLabel}>Today</Text>
+            <Text style={styles.dateSectionLabel}>Recent Calls</Text>
             <View style={styles.logList}>
-              {callLogs.map((log) => (
+              {filteredLogs.map((log) => (
                 <TouchableOpacity key={log.id} style={styles.logCard} onPress={() => onSelectLead(log.id)} activeOpacity={0.75}>
                   <View style={[styles.avatarCircle, { backgroundColor: log.avatarBg }]}>
                     <Text style={[styles.avatarText, { color: log.avatarColor }]}>{log.initials}</Text>

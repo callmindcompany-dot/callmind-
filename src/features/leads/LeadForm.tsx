@@ -28,6 +28,8 @@ const leadSchema = z.object({
   status: z.nativeEnum(LeadStatus),
   city: z.string().optional(),
   state: z.string().optional(),
+  dealValue: z.coerce.number().optional(),
+  lostReason: z.string().optional(),
   notes: z.string().optional(),
   custom_fields: z.record(z.string(), z.any()).optional(),
 });
@@ -72,6 +74,8 @@ export const LeadForm: React.FC<LeadFormProps> = ({ lead, onClose }) => {
       status: lead.status,
       city: lead.city || '',
       state: lead.state || '',
+      dealValue: lead.dealValue || 0,
+      lostReason: lead.lostReason || '',
       notes: lead.notes || '',
       custom_fields: lead.custom_fields || {},
     } : {
@@ -82,6 +86,8 @@ export const LeadForm: React.FC<LeadFormProps> = ({ lead, onClose }) => {
       status: LeadStatus.NEW,
       city: '',
       state: '',
+      dealValue: 0,
+      lostReason: '',
       notes: '',
       custom_fields: {},
     }
@@ -259,6 +265,36 @@ export const LeadForm: React.FC<LeadFormProps> = ({ lead, onClose }) => {
                   placeholder="e.g. MH"
                   className="w-full px-6 py-4 bg-slate-50 border border-transparent rounded-[20px] focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all font-bold placeholder:text-slate-300"
                 />
+              </div>
+            </div>
+
+            {/* Pipeline & Analytics */}
+            <div className="grid grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Deal Value (₹/$$)</label>
+                <div className="relative">
+                  <input 
+                    type="number"
+                    {...register('dealValue')}
+                    placeholder="e.g. 5000"
+                    className="w-full px-6 py-4 bg-slate-50 border border-transparent rounded-[20px] focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all font-bold placeholder:text-slate-300"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Lost Reason</label>
+                <select 
+                  {...register('lostReason')}
+                  className="w-full px-6 py-4 bg-slate-50 border border-transparent rounded-[20px] focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all font-bold appearance-none cursor-pointer"
+                >
+                  <option value="">-- None --</option>
+                  <option value="Price Too High">Price Too High</option>
+                  <option value="Went with Competitor">Went with Competitor</option>
+                  <option value="Timing Not Right">Timing Not Right</option>
+                  <option value="Invalid Number">Invalid Number</option>
+                  <option value="Not Interested">Not Interested (General)</option>
+                </select>
+                <p className="text-[10px] text-slate-400 font-medium pl-1">Select if marking as Lost/Not Interested</p>
               </div>
             </div>
 

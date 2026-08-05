@@ -40,11 +40,7 @@ export function useCompanySettings(companyId: string | null) {
 
       if (error) {
         console.warn('Failed to query company_settings from Supabase:', error);
-        return {
-          company_id: companyId,
-          whatsapp_config: null,
-          smtp_config: null,
-        };
+        throw error;
       }
 
       if (!data) {

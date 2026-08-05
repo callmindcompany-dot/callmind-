@@ -107,14 +107,20 @@ export function useDeleteAIFaq() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (faqId: string) => {
-      const { error } = await supabase
-        .from('ai_faqs')
-        .delete()
-        .eq('id', faqId);
+    mutationFn: async (arg: string | { id: string; companyId?: string }) => {
+      const id = typeof arg === 'string' ? arg : arg.id;
+      const companyId = typeof arg === 'string' ? undefined : arg.companyId;
+
+      let query = supabase.from('ai_faqs').delete({ count: 'exact' }).eq('id', id);
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { error, count } = await query;
 
       if (error) throw error;
-      return faqId;
+      if (!count) throw new Error('Nothing was deleted — the record may already be gone.');
+      return id;
     },
     onSuccess: () => {
       toast.success('FAQ entry removed.');

@@ -25,9 +25,8 @@ export function useMessageTemplates(companyId: string | null) {
         .order('created_at', { ascending: false });
 
       if (error) {
-        // Fallback if table doesn't exist yet or other query errors
         console.warn('Failed to query message_templates from Supabase:', error);
-        return [];
+        throw error;
       }
       return data || [];
     },
@@ -70,12 +69,19 @@ export function useMessageTemplates(companyId: string | null) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      let query = supabase
         .from('message_templates')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', id);
 
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { error, count } = await query;
+
       if (error) throw error;
+      if (!count) throw new Error('Nothing was deleted — the record may already be gone.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['messageTemplates', companyId] });
@@ -85,6 +91,9 @@ export function useMessageTemplates(companyId: string | null) {
   return {
     templates: templatesQuery.data || [],
     isLoading: templatesQuery.isLoading,
+    isError: templatesQuery.isError,
+    error: templatesQuery.error,
+    refetch: templatesQuery.refetch,
     createTemplate: createMutation.mutateAsync,
     updateTemplate: updateMutation.mutateAsync,
     deleteTemplate: deleteMutation.mutateAsync,

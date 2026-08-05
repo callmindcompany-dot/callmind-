@@ -20,13 +20,14 @@ export function useLeadMutations(companyId: string | null) {
 
       for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
         const chunk = ids.slice(i, i + CHUNK_SIZE);
-        const { error } = await supabase
+        const { error, count } = await supabase
           .from('leads')
-          .delete()
+          .delete({ count: 'exact' })
           .in('id', chunk)
           .eq('company_id', companyId);
 
         if (error) throw error;
+        if (!count) throw new Error('Nothing was deleted — the leads may already be gone.');
 
         current += chunk.length;
         if (onProgress) {

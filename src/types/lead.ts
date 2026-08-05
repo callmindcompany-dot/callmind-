@@ -26,6 +26,8 @@ export interface Lead {
   assignedTo?: string; // User ID
   city?: string;
   state?: string;
+  dealValue?: number;
+  lostReason?: string;
   notes?: string;
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp
@@ -50,6 +52,46 @@ export interface Lead {
   postalCode?: string;
   country?: string;
   custom_fields?: Record<string, any>;
+
+  // SLA Tracking Fields
+  firstContactAt?: string | null;
+  lastContactAt?: string | null;
+  callbackDeadline?: string | null;
+  slaBreached?: boolean;
+  slaBreachedAt?: string | null;
+  reassignmentCount?: number;
+  isLocked?: boolean;
+  isManuallyProtected?: boolean;
+}
+
+export interface CompanySlaSettings {
+  companyId: string;
+  newLeadResponseTimeMins: number; // e.g. 15 mins
+  overdueCallbackBufferMins: number; // e.g. 30 mins
+  staleLeadThresholdDays: number; // e.g. 7 days
+  autoReassignEnabled: boolean; // TRUE = Auto reassign, FALSE = Admin alert only
+  reassignRotationMode: 'round_robin' | 'least_busy';
+  excludedStatuses: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SlaSummary {
+  activeBreachesCount: number;
+  staleLeadsCount: number;
+  firstResponseComplianceRatePct: number;
+  autoReassignEnabled: boolean;
+  recentReassignments: Array<{
+    id: string;
+    leadId: string;
+    leadName: string;
+    fromUserId: string;
+    fromUserName?: string;
+    toUserId: string;
+    toUserName?: string;
+    timestamp: string;
+    reason: string;
+  }>;
 }
 
 export interface LeadActivity {

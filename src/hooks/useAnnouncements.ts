@@ -181,12 +181,14 @@ export function useDeleteAnnouncement() {
 
   return useMutation({
     mutationFn: async ({ id, companyId }: { id: string; companyId: string }) => {
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('announcements')
-        .delete()
-        .eq('id', id);
+        .delete({ count: 'exact' })
+        .eq('id', id)
+        .eq('company_id', companyId);
 
       if (error) throw error;
+      if (!count) throw new Error('Nothing was deleted — the record may already be gone.');
       return { id, companyId };
     },
     onSuccess: (data) => {

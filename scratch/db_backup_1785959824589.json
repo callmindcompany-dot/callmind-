@@ -1,0 +1,139 @@
+{
+  "timestamp": "2026-08-05T19:57:04.576Z",
+  "tables": [
+    "activity_stream",
+    "attendance_logs",
+    "audit_logs",
+    "billing_intents",
+    "call_logs",
+    "calls",
+    "comm_logs",
+    "companies",
+    "custom_field_definitions",
+    "document_access_log",
+    "document_requirements",
+    "document_reviews",
+    "documents",
+    "export_files",
+    "integrations",
+    "invoices",
+    "lead_activity_log",
+    "lead_notes",
+    "leads",
+    "organizations",
+    "plan_limits",
+    "profiles",
+    "report_schedules",
+    "report_templates",
+    "scheduled_messages",
+    "sim_cards",
+    "system_errors",
+    "targets",
+    "team_settings",
+    "users"
+  ],
+  "companiesColumns": [
+    {
+      "column_name": "id",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "category",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "size",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "email",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "phone",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "admin_name",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "plan",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "seat_limit",
+      "data_type": "integer",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "logo_url",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "storage_used_bytes",
+      "data_type": "bigint",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "storage_addon_gb",
+      "data_type": "integer",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "plan_status",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "plan_expires_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "trial_ends_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "billing_cycle",
+      "data_type": "text",
+      "is_nullable": "YES"
+    }
+  ],
+  "companiesDistribution": [
+    {
+      "plan": "trial",
+      "plan_status": "trialing",
+      "count": "7"
+    }
+  ],
+  "counts": {
+    "companies": "7",
+    "users": "0",
+    "leads": "7"
+  }
+}

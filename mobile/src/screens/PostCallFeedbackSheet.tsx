@@ -15,17 +15,20 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
   onSubmit,
   onDismiss,
 }) => {
+  const feedbackOpenedAt = new Date().toLocaleString('en-IN', {
+    hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short', year: 'numeric',
+  });
   const [selectedOutcome, setSelectedOutcome] = useState('Connected');
   const [selectedInterest, setSelectedInterest] = useState('Interested');
   const [notes, setNotes] = useState('');
 
-  const outcomes = ['Connected', 'Not Connected', 'Wrong Number'];
+  const outcomes = ['Connected', 'No Answer', 'Busy', 'Invalid Number', 'Wrong Number'];
   const interestLevels = ['Interested', 'Not Interested', 'Call Back Later'];
 
   return (
     <View style={styles.overlay}>
       <View style={styles.sheet}>
-        {/* Top Header matching Reference UI Image 2 Screen 8 */}
+        {/* Top Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.iconBtn} onPress={onDismiss}>
             <ArrowLeft size={20} color="#0f172a" />
@@ -40,7 +43,8 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
             <CheckCircle2 size={32} color="#16a34a" />
             <Text style={styles.summaryTitle}>Call Ended</Text>
             <Text style={styles.summaryDuration}>{callDuration}</Text>
-            <Text style={styles.summaryDate}>10:30 AM, 21 May 2024</Text>
+            <Text style={styles.summaryLabel}>Dialer Elapsed Time (Not carrier verified)</Text>
+            <Text style={styles.summaryDate}>{feedbackOpenedAt}</Text>
           </View>
 
           {/* Outcome Section */}
@@ -92,7 +96,7 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
           <View style={styles.scheduleRow}>
             <TouchableOpacity style={styles.pickerBox}>
               <Calendar size={16} color="#64748b" />
-              <Text style={styles.pickerText}>22 May 2024</Text>
+              <Text style={styles.pickerText}>Tomorrow</Text>
               <ChevronDown size={14} color="#64748b" />
             </TouchableOpacity>
 
@@ -112,6 +116,7 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
               numberOfLines={4}
               value={notes}
               onChangeText={setNotes}
+              placeholder="Enter call summary and next steps..."
               placeholderTextColor="#94a3b8"
             />
             <Text style={styles.charCount}>{notes.length}/200</Text>
@@ -191,6 +196,12 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     marginTop: 2,
   },
+  summaryLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+    marginTop: 2,
+  },
   summaryDate: {
     fontSize: 12,
     color: '#64748b',
@@ -210,12 +221,13 @@ const styles = StyleSheet.create({
   },
   chipGroup: {
     flexDirection: 'row',
-    gap: 10,
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 16,
   },
   chip: {
-    flex: 1,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#e2e8f0',
@@ -235,7 +247,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fef3c7',
   },
   chipText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#64748b',
   },

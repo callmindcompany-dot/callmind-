@@ -1,0 +1,29 @@
+{
+  "totalFiles": 666,
+  "filesByExt": {
+    ".md": 95,
+    ".json": 15,
+    "no_extension": 6,
+    ".example": 1,
+    ".yml": 2,
+    ".js": 59,
+    ".svg": 2,
+    ".txt": 6,
+    ".webmanifest": 1,
+    ".xml": 2,
+    ".sql": 47,
+    ".html": 1,
+    ".ts": 199,
+    ".log": 1,
+    ".tsx": 223,
+    ".mjs": 4,
+    ".css": 1,
+    ".csv": 1
+  },
+  "totalLines": 195267,
+  "totalWords": 774648,
+  "totalLetters": 4703307,
+  "totalDigits": 239102,
+  "totalSymbols": 1403936,
+  "totalKeywords": 70001
+}

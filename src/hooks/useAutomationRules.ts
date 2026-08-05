@@ -17,7 +17,7 @@ export function useAutomationRules(companyId: string | null) {
 
       if (error) {
         console.warn('Failed to query automation_rules from Supabase:', error);
-        return [];
+        throw error;
       }
       return data || [];
     },
@@ -60,12 +60,19 @@ export function useAutomationRules(companyId: string | null) {
 
   const deleteRuleMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      let query = supabase
         .from('automation_rules')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', id);
 
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { error, count } = await query;
+
       if (error) throw error;
+      if (!count) throw new Error('Nothing was deleted — the record may already be gone.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['automationRules', companyId] });
@@ -75,6 +82,9 @@ export function useAutomationRules(companyId: string | null) {
   return {
     rules: rulesQuery.data || [],
     isLoading: rulesQuery.isLoading,
+    isError: rulesQuery.isError,
+    error: rulesQuery.error,
+    refetch: rulesQuery.refetch,
     createRule: createRuleMutation.mutateAsync,
     updateRule: updateRuleMutation.mutateAsync,
     deleteRule: deleteRuleMutation.mutateAsync,

@@ -4,9 +4,6 @@ import { supabase } from '@/supabaseClient';
 export interface ReportsData {
   loading: boolean;
   leads: any[];
-  calls: any[];
-  callbacks: any[];
-  auditLogs: any[];
   users: any[];
 }
 
@@ -22,7 +19,6 @@ export function useReportsData(companyId: string | null): ReportsData {
         .eq('company_id', companyId);
       if (error) throw error;
       
-      // Map properties for UI consistency
       return (data || []).map(u => ({
         ...u,
         uid: u.id,
@@ -33,7 +29,7 @@ export function useReportsData(companyId: string | null): ReportsData {
     staleTime: 60000,
   });
 
-  // Query leads
+  // Query leads (Limited to 1000 for the Custom Report Workspace and CSV export)
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ['reports', 'rawLeads', companyId],
     queryFn: async () => {
@@ -42,6 +38,7 @@ export function useReportsData(companyId: string | null): ReportsData {
         .from('leads')
         .select('*')
         .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
         .limit(1000);
       if (error) throw error;
       
@@ -56,81 +53,9 @@ export function useReportsData(companyId: string | null): ReportsData {
     staleTime: 60000,
   });
 
-  // Query calls
-  const { data: calls = [], isLoading: loadingCalls } = useQuery({
-    queryKey: ['reports', 'rawCalls', companyId],
-    queryFn: async () => {
-      if (!companyId) return [];
-      const { data, error } = await supabase
-        .from('calls')
-        .select('*')
-        .eq('company_id', companyId)
-        .limit(1000);
-      if (error) throw error;
-      
-      return (data || []).map(c => ({
-        ...c,
-        leadName: c.outcome || 'Unknown Lead',
-        createdBy: c.created_by,
-        agentId: c.created_by
-      }));
-    },
-    enabled: !!companyId,
-    staleTime: 60000,
-  });
-
-  // Query callbacks
-  const { data: callbacks = [], isLoading: loadingCallbacks } = useQuery({
-    queryKey: ['reports', 'rawCallbacks', companyId],
-    queryFn: async () => {
-      if (!companyId) return [];
-      const { data, error } = await supabase
-        .from('callbacks')
-        .select('*')
-        .eq('company_id', companyId)
-        .limit(1000);
-      if (error) throw error;
-      
-      return (data || []).map(cb => ({
-        ...cb,
-        scheduledTime: cb.scheduled_time,
-        agentId: cb.agent_id,
-        leadId: cb.lead_id
-      }));
-    },
-    enabled: !!companyId,
-    staleTime: 60000,
-  });
-
-  // Query audit logs
-  const { data: auditLogs = [], isLoading: loadingAudits } = useQuery({
-    queryKey: ['reports', 'rawAuditLogs', companyId],
-    queryFn: async () => {
-      if (!companyId) return [];
-      const { data, error } = await supabase
-        .from('audit_logs')
-        .select('*')
-        .eq('company_id', companyId)
-        .order('timestamp', { ascending: false })
-        .limit(100);
-      if (error) throw error;
-      
-      return (data || []).map(log => ({
-        ...log,
-        userName: log.user_name,
-        userId: log.company_id
-      }));
-    },
-    enabled: !!companyId,
-    staleTime: 60000,
-  });
-
   return {
-    loading: loadingUsers || loadingLeads || loadingCalls || loadingCallbacks || loadingAudits,
+    loading: loadingUsers || loadingLeads,
     leads,
-    calls,
-    callbacks,
-    auditLogs,
     users
   };
 }

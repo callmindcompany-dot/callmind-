@@ -188,15 +188,16 @@ export function useDiscardDraft() {
       slug: 'privacy' | 'terms' | 'refund';
       language: 'English' | 'Hindi' | 'Marathi';
     }) => {
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from('legal_pages')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('slug', slug)
         .eq('language', language)
         .eq('status', 'draft')
         .select();
 
       if (error) throw error;
+      if (!count) throw new Error('Nothing was deleted — the draft may already be gone.');
       return data;
     },
     onSuccess: (_, variables) => {

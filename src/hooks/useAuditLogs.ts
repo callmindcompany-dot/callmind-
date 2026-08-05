@@ -70,14 +70,20 @@ export function useDeleteAuditLog() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (logId: string) => {
-      const { error } = await supabase
-        .from('audit_logs')
-        .delete()
-        .eq('id', logId);
+    mutationFn: async (arg: string | { id: string; companyId?: string }) => {
+      const id = typeof arg === 'string' ? arg : arg.id;
+      const companyId = typeof arg === 'string' ? undefined : arg.companyId;
+
+      let query = supabase.from('audit_logs').delete({ count: 'exact' }).eq('id', id);
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { error, count } = await query;
 
       if (error) throw error;
-      return logId;
+      if (!count) throw new Error('Nothing was deleted — the record may already be gone.');
+      return id;
     },
     onMutate: async (deletedId) => {
       await queryClient.cancelQueries({ queryKey: ['audit_logs'] });

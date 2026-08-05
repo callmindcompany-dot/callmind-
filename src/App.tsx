@@ -48,6 +48,8 @@ const PrivacyPage = lazy(() => import('@components/PrivacyPage').then(m => ({ de
 const TermsPage = lazy(() => import('@components/TermsPage').then(m => ({ default: m.TermsPage })));
 const RefundPage = lazy(() => import('@components/RefundPage').then(m => ({ default: m.RefundPage })));
 const VideoTutorialsPage = lazy(() => import('@components/VideoTutorialsPage').then(m => ({ default: m.VideoTutorialsPage })));
+const NotificationsPage = lazy(() => import('@components/notifications/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
+const DocumentReviewQueue = lazy(() => import('@components/documents/DocumentReviewQueue').then(m => ({ default: m.DocumentReviewQueue })));
 import { FeatureGate } from '@components/FeatureGate';
 import { PipelineBoard } from '@components/PipelineBoard';
 import { LandingPage } from '@/website/LandingPage';
@@ -219,6 +221,10 @@ const AppContent = () => {
       '/dashboard/legal/terms': 'Terms',
       '/dashboard/legal/refund': 'Refund',
       '/dashboard/training': 'Video Guides',
+      '/dashboard/notifications': 'Notifications',
+      '/notifications': 'Notifications',
+      '/dashboard/documents': 'Documents',
+      '/documents': 'Documents',
     };
 
     // Logical Prefix Matching
@@ -254,6 +260,7 @@ const AppContent = () => {
       case 'Automation': 
         Content = enabledSections.sectionDEnabled ? <RoleGate requireAdmin={true}><AutomationPage /></RoleGate> : null; 
         break;
+      case 'Documents': Content = <RoleGate requireAdmin={true}><DocumentReviewQueue userEmail={user?.email || ''} userRole={profile?.role || 'admin'} /></RoleGate>; break;
       case 'Reports': Content = <RoleGate requireAdmin={true}><ErrorBoundary componentName="Reports"><ReportsPage /></ErrorBoundary></RoleGate>; break;
       case 'Settings': Content = <ErrorBoundary componentName="Settings"><SettingsPage /></ErrorBoundary>; break;
       case 'Subscription': Content = <RoleGate requireFounderOnly={true}><BillingPage /></RoleGate>; break;
@@ -275,6 +282,7 @@ const AppContent = () => {
       case 'Terms': Content = <TermsPage />; break;
       case 'Refund': Content = <RefundPage />; break;
       case 'Video Guides': Content = <VideoTutorialsPage />; break;
+      case 'Notifications': Content = <NotificationsPage />; break;
       default: 
         console.warn("[App] Unknown tab requested:", activeTab);
         Content = <Dashboard onTabChange={setActiveTab} />;
@@ -392,7 +400,7 @@ const AppContent = () => {
 
       {/* 5. Production App Workspace: Fully guarded by authed & onboarded logic */}
       <Route path="/dashboard/*" element={
-        <TrialActiveRoute>
+        <TrialActiveRoute requireSubscription={true}>
           <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab}>
             <Suspense fallback={<PageLoader />}>
               {renderDashboardContent()}

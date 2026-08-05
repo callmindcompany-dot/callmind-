@@ -82,19 +82,34 @@ export function useDashboardStats(
       const sevenDaysAgo = subDays(now, 7);
       const thirtyDaysAgo = subDays(now, 30);
 
-      // Fetch all active leads for the company
+      // 1. Fetch exact high-level metrics safely via RPC (Prevents 5 Lakh row OOM)
+      let metricsResponse: any = null;
+      try {
+        const { data: metricsData, error: metricsError } = await supabase.rpc('get_dashboard_metrics', {
+          p_company_id: companyId
+        });
+        if (!metricsError && metricsData) {
+          metricsResponse = metricsData;
+        }
+      } catch (err) {
+        console.warn("RPC failed, falling back to client-side counting", err);
+      }
+
+      // 2. Fetch sample active leads for the company (Limit 5000 for safe charting)
       const { data: leadsData, error: leadsError } = await supabase
         .from('leads')
         .select('*')
         .eq('company_id', companyId)
-        .eq('is_deleted', false);
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(5000);
 
       if (leadsError) {
         console.error('Failed to fetch leads:', leadsError);
         throw leadsError;
       }
 
-      // Fetch calls count filtered by dateRange
+      // 3. Fetch recent calls count filtered by dateRange (Limit 5000)
       let minDateStr = thirtyDaysAgo.toISOString();
       if (dateRange === 'today') {
         minDateStr = startOfToday.toISOString();
@@ -107,7 +122,8 @@ export function useDashboardStats(
         .select('*')
         .eq('company_id', companyId)
         .gte('timestamp', minDateStr)
-        .order('timestamp', { ascending: false });
+        .order('timestamp', { ascending: false })
+        .limit(5000);
 
       if (callsError) {
         console.error('Failed to fetch calls:', callsError);
@@ -117,9 +133,8 @@ export function useDashboardStats(
       const leads = leadsData || [];
       const calls = callsData || [];
 
-      // Unassigned leads: active leads where assigned_to is null or empty string.
-      // Computed in-memory from the already-fetched leads array — no extra DB round-trip needed.
-      const unassignedLeadsCount = leads.filter(
+      // Unassigned leads: compute locally or override with RPC
+      let unassignedLeadsCount = leads.filter(
         l => !l.assigned_to || (l.assigned_to as string).trim() === ''
       ).length;
 
@@ -142,10 +157,20 @@ export function useDashboardStats(
         }
       });
 
-      const followupsDueCount = leads.filter(l => l.status === 'Call Back').length;
+      let followupsDueCount = leads.filter(l => l.status === 'Call Back').length;
+      let totalLeads = leads.length || 0;
+
+      // Apply Exact Database RPC counts if available
+      if (metricsResponse) {
+        totalLeads = metricsResponse.totalLeads;
+        leadsTodayCount = metricsResponse.leadsToday;
+        unassignedLeadsCount = metricsResponse.unassignedLeads;
+        convertedLeadsCount = metricsResponse.convertedLeads;
+        followupsDueCount = metricsResponse.followupsDue;
+      }
 
       const kpis = {
-        totalLeads: leads.length || 0,
+        totalLeads: totalLeads,
         leadsToday: leadsTodayCount,
         callsToday: callsTodayCount,
         connectedToday: connectedTodayCount,

@@ -1,7 +1,8 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ isSsrBuild }) => {
   return {
@@ -9,28 +10,96 @@ export default defineConfig(({ isSsrBuild }) => {
       target: 'esnext',
       chunkSizeWarningLimit: 900,
       rollupOptions: {
-        // Chunking is a client-bundle concern only. In the SSR build used by
-        // scripts/prerender.mjs, dependencies stay external, and Rollup refuses
-        // to put an external module in a manual chunk.
         output: isSsrBuild ? {} : {
-          // Only framer-motion is split by hand, because the public marketing
-          // pages genuinely use it — it belongs in the eager graph, and naming
-          // it lets it stay cached across deploys of app code.
-          //
-          // recharts, xlsx/jspdf and @dnd-kit are deliberately NOT listed.
-          // Forcing them into named chunks made Rollup emit them as top-level
-          // chunks, which Vite then advertised with <link rel="modulepreload">
-          // — so a marketing visitor still downloaded ~1.2 MB of charting and
-          // export code before touching the app. Left unlisted, they are pulled
-          // into the lazily-imported dashboard chunks that actually use them
-          // and are not fetched until someone opens those screens.
           manualChunks: {
             'vendor-motion': ['framer-motion'],
           },
         },
       },
     },
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['favicon.svg', 'robots.txt', 'pwa-192x192.png', 'pwa-512x512.png'],
+        manifest: {
+          name: 'CallMind CRM',
+          short_name: 'CallMind',
+          description: "CallMind CRM - SIM Telecalling & Lead Management Platform",
+          theme_color: '#4F46E5',
+          background_color: '#ffffff',
+          display: 'standalone',
+          orientation: 'portrait',
+          scope: '/',
+          start_url: '/',
+          icons: [
+            {
+              src: '/pwa-192x192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any maskable'
+            },
+            {
+              src: '/pwa-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any maskable'
+            },
+            {
+              src: '/favicon.svg',
+              sizes: 'any',
+              type: 'image/svg+xml',
+              purpose: 'any'
+            }
+          ]
+        },
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'supabase-api-cache',
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 60 * 60 * 24 * 7
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-stylesheets',
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24 * 365
+                }
+              }
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-webfonts',
+                expiration: {
+                  maxEntries: 30,
+                  maxAgeSeconds: 60 * 60 * 24 * 365
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
+            }
+          ]
+        }
+      })
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),

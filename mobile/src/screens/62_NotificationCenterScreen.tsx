@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { ArrowLeft, CheckCircle2, Users, Clock, Target, Award } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { ArrowLeft, CheckCircle2, Users, Clock, Target, Award, AlertTriangle, PhoneCall, CreditCard, Zap, Info, Pin } from 'lucide-react-native';
 import { EmptyStateComponent } from '../components/EmptyStateComponent';
 
-export interface NotificationItem {
+export interface MobileNotificationItem {
   id: string;
   title: string;
   desc: string;
   time: string;
   isUnread: boolean;
+  isPinned?: boolean;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  type?: string;
+  actionUrl?: string;
   IconComponent?: any;
   bgColor?: string;
   iconColor?: string;
@@ -16,33 +20,66 @@ export interface NotificationItem {
 
 interface NotificationCenterScreenProps {
   onBack: () => void;
-  onSelectNotification?: (id: string) => void;
-  notifications?: NotificationItem[];
+  onSelectNotification?: (id: string, actionUrl?: string) => void;
+  onMarkAllRead?: () => void;
+  notifications?: MobileNotificationItem[];
+  isLoading?: boolean;
 }
 
 export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> = ({
   onBack,
   onSelectNotification,
+  onMarkAllRead,
   notifications = [],
+  isLoading = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'system'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'urgent' | 'system'>('all');
+
+  const filteredNotifications = notifications.filter((item) => {
+    if (activeTab === 'unread') return item.isUnread;
+    if (activeTab === 'urgent') return item.priority === 'urgent' || item.priority === 'high';
+    if (activeTab === 'system') return item.type === 'system_alert' || item.type === 'workflow_failed';
+    return true;
+  });
+
+  const getNotificationIcon = (type?: string) => {
+    if (!type) return Users;
+    if (type.includes('lead')) return Users;
+    if (type.includes('call') || type.includes('followup')) return PhoneCall;
+    if (type.includes('payment') || type.includes('invoice')) return CreditCard;
+    if (type.includes('ticket') || type.includes('workflow')) return Zap;
+    return Info;
+  };
+
+  const getPriorityBadgeColor = (priority?: string) => {
+    switch (priority) {
+      case 'urgent':
+        return '#ef4444';
+      case 'high':
+        return '#f59e0b';
+      case 'medium':
+        return '#3b82f6';
+      default:
+        return '#94a3b8';
+    }
+  };
 
   return (
     <View style={styles.container}>
-      {/* Top Header matching Reference UI Image 5 Screen 20 */}
+      {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
           <ArrowLeft size={20} color="#0f172a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        <TouchableOpacity style={styles.iconBtn}>
-          <CheckCircle2 size={20} color="#0f172a" />
+        <TouchableOpacity style={styles.iconBtn} onPress={onMarkAllRead}>
+          <CheckCircle2 size={20} color="#2563eb" />
         </TouchableOpacity>
       </View>
 
       {/* Filter Tabs */}
       <View style={styles.tabsContainer}>
-        {(['all', 'unread', 'system'] as const).map((t) => (
+        {(['all', 'unread', 'urgent', 'system'] as const).map((t) => (
           <TouchableOpacity
             key={t}
             style={[styles.tabChip, activeTab === t && styles.tabChipActive]}
@@ -55,37 +92,55 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
         ))}
       </View>
 
+      {/* Main List */}
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.listGroup}>
-          {notifications.length > 0 ? (
-            notifications.map((item) => {
-              const Icon = item.IconComponent || Users;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.card, item.isUnread && styles.unreadCard]}
-                  onPress={() => onSelectNotification?.(item.id)}
-                  activeOpacity={0.75}
-                >
-                  <View style={[styles.iconCircle, { backgroundColor: item.bgColor || '#eff6ff' }]}>
-                    <Icon size={20} color={item.iconColor || '#2563eb'} />
-                  </View>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563eb" />
+            <Text style={styles.loadingText}>Loading notifications...</Text>
+          </View>
+        ) : (
+          <View style={styles.listGroup}>
+            {filteredNotifications.length > 0 ? (
+              filteredNotifications.map((item) => {
+                const Icon = item.IconComponent || getNotificationIcon(item.type);
+                const priorityColor = getPriorityBadgeColor(item.priority);
 
-                  <View style={styles.cardMain}>
-                    <View style={styles.titleRow}>
-                      <Text style={styles.notifTitle}>{item.title}</Text>
-                      {item.isUnread && <View style={styles.blueDot} />}
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      styles.card, 
+                      item.isUnread && styles.unreadCard,
+                      item.isPinned && styles.pinnedCard
+                    ]}
+                    onPress={() => onSelectNotification?.(item.id, item.actionUrl)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[styles.iconCircle, { backgroundColor: item.bgColor || '#eff6ff' }]}>
+                      <Icon size={20} color={item.iconColor || '#2563eb'} />
+                      <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
                     </View>
-                    <Text style={styles.notifDesc}>{item.desc}</Text>
-                    <Text style={styles.notifTime}>{item.time}</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
-          ) : (
-            <EmptyStateComponent type="no_notifications" />
-          )}
-        </View>
+
+                    <View style={styles.cardMain}>
+                      <View style={styles.titleRow}>
+                        <Text style={styles.notifTitle} numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        {item.isPinned && <Pin size={12} color="#2563eb" style={{ marginLeft: 4 }} />}
+                        {item.isUnread && <View style={styles.blueDot} />}
+                      </View>
+                      <Text style={styles.notifDesc} numberOfLines={2}>{item.desc}</Text>
+                      <Text style={styles.notifTime}>{item.time}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <EmptyStateComponent type="no_notifications" />
+            )}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -126,55 +181,73 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   tabChip: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: '#f1f5f9',
-    alignItems: 'center',
   },
   tabChipActive: {
     backgroundColor: '#2563eb',
   },
   tabText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#64748b',
   },
   tabTextActive: {
     color: '#ffffff',
-    fontWeight: '700',
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 100,
+    paddingBottom: 40,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 8,
   },
   listGroup: {
     gap: 12,
   },
   card: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 16,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#f1f5f9',
-    gap: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'flex-start',
   },
   unreadCard: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#dbeafe',
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+  },
+  pinnedCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#2563eb',
   },
   iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
+    position: 'relative',
+  },
+  priorityDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#ffffff',
   },
   cardMain: {
     flex: 1,
@@ -183,27 +256,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 4,
   },
   notifTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: '#0f172a',
+    flex: 1,
   },
   blueDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#2563eb',
+    marginLeft: 6,
   },
   notifDesc: {
     fontSize: 12,
-    color: '#64748b',
-    marginTop: 3,
-    lineHeight: 18,
+    color: '#475569',
+    lineHeight: 16,
+    marginBottom: 6,
   },
   notifTime: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#94a3b8',
-    marginTop: 6,
+    fontWeight: '600',
   },
 });

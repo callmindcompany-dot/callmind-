@@ -1,5 +1,6 @@
 import React from 'react';
 import { AgentLiveMonitor } from './AgentLiveMonitor';
+import { HierarchyFilterBar } from './hierarchy/HierarchyFilterBar';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -54,6 +55,7 @@ const StatCard = ({ title, value, icon: Icon, trend, color }: any) => (
 export const AnalyticsPage = () => {
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <HierarchyFilterBar />
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black text-gray-900 tracking-tight">System Analytics</h1>

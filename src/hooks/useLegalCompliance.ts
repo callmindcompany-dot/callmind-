@@ -25,7 +25,7 @@ export function useLegalCompliance(userId: string | null) {
 
       if (termsError) {
         console.error('Failed to query latest terms version:', termsError);
-        return { needsReacceptance: false, latestVersion: null };
+        throw termsError;
       }
 
       if (!latestTerms) {
@@ -45,7 +45,7 @@ export function useLegalCompliance(userId: string | null) {
 
       if (acceptanceError) {
         console.error('Failed to query user acceptances:', acceptanceError);
-        return { needsReacceptance: false, latestVersion: version };
+        throw acceptanceError;
       }
 
       const needsReacceptance = !acceptance;

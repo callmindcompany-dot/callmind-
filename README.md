@@ -9,14 +9,17 @@
 CallMind CRM is a full-stack admin web application for managing telecalling teams at scale. It combines lead lifecycle management, AI-powered communication (Gemini), real-time agent monitoring, and multi-channel integrations into a single unified platform.
 
 **Key capabilities:**
+- 📲 **PWA & Desktop Installation** — Progressive Web App with standalone installation on Windows/macOS/Android, offline asset caching, and auto-updating Service Worker
+- 🏢 **Enterprise Branch Hierarchy** — Multi-branch data isolation, region/state/department topology, city auto-matching, and top scope filter bar (100% optional, Default = OFF)
 - 📞 **Lead Management** — Import, assign, deduplicate, and track leads through a customizable pipeline
 - 🤖 **AI Insights** — Gemini-powered call analysis, FAQ generation, and smart lead mapping
 - 📊 **Real-Time Reports** — Agent performance, call heatmaps, conversion funnels, and scheduled exports
 - 💬 **Multi-Channel Comms** — WhatsApp, Email, SMS, and scheduled message sequences
 - 👥 **Team Operations** — Round-robin assignment, attendance tracking, targets, and live agent monitoring
 - 🔌 **Integrations** — IndiaMart, JustDial, TradeIndia, Facebook Leads, Google Ads, and Webhooks
-- 💰 **Billing & Plans** — Subscription management, invoice tracking, and upgrade flows
-- 🛡️ **Security** — CSRF protection, rate limiting, Helmet headers, role-based access, and audit logs
+- 📄 **Document Storage & Workflow** — Cloudflare R2 (zero-egress cost) integration with presigned URLs, Admin Review Queue, 90° image rotation, DPDP access logging, and single PDF bundle generation
+- 💰 **Billing & Plans** — Subscription management, Razorpay UPI priority checkout, invoice tracking, DB trigger plan limit enforcement, and upgrade flows
+- 🛡️ **Security** — CSRF protection, rate limiting, Helmet CSP headers, role-based access, and audit logs
 
 ---
 
@@ -25,6 +28,7 @@ CallMind CRM is a full-stack admin web application for managing telecalling team
 | Layer | Technology |
 |---|---|
 | **Frontend** | React 19, TypeScript 5.8, Tailwind CSS 4, Framer Motion |
+| **Progressive Web App** | `vite-plugin-pwa`, Workbox Service Worker, Standalone Web App Manifest |
 | **State Management** | TanStack Query v5, React Context |
 | **Forms & Validation** | React Hook Form, Zod v4 |
 | **Backend** | Express.js (Node 20), Helmet, CORS, CSRF |

@@ -2,25 +2,28 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { ArrowLeft, Star, MoreVertical, Phone, MessageSquare, Calendar, Edit3, Plus, ChevronRight } from 'lucide-react-native';
 
+import { LeadItem } from './LeadListScreen';
+
 interface LeadDetailScreenProps {
   leadId: string;
+  lead?: LeadItem;
   onBack: () => void;
   onCall: (phone: string) => void;
 }
 
-export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ onBack, onCall }) => {
+export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ leadId, lead: passedLead, onBack, onCall }) => {
   const lead = {
-    name: 'Rahul Sharma',
-    phone: '+91 98765 43210',
-    email: 'rahul.sharma@email.com',
-    city: 'Pune, Maharashtra',
-    source: 'Facebook Ads',
+    name: passedLead?.name || 'Rahul Sharma',
+    phone: passedLead?.phone || '+91 98765 43210',
+    email: passedLead?.email || 'rahul.sharma@email.com',
+    city: passedLead?.city || 'Pune, Maharashtra',
+    source: passedLead?.comment || 'Facebook Ads',
     language: 'Hindi, English',
-    assignedTo: 'Ravi Kumar',
+    assignedTo: 'Assigned Telecaller',
     loanAmount: '₹ 5,000,000',
-    tag: 'Hot',
-    tagColor: '#EF4444',
-    initials: 'RS',
+    tag: passedLead?.tag || 'New',
+    tagColor: passedLead?.color || '#EF4444',
+    initials: passedLead?.initials || 'RS',
   };
 
   return (

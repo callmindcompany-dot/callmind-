@@ -24,10 +24,9 @@ serve(async (req) => {
       )
     }
 
-    // TODO: Connect SMTP server relay and dispatch email campaign
-    // e.g. using deno-smtp or external service provider integration
-
-    return new Response(JSON.stringify({ success: true, message: "Email relayed successfully" }), { headers: { "Content-Type": "application/json" } })
+    // UNIMPLEMENTED: Custom SMTP relay is disabled across all plans (emailFromOwnDomain = false).
+    // Future expansion: integrate deno-smtp or transactional ESP relay when custom domain emailing is enabled.
+    return new Response(JSON.stringify({ success: false, message: "Custom domain email sending is currently disabled." }), { headers: { "Content-Type": "application/json" } })
   } catch (err: any) {
     console.error(err);
     Sentry.captureException(err);

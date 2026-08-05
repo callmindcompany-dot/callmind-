@@ -9,7 +9,10 @@ interface HomeScreenProps {
   onNavigateToCalls: () => void;
   onNavigateToProfile: () => void;
   onSelectLead: (leadId: string) => void;
-  recentLeads?: Array<{ id: string; name: string; phone: string; city: string; tag: string; time: string; color: string; bgColor: string; initials: string }>;
+  onCallLead?: (lead: any) => Promise<void>;
+  recentLeads?: Array<any>;
+  refreshing?: boolean;
+  onRefresh?: () => Promise<void>;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({

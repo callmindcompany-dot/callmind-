@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { ArrowLeft, Plus, Phone, RotateCcw } from 'lucide-react-native';
 import { EmptyStateComponent } from '../components/EmptyStateComponent';
 
@@ -18,10 +18,20 @@ export interface CallbackItem {
 interface CallbacksScreenProps {
   onBack: () => void;
   onSelectLead: (leadId: string) => void;
+  onCallLead?: (phone: string, name: string) => void;
   callbacks?: CallbackItem[];
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }
 
-export const CallbacksScreen: React.FC<CallbacksScreenProps> = ({ onBack, onSelectLead, callbacks = [] }) => {
+export const CallbacksScreen: React.FC<CallbacksScreenProps> = ({
+  onBack,
+  onSelectLead,
+  onCallLead,
+  callbacks = [],
+  refreshing = false,
+  onRefresh,
+}) => {
   const [activeTab, setActiveTab] = useState<'all' | 'today' | 'upcoming'>('all');
 
   const todayCallbacks = callbacks.filter(c => c.isToday !== false);
@@ -55,7 +65,15 @@ export const CallbacksScreen: React.FC<CallbacksScreenProps> = ({ onBack, onSele
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />
+          ) : undefined
+        }
+      >
         {callbacks.length === 0 ? (
           <EmptyStateComponent type="no_callbacks" />
         ) : (

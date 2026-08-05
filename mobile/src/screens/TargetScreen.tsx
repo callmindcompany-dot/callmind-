@@ -1,13 +1,32 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { ArrowLeft, Target, ChevronLeft, ChevronRight, Award, TrendingUp, CheckCircle2 } from 'lucide-react-native';
+import { TelecallerStats } from '../services/targetService';
 
 interface TargetScreenProps {
   onBack: () => void;
+  stats?: TelecallerStats;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }
 
-export const TargetScreen: React.FC<TargetScreenProps> = ({ onBack }) => {
-  const [selectedMonth, setSelectedMonth] = useState('May 2024');
+export const TargetScreen: React.FC<TargetScreenProps> = ({
+  onBack,
+  stats = {
+    totalCalls: 0,
+    connectedCalls: 0,
+    interestedLeads: 0,
+    conversions: 0,
+    callTarget: 100,
+    callTargetProgress: 0,
+  },
+  refreshing = false,
+  onRefresh,
+}) => {
+  const [selectedMonth, setSelectedMonth] = useState('Current Period');
+
+  const callsPct = Math.min(100, Math.round((stats.totalCalls / Math.max(1, stats.callTarget)) * 100));
+  const connectedPct = Math.min(100, Math.round((stats.connectedCalls / Math.max(1, stats.totalCalls || 1)) * 100));
 
   return (
     <View style={styles.container}>
@@ -22,7 +41,15 @@ export const TargetScreen: React.FC<TargetScreenProps> = ({ onBack }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />
+          ) : undefined
+        }
+      >
         {/* Month Selector Banner */}
         <View style={styles.monthSelectorRow}>
           <TouchableOpacity style={styles.arrowBtn}>
@@ -39,15 +66,15 @@ export const TargetScreen: React.FC<TargetScreenProps> = ({ onBack }) => {
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardTitle}>Overall Target Status</Text>
             <View style={styles.onTrackBadge}>
-              <Text style={styles.onTrackText}>On Track</Text>
+              <Text style={styles.onTrackText}>{callsPct >= 50 ? 'On Track' : 'In Progress'}</Text>
             </View>
           </View>
 
           {/* Big Progress Circle Representation */}
           <View style={styles.circleProgressContainer}>
             <View style={styles.circleRingOuter}>
-              <Text style={styles.circlePercentageText}>75%</Text>
-              <Text style={styles.circleSubText}>450 / 600 Calls</Text>
+              <Text style={styles.circlePercentageText}>{callsPct}%</Text>
+              <Text style={styles.circleSubText}>{stats.totalCalls} / {stats.callTarget} Calls</Text>
             </View>
           </View>
         </View>
@@ -58,41 +85,41 @@ export const TargetScreen: React.FC<TargetScreenProps> = ({ onBack }) => {
 
           <View style={styles.metricItem}>
             <View style={styles.metricTop}>
-              <Text style={styles.metricLabel}>Calls Made</Text>
-              <Text style={styles.metricVal}>450 / 600</Text>
+              <Text style={styles.metricLabel}>Calls Logged</Text>
+              <Text style={styles.metricVal}>{stats.totalCalls} / {stats.callTarget}</Text>
             </View>
             <View style={styles.track}>
-              <View style={[styles.fill, { width: '75%', backgroundColor: '#2563eb' }]} />
+              <View style={[styles.fill, { width: `${callsPct}%`, backgroundColor: '#2563eb' }]} />
             </View>
           </View>
 
           <View style={styles.metricItem}>
             <View style={styles.metricTop}>
               <Text style={styles.metricLabel}>Connected Calls</Text>
-              <Text style={styles.metricVal}>280 / 380</Text>
+              <Text style={styles.metricVal}>{stats.connectedCalls} ({connectedPct}%)</Text>
             </View>
             <View style={styles.track}>
-              <View style={[styles.fill, { width: '73%', backgroundColor: '#16a34a' }]} />
+              <View style={[styles.fill, { width: `${connectedPct}%`, backgroundColor: '#16a34a' }]} />
+            </View>
+          </View>
+
+          <View style={styles.metricItem}>
+            <View style={styles.metricTop}>
+              <Text style={styles.metricLabel}>Interested Leads</Text>
+              <Text style={styles.metricVal}>{stats.interestedLeads}</Text>
+            </View>
+            <View style={styles.track}>
+              <View style={[styles.fill, { width: `${Math.min(100, stats.interestedLeads * 10)}%`, backgroundColor: '#f59e0b' }]} />
             </View>
           </View>
 
           <View style={styles.metricItem}>
             <View style={styles.metricTop}>
               <Text style={styles.metricLabel}>Conversions</Text>
-              <Text style={styles.metricVal}>45 / 60</Text>
+              <Text style={styles.metricVal}>{stats.conversions}</Text>
             </View>
             <View style={styles.track}>
-              <View style={[styles.fill, { width: '75%', backgroundColor: '#f59e0b' }]} />
-            </View>
-          </View>
-
-          <View style={styles.metricItem}>
-            <View style={styles.metricTop}>
-              <Text style={styles.metricLabel}>Revenue Generated</Text>
-              <Text style={styles.metricVal}>₹ 4.5L / ₹ 6.0L</Text>
-            </View>
-            <View style={styles.track}>
-              <View style={[styles.fill, { width: '75%', backgroundColor: '#9333ea' }]} />
+              <View style={[styles.fill, { width: `${Math.min(100, stats.conversions * 20)}%`, backgroundColor: '#9333ea' }]} />
             </View>
           </View>
         </View>

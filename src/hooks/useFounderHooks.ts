@@ -164,12 +164,13 @@ export function useFounderTickets(params: UseFounderTicketsParams = {}) {
   // Delete ticket mutation
   const deleteMutation = useMutation({
     mutationFn: async (ticketId: string) => {
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('support_tickets')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', ticketId);
 
       if (error) throw error;
+      if (!count) throw new Error('Nothing was deleted — the record may already be gone.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['founder_tickets'] });
@@ -194,12 +195,14 @@ export function useFounderTickets(params: UseFounderTicketsParams = {}) {
   // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ticketIds: string[]) => {
-      const { error } = await supabase
+      if (ticketIds.length === 0) return;
+      const { error, count } = await supabase
         .from('support_tickets')
-        .delete()
+        .delete({ count: 'exact' })
         .in('id', ticketIds);
 
       if (error) throw error;
+      if (!count) throw new Error('Nothing was deleted — the records may already be gone.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['founder_tickets'] });

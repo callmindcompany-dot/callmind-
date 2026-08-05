@@ -17,7 +17,7 @@ export function useChatLeads(companyId: string | null) {
 
       if (msgError) {
         console.warn('Failed to fetch whatsapp_messages for chatLeads list:', msgError);
-        return [];
+        throw msgError;
       }
 
       // Group by lead_id and aggregate last message details
@@ -50,7 +50,7 @@ export function useChatLeads(companyId: string | null) {
 
       if (leadsError) {
         console.error('Failed to fetch leads for chat list:', leadsError);
-        return [];
+        throw leadsError;
       }
 
       return (leadsData || []).map(lead => {

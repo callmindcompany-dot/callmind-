@@ -26,9 +26,6 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
-        "CALL_PHONE",
-        "READ_CALL_LOG",
-        "READ_PHONE_STATE",
         "POST_NOTIFICATIONS",
         "USE_BIOMETRIC",
         "USE_FINGERPRINT",

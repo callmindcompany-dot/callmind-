@@ -29,7 +29,7 @@ export function useScheduledMessages(companyId: string | null) {
 
       if (error) {
         console.warn('Failed to load scheduled messages:', error);
-        return [];
+        throw error;
       }
       return data || [];
     },
@@ -55,12 +55,19 @@ export function useScheduledMessages(companyId: string | null) {
 
   const cancelMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      let query = supabase
         .from('scheduled_messages')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', id);
 
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { error, count } = await query;
+
       if (error) throw error;
+      if (!count) throw new Error('Nothing was deleted — the record may already be gone.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scheduledMessages', companyId] });
@@ -70,6 +77,9 @@ export function useScheduledMessages(companyId: string | null) {
   return {
     scheduledMessages: query.data || [],
     isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
     scheduleMessage: scheduleMutation.mutateAsync,
     cancelScheduledMessage: cancelMutation.mutateAsync
   };

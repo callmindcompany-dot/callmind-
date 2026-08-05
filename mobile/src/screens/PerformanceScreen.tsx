@@ -1,13 +1,31 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Phone, CheckCircle2, Users, Clock, TrendingUp } from 'lucide-react-native';
+import { TelecallerStats } from '../services/targetService';
 
 interface PerformanceScreenProps {
   onBack: () => void;
+  stats?: TelecallerStats;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }
 
-export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onBack }) => {
+export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
+  onBack,
+  stats = {
+    totalCalls: 0,
+    connectedCalls: 0,
+    interestedLeads: 0,
+    conversions: 0,
+    callTarget: 100,
+    callTargetProgress: 0,
+  },
+  refreshing = false,
+  onRefresh,
+}) => {
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('daily');
+
+  const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
   return (
     <View style={styles.container}>
@@ -37,13 +55,21 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onBack }) 
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />
+          ) : undefined
+        }
+      >
         {/* Date Selector Banner */}
         <View style={styles.dateSelectorRow}>
           <TouchableOpacity style={styles.dateArrowBtn}>
             <ChevronLeft size={18} color="#0f172a" />
           </TouchableOpacity>
-          <Text style={styles.dateSelectorText}>Today, 21 May 2024</Text>
+          <Text style={styles.dateSelectorText}>Today, {todayStr}</Text>
           <TouchableOpacity style={styles.dateArrowBtn}>
             <ChevronRight size={18} color="#0f172a" />
           </TouchableOpacity>
@@ -56,11 +82,11 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onBack }) 
               <View style={[styles.targetIconBg, { backgroundColor: '#eff6ff' }]}>
                 <Phone size={16} color="#2563eb" />
               </View>
-              <Text style={styles.targetValText}>42 / 60</Text>
+              <Text style={styles.targetValText}>{stats.totalCalls} / {stats.callTarget}</Text>
             </View>
-            <Text style={styles.targetLabel}>Calls Made</Text>
+            <Text style={styles.targetLabel}>Calls Logged</Text>
             <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: '70%', backgroundColor: '#2563eb' }]} />
+              <View style={[styles.progressFill, { width: `${stats.callTargetProgress}%`, backgroundColor: '#2563eb' }]} />
             </View>
           </View>
 
@@ -69,11 +95,11 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onBack }) 
               <View style={[styles.targetIconBg, { backgroundColor: '#f0fdf4' }]}>
                 <CheckCircle2 size={16} color="#16a34a" />
               </View>
-              <Text style={styles.targetValText}>28 / 40</Text>
+              <Text style={styles.targetValText}>{stats.connectedCalls}</Text>
             </View>
             <Text style={styles.targetLabel}>Connected</Text>
             <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: '70%', backgroundColor: '#16a34a' }]} />
+              <View style={[styles.progressFill, { width: `${Math.min(100, stats.connectedCalls * 5)}%`, backgroundColor: '#16a34a' }]} />
             </View>
           </View>
 
@@ -82,11 +108,11 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onBack }) 
               <View style={[styles.targetIconBg, { backgroundColor: '#fef3c7' }]}>
                 <Users size={16} color="#d97706" />
               </View>
-              <Text style={styles.targetValText}>8 / 15</Text>
+              <Text style={styles.targetValText}>{stats.conversions}</Text>
             </View>
             <Text style={styles.targetLabel}>Conversions</Text>
             <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: '53%', backgroundColor: '#f59e0b' }]} />
+              <View style={[styles.progressFill, { width: `${Math.min(100, stats.conversions * 20)}%`, backgroundColor: '#f59e0b' }]} />
             </View>
           </View>
 
@@ -95,11 +121,11 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onBack }) 
               <View style={[styles.targetIconBg, { backgroundColor: '#f3e8ff' }]}>
                 <Clock size={16} color="#9333ea" />
               </View>
-              <Text style={styles.targetValText}>10 Pending</Text>
+              <Text style={styles.targetValText}>{stats.interestedLeads}</Text>
             </View>
-            <Text style={styles.targetLabel}>Follow-ups</Text>
+            <Text style={styles.targetLabel}>Interested Leads</Text>
             <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: '80%', backgroundColor: '#9333ea' }]} />
+              <View style={[styles.progressFill, { width: `${Math.min(100, stats.interestedLeads * 10)}%`, backgroundColor: '#9333ea' }]} />
             </View>
           </View>
         </View>

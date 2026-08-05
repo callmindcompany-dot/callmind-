@@ -1,11 +1,28 @@
-import { logger } from '../lib/logger';
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
+import { logger } from '../lib/logger';
 import { db, auth, FieldValue, processInboundLead, supabaseAdmin, isPlaceholder } from '../lib/dbAdapter';
 
 const router = express.Router();
 
+// Public Inbound Webhook Rate Limiter (Tenant-scoped to prevent DoS)
+const inboundWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 120, // 120 requests per minute per company tenant
+  keyGenerator: (req: any) => {
+    const companyId = req.params.companyId;
+    if (companyId && companyId.trim()) {
+      return `webhook_tenant_${companyId.trim()}`;
+    }
+    return `webhook_ip_${req.socket?.remoteAddress || req.ip || 'unknown'}`;
+  },
+  message: { error: 'Rate limit exceeded for inbound webhooks. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // A. Universal Inbound Webhook Endpoint
-router.post('/webhooks/incoming/:companyId', async (req, res) => {
+router.post('/webhooks/incoming/:companyId', inboundWebhookLimiter, async (req, res) => {
   const { companyId } = req.params;
   const source = (req.query.source as string) || 'Webhook';
 

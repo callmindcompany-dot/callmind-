@@ -22,6 +22,7 @@ import { clsx } from 'clsx';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import CallMindLoader from '../../components/CallMindLoader';
+import { LeadDocumentCard } from '../../components/documents/LeadDocumentCard';
 
 interface LeadDetailProps {
   lead: Lead;
@@ -379,6 +380,23 @@ export const LeadDetail = React.memo(({
                     </button>
                   </div>
                 )}
+
+                {/* Lead Document Verification Card */}
+                <LeadDocumentCard
+                  leadId={lead.id}
+                  leadData={{
+                    name: lead.name,
+                    phone: lead.phone,
+                    email: lead.email,
+                    status: lead.status,
+                    source: lead.source,
+                    value: (lead as any).deal_value || (lead as any).value || 0,
+                    custom_fields: lead.custom_fields,
+                  }}
+                  userEmail={user?.email || ''}
+                  userRole={(user as any)?.role || 'admin'}
+                  companyId={companyId || ''}
+                />
 
                 {/* Set Follow-up Reminder Inline form */}
                 <div className="space-y-3">
