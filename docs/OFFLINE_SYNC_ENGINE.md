@@ -1,8 +1,12 @@
 # CALLMIND CRM — OFFLINE SYNC ENGINE (`OFFLINE_SYNC_ENGINE.md`)
 
+> **Status:** Not built
+> **Implemented in:** —
+> **Last verified:** 2026-08-01
+
 **Author:** Principal Mobile Architect & CTO  
 **Date:** July 31, 2026  
-**Target System:** React Native Expo AsyncStorage (`@callmind_unsynced_calls`) + `sync.ts` Background Worker
+
 
 ---
 

@@ -1,8 +1,13 @@
 # CALLMIND CRM — DOCUMENT MANAGEMENT SYSTEM (`DOCUMENT_MANAGEMENT.md`)
 
+> **Status:** Built
+> **Implemented in:** `src/routes/documents.ts`, `supabase/migrations/20260803000100_documents.sql`, `src/components/documents/`
+> **Last verified:** 2026-08-01
+
 **System Architect & Product Spec**  
 **Updated:** August 1, 2026  
-**Target Architecture:** Cloudflare R2 Storage (Zero-Egress Fees) + PostgreSQL RLS + Express `/v1/documents` API + Web/Mobile Review Workflows
+**Target Architecture:** Cloudflare R2 Storage + PostgreSQL RLS + Express `/v1/documents` API + Web/Mobile Review Workflows
+
 
 ---
 

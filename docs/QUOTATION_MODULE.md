@@ -1,8 +1,12 @@
 # CALLMIND CRM — QUOTATION & PROPOSAL MODULE (`QUOTATION_MODULE.md`)
 
+> **Status:** Not built
+> **Implemented in:** —
+> **Last verified:** 2026-08-01
+
 **Author:** Principal Enterprise Solutions Architect & CTO  
 **Date:** July 31, 2026  
-**Target System:** Web CRM Proposal Generator & Supabase PDF Renderer
+
 
 ---
 

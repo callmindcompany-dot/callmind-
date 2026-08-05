@@ -1,8 +1,13 @@
 # CALLMIND CRM — INVOICE & B2B BILLING MODULE (`INVOICE_BILLING_MODULE.md`)
 
+> **Status:** Partially built
+> **Implemented in:** `src/routes/payments.ts`, `jspdf` PDF generator
+> **Last verified:** 2026-08-01
+
 **Author:** Principal Billing Architect & CTO  
 **Date:** July 31, 2026  
 **Target System:** `invoices` Table + Razorpay Order Integration + GST Invoicing Engine
+
 
 ---
 

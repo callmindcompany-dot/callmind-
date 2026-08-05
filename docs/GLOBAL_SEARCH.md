@@ -1,8 +1,13 @@
 # CALLMIND CRM — GLOBAL SEARCH ARCHITECTURE (`GLOBAL_SEARCH.md`)
 
+> **Status:** Built
+> **Implemented in:** `src/routes/search.ts`, `src/services/search.service.ts`, `src/components/search/`, `supabase/migrations/20260801010000_enterprise_global_search.sql`
+> **Last verified:** 2026-08-01
+
 **Author:** Principal Search & Database Architect & CTO  
 **Date:** July 31, 2026  
 **Target System:** PostgreSQL Full-Text Search (`tsvector`) + Trigram Indexes (`pg_trgm`)
+
 
 ---
 

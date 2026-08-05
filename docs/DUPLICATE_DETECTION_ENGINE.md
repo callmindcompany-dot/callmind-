@@ -1,8 +1,12 @@
 # CALLMIND CRM — DUPLICATE DETECTION ENGINE (`DUPLICATE_DETECTION_ENGINE.md`)
 
+> **Status:** Not built
+> **Implemented in:** —
+> **Last verified:** 2026-08-01
+
 **Author:** Principal Data Architect & CTO  
 **Date:** July 31, 2026  
-**Target System:** `deduplication.service.ts` + `DuplicateResolutionModal.tsx`
+
 
 ---
 

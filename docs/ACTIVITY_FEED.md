@@ -1,8 +1,12 @@
 # CALLMIND CRM — AUDIT & ACTIVITY FEED SYSTEM (`ACTIVITY_FEED.md`)
 
+> **Status:** Not built
+> **Implemented in:** —
+> **Last verified:** 2026-08-01
+
 **Author:** Principal UI/UX Architect & CTO  
 **Date:** July 31, 2026  
-**Target System:** `lead_activity` PostgreSQL Table + Timeline UI Renderer
+
 
 ---
 

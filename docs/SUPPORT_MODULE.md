@@ -1,8 +1,12 @@
 # CALLMIND CRM — CUSTOMER SUPPORT MODULE (`SUPPORT_MODULE.md`)
 
+> **Status:** Not built
+> **Implemented in:** —
+> **Last verified:** 2026-08-01
+
 **Author:** Principal Support Architect & CTO  
 **Date:** July 31, 2026  
-**Target System:** Support Desk, Ticket Routing, & CSAT Analytics
+
 
 ---
 

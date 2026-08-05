@@ -1,8 +1,12 @@
 # CALLMIND CRM — RENEWAL & RETENTION MODULE (`RENEWAL_MODULE.md`)
 
+> **Status:** Not built
+> **Implemented in:** —
+> **Last verified:** 2026-08-01
+
 **Author:** Principal Account Management Architect & CTO  
 **Date:** July 31, 2026  
-**Target System:** Automated Subscription Expiration Engine
+
 
 ---
 

@@ -1,8 +1,13 @@
 # CALLMIND CRM — WORKFLOW AUTOMATION ENGINE V2 (`WORKFLOW_AUTOMATION_V2.md`)
 
+> **Status:** Partially built
+> **Implemented in:** `src/hooks/useAutomationRules.ts`, `src/hooks/useAutomationLogs.ts`, `supabase/migrations/automation_rules_migration.sql`
+> **Last verified:** 2026-08-01
+
 **Author:** Principal Automation Architect & CTO  
 **Date:** July 31, 2026  
 **Target System:** Supabase Deno Edge Functions + PostgreSQL Event Triggers
+
 
 ---
 
