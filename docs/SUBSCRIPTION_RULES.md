@@ -48,7 +48,7 @@ Enforced in Postgres (`supabase/migrations/20260802000200_plan_enforcement.sql`)
 | Automation rules | `BEFORE INSERT` trigger on `automation_rules`. |
 | Team targets | `BEFORE INSERT` trigger on `targets`. |
 | AI credits | `consume_ai_credit()` RPC, called by `src/routes/ai.ts` before dispatching to Gemini. Increments `ai_usage` atomically. |
-| Storage & File Limits | `trg_enforce_storage_limit` trigger on `documents` (migration `20260803000000_documents.sql`). Checks total company `storage_used_bytes` against `includedStorageMb` + addon, plan `max_file_size_mb`, and `files_per_lead`. Express route `/v1/documents/presign` also pre-validates size and quotas before issuing R2 PUT URLs. |
+| Storage & File Limits | `trg_enforce_storage_limit` trigger on `documents` (migration `20260803000100_documents.sql`). Checks total company `storage_used_bytes` against `includedStorageMb` + addon, plan `max_file_size_mb`, and `files_per_lead`. Express route `/v1/documents/presign` also pre-validates size and quotas before issuing R2 PUT URLs. |
 | Plan and seat tampering | `protect_billing_columns()` trigger on `companies` — only the service role may change `plan`, `plan_status`, `seat_limit`, `plan_expires_at`, `trial_ends_at` or `billing_cycle`. |
 
 All of these functions are `SECURITY DEFINER` with `SET search_path = public`,
