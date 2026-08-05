@@ -57,8 +57,37 @@ serve(async (req) => {
       .eq("id", user.id)
       .single();
 
-    if (profileError || profile?.role !== "founder") {
-      return new Response(JSON.stringify({ error: "Forbidden: Founder privileges required" }), {
+    // Impersonation is a platform-owner capability, so it must be gated on the
+    // platform owner allow-list -- not on `role`.
+    //
+    // `role: 'founder'` is assigned to whoever signs up and creates a company
+    // (src/AuthContext.tsx), so every customer has one. Checking only the role
+    // let any customer's founder pass this gate and then name any company_id in
+    // the body, receiving a magic link into that tenant as its owner. This is
+    // the same allow-list that gates the Founder Hub (hasFounderHubAccess).
+    const platformOwners = (Deno.env.get("INTERNAL_TEAM_EMAILS") ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    // Fail closed: an unset allow-list must not read as "everyone".
+    if (platformOwners.length === 0) {
+      console.error("[impersonate-company] INTERNAL_TEAM_EMAILS is not configured");
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const callerEmail = (profile?.email ?? "").toLowerCase();
+
+    if (profileError || !callerEmail || !platformOwners.includes(callerEmail)) {
+      console.error("[impersonate-company] Blocked impersonation attempt", {
+        caller: user.id,
+        callerEmail,
+        role: profile?.role,
+      });
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
