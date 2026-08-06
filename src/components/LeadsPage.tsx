@@ -47,7 +47,7 @@ import { UpgradeModal } from './UpgradeModal';
 import { SmartImportModal } from './SmartImportModal';
 import { CustomFieldManager } from './CustomFieldManager';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useLeadsQuery } from '@/hooks/useLeadsQuery';
+import { useLeadsQuery, LEAD_SORT_LABELS, type LeadSort } from '@/hooks/useLeadsQuery';
 import { useTeamSettingsQuery } from '@/hooks/useTeamSettingsQuery';
 import { useImportLogsQuery } from '@/hooks/useImportLogsQuery';
 import { useAgentsQuery } from '@/hooks/useAgentsQuery';
@@ -778,6 +778,7 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
   const [scoreFilter, setScoreFilter] = useState('');
   const [showSmartImport, setShowSmartImport] = useState(false);
   const [pageSize, setPageSize] = useState(50);
+  const [leadSort, setLeadSort] = useState<LeadSort>('newest');
   const [activeView, setActiveView] = useState<'all' | 'mine' | 'inbox'>('mine');
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   const queryClient = useQueryClient();
@@ -943,7 +944,8 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
     },
     paginatedPage,
     pageSize,
-    searchQuery
+    searchQuery,
+    leadSort
   );
 
   const paginatedLeads = (leadsQueryResult?.leads || []) as Lead[];
@@ -1425,13 +1427,6 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
     current: number;
   }>({ progress: 0, title: '', total: 0, current: 0 });
 
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearchQuery(inputValue);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [inputValue, setSearchQuery]);
 
   const seedDummyData = async () => {
     if (!companyId) return;
@@ -2105,17 +2100,34 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
                   Showing {displayedLeads.length} of {activeLeads.length} Leads found
                 </span>
                 <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-gray-700">Sort by:</span>
+                  <select
+                    value={leadSort}
+                    onChange={(e) => {
+                      setLeadSort(e.target.value as LeadSort);
+                      setPaginatedPage(1);
+                    }}
+                    className="border-2 border-brand-100/50 bg-brand-50/30 rounded-lg px-4 py-2 text-sm font-black text-brand-700 outline-none focus:border-brand-500 transition-all cursor-pointer"
+                  >
+                    {(Object.keys(LEAD_SORT_LABELS) as LeadSort[]).map((key) => (
+                      <option key={key} value={key}>{LEAD_SORT_LABELS[key]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-3">
                   <span className="text-sm font-bold text-gray-700">Records per page:</span>
                   <select
                     value={pageSize}
-                    onChange={(e) => setPageSize(Number(e.target.value))}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPaginatedPage(1);
+                    }}
                     className="border-2 border-brand-100/50 bg-brand-50/30 rounded-lg px-4 py-2 text-sm font-black text-brand-700 outline-none focus:border-brand-500 transition-all cursor-pointer"
                   >
+                    <option value={25}>25</option>
                     <option value={50}>50</option>
                     <option value={100}>100</option>
                     <option value={200}>200</option>
-                    <option value={500}>500</option>
-                    <option value={5000}>5000</option>
                   </select>
                 </div>
             </div>
@@ -2158,6 +2170,8 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
               totalPages={paginatedTotalPages}
               totalCount={paginatedTotalCount}
               onPageChange={setPaginatedPage}
+              // Only rendered in offline/placeholder mode, where the list is
+              // sliced client-side and there is no pagination to conflict with.
               onLoadMore={() => setPageSize(prev => prev + 50)}
             />
           </div>

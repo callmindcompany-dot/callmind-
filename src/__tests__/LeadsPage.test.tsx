@@ -32,7 +32,16 @@ vi.mock('@/hooks/useLeadsQuery', () => ({
     },
     isLoading: false,
     refetch: vi.fn()
-  }))
+  })),
+  LEAD_SORT_LABELS: {
+    newest: 'Newest first',
+    oldest: 'Oldest first',
+    oldest_activity: 'Longest without activity',
+    recent_activity: 'Recently active',
+    score: 'Highest score',
+    value: 'Highest value',
+    name: 'Name (A-Z)',
+  }
 }));
 
 vi.mock('@/hooks/useTeamSettingsQuery', () => ({

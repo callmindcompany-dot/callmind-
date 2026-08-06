@@ -25,6 +25,44 @@ export interface LeadFiltersInput {
   rottingThreshold?: number;
 }
 
+/**
+ * How the list is ordered.
+ *
+ * The order was previously fixed at newest-created-first, which is the one
+ * order a telecaller does not want: it puts today's fresh leads at the top and
+ * buries the ones that have been waiting longest. `oldest_activity` is the
+ * working order for a call queue.
+ */
+export type LeadSort =
+  | 'newest'
+  | 'oldest'
+  | 'oldest_activity'
+  | 'recent_activity'
+  | 'score'
+  | 'value'
+  | 'name';
+
+const SORT_COLUMNS: Record<LeadSort, { column: string; ascending: boolean }> = {
+  newest: { column: 'created_at', ascending: false },
+  oldest: { column: 'created_at', ascending: true },
+  // Nothing has touched these in the longest -- the follow-up queue.
+  oldest_activity: { column: 'updated_at', ascending: true },
+  recent_activity: { column: 'updated_at', ascending: false },
+  score: { column: 'neural_score', ascending: false },
+  value: { column: 'estimated_budget', ascending: false },
+  name: { column: 'name', ascending: true },
+};
+
+export const LEAD_SORT_LABELS: Record<LeadSort, string> = {
+  newest: 'Newest first',
+  oldest: 'Oldest first',
+  oldest_activity: 'Longest without activity',
+  recent_activity: 'Recently active',
+  score: 'Highest score',
+  value: 'Highest value',
+  name: 'Name (A-Z)',
+};
+
 const PAGE_SIZE = 50;
 
 /**
@@ -33,9 +71,15 @@ const PAGE_SIZE = 50;
  * Replaces useLeadsPaginated with TanStack Query.
  * Queries Supabase leads table with pagination, ordering, and filters.
  */
-export function useLeadsQuery(filters: LeadFiltersInput, page: number, pageSize = PAGE_SIZE, searchQuery = '') {
+export function useLeadsQuery(
+  filters: LeadFiltersInput,
+  page: number,
+  pageSize = PAGE_SIZE,
+  searchQuery = '',
+  sort: LeadSort = 'newest',
+) {
   return useQuery({
-    queryKey: ['leads', filters.companyId, page, pageSize, filters, searchQuery],
+    queryKey: ['leads', filters.companyId, page, pageSize, filters, searchQuery, sort],
     queryFn: async () => {
       if (!filters.companyId) {
         return {
@@ -165,7 +209,14 @@ export function useLeadsQuery(filters: LeadFiltersInput, page: number, pageSize 
 
       // Apply pagination + ordering on data query
       dataQuery = dataQuery
-        .order('created_at', { ascending: false })
+        .order(SORT_COLUMNS[sort].column, {
+          ascending: SORT_COLUMNS[sort].ascending,
+          nullsFirst: false,
+        })
+        // Ties are common -- a bulk import gives thousands of rows the same
+        // created_at. Without a stable tiebreak the same lead can appear on two
+        // pages and another never appear at all.
+        .order('id', { ascending: true })
         .range(from, to);
 
       // Execute both queries in parallel
