@@ -36,22 +36,26 @@ CREATE TABLE IF NOT EXISTS public.whatsapp_messages (
 ALTER TABLE public.whatsapp_conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whatsapp_messages ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenant whatsapp conversations select" ON public.whatsapp_conversations;
 CREATE POLICY "Tenant whatsapp conversations select"
 ON public.whatsapp_conversations
 FOR SELECT TO authenticated
 USING (company_id = public.get_my_company_id());
 
+DROP POLICY IF EXISTS "Tenant whatsapp conversations modify" ON public.whatsapp_conversations;
 CREATE POLICY "Tenant whatsapp conversations modify"
 ON public.whatsapp_conversations
 FOR ALL TO authenticated
 USING (company_id = public.get_my_company_id())
 WITH CHECK (company_id = public.get_my_company_id());
 
+DROP POLICY IF EXISTS "Tenant whatsapp messages select" ON public.whatsapp_messages;
 CREATE POLICY "Tenant whatsapp messages select"
 ON public.whatsapp_messages
 FOR SELECT TO authenticated
 USING (company_id = public.get_my_company_id());
 
+DROP POLICY IF EXISTS "Tenant whatsapp messages modify" ON public.whatsapp_messages;
 CREATE POLICY "Tenant whatsapp messages modify"
 ON public.whatsapp_messages
 FOR ALL TO authenticated

@@ -39,5 +39,7 @@ ALTER TABLE cleanup_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cleanup_logs ENABLE ROW LEVEL SECURITY;
 
 -- Policies
+DROP POLICY IF EXISTS "Allow all access to cleanup_settings" ON cleanup_settings;
 CREATE POLICY "Allow all access to cleanup_settings" ON cleanup_settings FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all access to cleanup_logs" ON cleanup_logs;
 CREATE POLICY "Allow all access to cleanup_logs" ON cleanup_logs FOR ALL USING (true) WITH CHECK (true);

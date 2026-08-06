@@ -28,27 +28,31 @@ DROP POLICY IF EXISTS "Allow all access to announcements" ON announcements;
 DROP POLICY IF EXISTS "Allow all access to announcement_reads" ON announcement_reads;
 
 -- Announcements: authenticated users can read their company's published posts
-CREATE POLICY IF NOT EXISTS "Company users can view announcements"
+DROP POLICY IF EXISTS "Company users can view announcements" ON announcements;
+CREATE POLICY "Company users can view announcements"
   ON announcements FOR SELECT
   TO authenticated
   USING (is_published = true);
 
 -- Announcements: service role can do full CRUD
-CREATE POLICY IF NOT EXISTS "Admins can manage announcements"
+DROP POLICY IF EXISTS "Admins can manage announcements" ON announcements;
+CREATE POLICY "Admins can manage announcements"
   ON announcements FOR ALL
   TO authenticated
   USING (true)
   WITH CHECK (true);
 
 -- Reads: users can read and insert their own read records
-CREATE POLICY IF NOT EXISTS "Users can manage own reads"
+DROP POLICY IF EXISTS "Users can manage own reads" ON announcement_reads;
+CREATE POLICY "Users can manage own reads"
   ON announcement_reads FOR ALL
   TO authenticated
   USING (user_id = auth.uid()::text)
   WITH CHECK (user_id = auth.uid()::text);
 
 -- Reads: users can see aggregated read counts for their company's announcements
-CREATE POLICY IF NOT EXISTS "Users can view read stats"
+DROP POLICY IF EXISTS "Users can view read stats" ON announcement_reads;
+CREATE POLICY "Users can view read stats"
   ON announcement_reads FOR SELECT
   TO authenticated
   USING (true);

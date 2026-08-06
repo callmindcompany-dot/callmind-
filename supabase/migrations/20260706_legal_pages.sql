@@ -36,7 +36,9 @@ ALTER TABLE legal_pages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_acceptances ENABLE ROW LEVEL SECURITY;
 
 -- Policies
+DROP POLICY IF EXISTS "Allow all access to legal_pages" ON legal_pages;
 CREATE POLICY "Allow all access to legal_pages" ON legal_pages FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all access to user_acceptances" ON user_acceptances;
 CREATE POLICY "Allow all access to user_acceptances" ON user_acceptances FOR ALL USING (true) WITH CHECK (true);
 
 -- Seed initial English versions of the 3 legal documents

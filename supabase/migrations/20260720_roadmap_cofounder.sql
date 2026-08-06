@@ -101,6 +101,9 @@ ALTER TABLE public.feature_roadmap ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feature_flags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cofounders ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Enable all access for authenticated users on feature_roadmap" ON public.feature_roadmap;
 CREATE POLICY "Enable all access for authenticated users on feature_roadmap" ON public.feature_roadmap FOR ALL USING (true);
+DROP POLICY IF EXISTS "Enable all access for authenticated users on feature_flags" ON public.feature_flags;
 CREATE POLICY "Enable all access for authenticated users on feature_flags" ON public.feature_flags FOR ALL USING (true);
+DROP POLICY IF EXISTS "Enable all access for company users on cofounders" ON public.cofounders;
 CREATE POLICY "Enable all access for company users on cofounders" ON public.cofounders FOR ALL USING (true);

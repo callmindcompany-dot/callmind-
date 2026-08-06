@@ -18,18 +18,22 @@ CREATE TABLE IF NOT EXISTS public.report_templates (
 ALTER TABLE public.report_templates ENABLE ROW LEVEL SECURITY;
 
 -- Policies for report_templates (casting auth.uid()::text to text)
+DROP POLICY IF EXISTS "Users can view templates in their company" ON public.report_templates;
 CREATE POLICY "Users can view templates in their company"
     ON public.report_templates FOR SELECT
     USING (company_id = (SELECT company_id FROM public.users WHERE users.id = auth.uid()::text));
 
+DROP POLICY IF EXISTS "Users can insert templates for their company" ON public.report_templates;
 CREATE POLICY "Users can insert templates for their company"
     ON public.report_templates FOR INSERT
     WITH CHECK (company_id = (SELECT company_id FROM public.users WHERE users.id = auth.uid()::text));
 
+DROP POLICY IF EXISTS "Users can update templates in their company" ON public.report_templates;
 CREATE POLICY "Users can update templates in their company"
     ON public.report_templates FOR UPDATE
     USING (company_id = (SELECT company_id FROM public.users WHERE users.id = auth.uid()::text));
 
+DROP POLICY IF EXISTS "Users can delete templates in their company" ON public.report_templates;
 CREATE POLICY "Users can delete templates in their company"
     ON public.report_templates FOR DELETE
     USING (company_id = (SELECT company_id FROM public.users WHERE users.id = auth.uid()::text));

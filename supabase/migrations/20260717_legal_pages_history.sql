@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS legal_pages_history (
 
 -- Enable RLS for history
 ALTER TABLE legal_pages_history ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to legal_pages_history" ON legal_pages_history;
 CREATE POLICY "Allow all access to legal_pages_history" ON legal_pages_history FOR ALL USING (true) WITH CHECK (true);
 
 -- Add status column to legal_pages if not exists

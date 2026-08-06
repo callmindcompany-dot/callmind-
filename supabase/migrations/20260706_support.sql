@@ -24,10 +24,12 @@ CREATE TABLE IF NOT EXISTS public.support_tickets (
 ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
 
 -- Add RLS policies
+DROP POLICY IF EXISTS "Users can create support tickets" ON public.support_tickets;
 CREATE POLICY "Users can create support tickets" 
     ON public.support_tickets FOR INSERT 
     WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Users can view their company support tickets" ON public.support_tickets;
 CREATE POLICY "Users can view their company support tickets" 
     ON public.support_tickets FOR SELECT 
     USING (true);

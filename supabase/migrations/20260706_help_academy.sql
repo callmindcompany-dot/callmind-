@@ -65,8 +65,13 @@ ALTER TABLE video_tutorials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pdf_guides ENABLE ROW LEVEL SECURITY;
 ALTER TABLE company_settings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow all access to help_faqs" ON help_faqs;
 CREATE POLICY "Allow all access to help_faqs" ON help_faqs FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all access to support_chat_history" ON support_chat_history;
 CREATE POLICY "Allow all access to support_chat_history" ON support_chat_history FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all access to video_tutorials" ON video_tutorials;
 CREATE POLICY "Allow all access to video_tutorials" ON video_tutorials FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all access to pdf_guides" ON pdf_guides;
 CREATE POLICY "Allow all access to pdf_guides" ON pdf_guides FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all access to company_settings" ON company_settings;
 CREATE POLICY "Allow all access to company_settings" ON company_settings FOR ALL USING (true) WITH CHECK (true);

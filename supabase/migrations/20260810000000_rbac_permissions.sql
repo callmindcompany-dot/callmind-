@@ -15,11 +15,13 @@ CREATE TABLE IF NOT EXISTS public.role_permissions (
 ALTER TABLE public.role_permissions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies: Only Founder can modify role permissions
+DROP POLICY IF EXISTS "Tenant role permissions view" ON public.role_permissions;
 CREATE POLICY "Tenant role permissions view"
 ON public.role_permissions
 FOR SELECT TO authenticated
 USING (company_id = public.get_my_company_id());
 
+DROP POLICY IF EXISTS "Tenant founder role permissions modify" ON public.role_permissions;
 CREATE POLICY "Tenant founder role permissions modify"
 ON public.role_permissions
 FOR ALL TO authenticated

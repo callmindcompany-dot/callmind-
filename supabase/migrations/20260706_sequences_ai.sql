@@ -49,6 +49,9 @@ ALTER TABLE sequences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_faqs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow all access to sequences" ON sequences;
 CREATE POLICY "Allow all access to sequences" ON sequences FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all access to ai_config" ON ai_config;
 CREATE POLICY "Allow all access to ai_config" ON ai_config FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all access to ai_faqs" ON ai_faqs;
 CREATE POLICY "Allow all access to ai_faqs" ON ai_faqs FOR ALL USING (true) WITH CHECK (true);

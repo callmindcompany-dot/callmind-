@@ -38,5 +38,7 @@ ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE announcement_reads ENABLE ROW LEVEL SECURITY;
 
 -- Policies
+DROP POLICY IF EXISTS "Allow all access to announcements" ON announcements;
 CREATE POLICY "Allow all access to announcements" ON announcements FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all access to announcement_reads" ON announcement_reads;
 CREATE POLICY "Allow all access to announcement_reads" ON announcement_reads FOR ALL USING (true) WITH CHECK (true);

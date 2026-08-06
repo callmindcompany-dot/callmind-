@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.integration_health (
 ALTER TABLE public.integration_health ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policy: Company Admins & Founders can view & update integration health
+DROP POLICY IF EXISTS "Tenant admin integration health view" ON public.integration_health;
 CREATE POLICY "Tenant admin integration health view"
 ON public.integration_health
 FOR SELECT
@@ -28,6 +29,7 @@ USING (
   AND public.get_my_role() IN ('founder', 'admin')
 );
 
+DROP POLICY IF EXISTS "Tenant admin integration health modify" ON public.integration_health;
 CREATE POLICY "Tenant admin integration health modify"
 ON public.integration_health
 FOR ALL

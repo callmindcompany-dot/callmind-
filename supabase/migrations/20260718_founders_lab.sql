@@ -46,9 +46,13 @@ ALTER TABLE public.resources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whatsapp_messages ENABLE ROW LEVEL SECURITY;
 
 -- Allow all actions
+DROP POLICY IF EXISTS "Allow all on founder_tests" ON public.founder_tests;
 CREATE POLICY "Allow all on founder_tests" ON public.founder_tests FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all on founder_test_logs" ON public.founder_test_logs;
 CREATE POLICY "Allow all on founder_test_logs" ON public.founder_test_logs FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all on resources" ON public.resources;
 CREATE POLICY "Allow all on resources" ON public.resources FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all on whatsapp_messages" ON public.whatsapp_messages;
 CREATE POLICY "Allow all on whatsapp_messages" ON public.whatsapp_messages FOR ALL USING (true) WITH CHECK (true);
 
 -- Seed initial test statuses

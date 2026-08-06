@@ -47,6 +47,9 @@ ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cofounders ENABLE ROW LEVEL SECURITY;
 
 -- Create Policies
+DROP POLICY IF EXISTS "Allow all access to feature_roadmap" ON feature_roadmap;
 CREATE POLICY "Allow all access to feature_roadmap" ON feature_roadmap FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all access to feature_flags" ON feature_flags;
 CREATE POLICY "Allow all access to feature_flags" ON feature_flags FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all access to cofounders" ON cofounders;
 CREATE POLICY "Allow all access to cofounders" ON cofounders FOR ALL USING (true) WITH CHECK (true);

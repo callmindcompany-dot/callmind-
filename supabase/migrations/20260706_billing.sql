@@ -45,15 +45,18 @@ ALTER TABLE public.billing_intents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 
 -- Add RLS policies
+DROP POLICY IF EXISTS "Users can view their company subscriptions" ON public.subscriptions;
 CREATE POLICY "Users can view their company subscriptions" 
     ON public.subscriptions FOR SELECT 
     USING (true);
 
+DROP POLICY IF EXISTS "Users can view and insert their company billing intents" ON public.billing_intents;
 CREATE POLICY "Users can view and insert their company billing intents" 
     ON public.billing_intents FOR ALL 
     USING (true)
     WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Users can view their company invoices" ON public.invoices;
 CREATE POLICY "Users can view their company invoices" 
     ON public.invoices FOR SELECT 
     USING (true);

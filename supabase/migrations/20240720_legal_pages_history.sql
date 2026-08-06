@@ -20,7 +20,8 @@ CREATE INDEX IF NOT EXISTS idx_legal_pages_history_slug_lang
 ALTER TABLE legal_pages_history ENABLE ROW LEVEL SECURITY;
 
 -- Allow authenticated users to read history (for version history modal)
-CREATE POLICY IF NOT EXISTS "Authenticated users can view legal history"
+DROP POLICY IF EXISTS "Authenticated users can view legal history" ON legal_pages_history;
+CREATE POLICY "Authenticated users can view legal history"
   ON legal_pages_history FOR SELECT
   TO authenticated
   USING (true);
