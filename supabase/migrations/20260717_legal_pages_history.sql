@@ -18,8 +18,19 @@ CREATE TABLE IF NOT EXISTS legal_pages_history (
 
 -- Enable RLS for history
 ALTER TABLE legal_pages_history ENABLE ROW LEVEL SECURITY;
+
+-- This was FOR ALL USING (true) WITH CHECK (true). legal_pages_history is the
+-- audit trail of who changed a legal document and when -- the record you would
+-- reach for to show which version a customer actually accepted. Wide open, any
+-- logged-in customer could rewrite or delete that history, which is the one
+-- thing an audit trail must not allow.
+--
+-- Read is global, matching legal_pages itself: the documents are public and so
+-- is their revision history. Writes go through the service role.
 DROP POLICY IF EXISTS "Allow all access to legal_pages_history" ON legal_pages_history;
-CREATE POLICY "Allow all access to legal_pages_history" ON legal_pages_history FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Authenticated users can view legal history" ON legal_pages_history;
+DROP POLICY IF EXISTS "global_select_legal_pages_history" ON legal_pages_history;
+CREATE POLICY "global_select_legal_pages_history" ON legal_pages_history FOR SELECT USING (true);
 
 -- Add status column to legal_pages if not exists
 ALTER TABLE legal_pages ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'published' CHECK (status IN ('draft', 'published'));
@@ -28,4 +39,23 @@ ALTER TABLE legal_pages ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'published'
 ALTER TABLE legal_pages DROP CONSTRAINT IF EXISTS legal_pages_slug_language_key;
 
 -- Add new unique constraint (slug, language, status)
-ALTER TABLE legal_pages ADD CONSTRAINT legal_pages_slug_language_status_key UNIQUE (slug, language, status);
+--
+-- Postgres has no ADD CONSTRAINT IF NOT EXISTS, so on the second run this
+-- raised 42P07 and stopped the file. Same shape as the CREATE POLICY problem
+-- fixed earlier: a statement that can only ever succeed once, in a set that
+-- gets run more than once.
+--
+-- Guarded rather than DROP + ADD. Dropping a unique constraint and re-adding it
+-- re-validates the whole table, and would fail outright if duplicates had crept
+-- in while it was absent.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conname = 'legal_pages_slug_language_status_key'
+       AND conrelid = 'public.legal_pages'::regclass
+  ) THEN
+    ALTER TABLE legal_pages
+      ADD CONSTRAINT legal_pages_slug_language_status_key UNIQUE (slug, language, status);
+  END IF;
+END $$;
