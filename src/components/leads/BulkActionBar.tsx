@@ -20,16 +20,21 @@ interface BulkActionBarProps {
   selectedCount: number;
   agents: any[];
   onBulkAssign: (agentId: string) => void;
+  onBulkStatusChange: (status: string) => void;
   onBulkDelete: () => void;
   onBulkExport: () => Promise<void>;
   onClearSelection: () => void;
   isSubmitting?: boolean;
 }
 
+/** Mirrors the CHECK constraint on leads.status. */
+const BULK_STATUSES = ['New', 'Contacted', 'Interested', 'Call Back', 'Converted', 'Rejected'];
+
 export const BulkActionBar = React.memo(({
   selectedCount,
   agents,
   onBulkAssign,
+  onBulkStatusChange,
   onBulkDelete,
   onBulkExport,
   onClearSelection,
@@ -78,6 +83,20 @@ export const BulkActionBar = React.memo(({
                 ))}
               </select>
               
+              <select
+                className="bg-white/10 border border-white/20 text-white rounded-xl px-4 py-2 text-sm font-bold outline-none focus:bg-white/20 transition-all cursor-pointer text-gray-800"
+                onChange={(e) => {
+                  if (e.target.value) onBulkStatusChange(e.target.value);
+                  e.target.value = '';
+                }}
+                value=""
+              >
+                <option value="" disabled className="text-gray-950">Change status...</option>
+                {BULK_STATUSES.map(status => (
+                  <option key={status} value={status} className="text-gray-950">{status}</option>
+                ))}
+              </select>
+
               <div className="w-px h-6 bg-white/10 mx-1 shrink-0" />
 
               {/* Fix 4: Export Button with loading state and spinner */}

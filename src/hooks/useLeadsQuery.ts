@@ -112,11 +112,30 @@ export function useLeadsQuery(
         dataQuery = dataQuery.eq('assigned_to', filters.userId);
       }
 
-      // Server-side search using Supabase ilike
+      // Server-side search.
+      //
+      // A telecaller almost always searches by phone number, and types it from
+      // the front. A left-anchored `phone LIKE '98765%'` uses the btree in
+      // 20260811000000_lead_search_indexes.sql, where a leading-wildcard ilike
+      // across three columns cannot and falls back to scanning the tenant.
+      //
+      // So: if the query looks like a phone number, search phone by prefix.
+      // Otherwise fall back to trigram-servable ilike across all three.
       if (searchQuery.trim()) {
-        const term = `%${searchQuery.trim()}%`;
-        countQuery = countQuery.or(`name.ilike.${term},phone.ilike.${term},email.ilike.${term}`);
-        dataQuery = dataQuery.or(`name.ilike.${term},phone.ilike.${term},email.ilike.${term}`);
+        const raw = searchQuery.trim();
+        const digits = raw.replace(/[^0-9]/g, '');
+        const looksLikePhone = digits.length >= 4 && digits.length === raw.replace(/[\s+\-()]/g, '').length;
+
+        if (looksLikePhone) {
+          // Match a number typed with or without the +91 country code.
+          const local = digits.length > 10 ? digits.slice(-10) : digits;
+          countQuery = countQuery.or(`phone.like.${digits}%,phone.like.%${local}`);
+          dataQuery = dataQuery.or(`phone.like.${digits}%,phone.like.%${local}`);
+        } else {
+          const term = `%${raw}%`;
+          countQuery = countQuery.or(`name.ilike.${term},phone.ilike.${term},email.ilike.${term}`);
+          dataQuery = dataQuery.or(`name.ilike.${term},phone.ilike.${term},email.ilike.${term}`);
+        }
       }
 
       // Status filter

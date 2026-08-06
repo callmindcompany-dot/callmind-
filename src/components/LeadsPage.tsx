@@ -1185,24 +1185,6 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
     }
   }, [selectedLeadIds, companyId, refetchPaginated]);
 
-  const handleBulkAssignPrompt = React.useCallback(() => {
-    if (selectedLeadIds.length === 0) {
-      toast.error("Please select one or more leads to assign.");
-      return;
-    }
-    const agentNames = agents.map((a, i) => `${i + 1}. ${a.name}`).join('\n');
-    const choice = window.prompt(
-      `Enter the number of the agent to assign ${selectedLeadIds.length} leads:\n${agentNames}`
-    );
-    if (choice) {
-      const idx = parseInt(choice) - 1;
-      if (idx >= 0 && idx < agents.length) {
-        handleBulkAssign(agents[idx].id);
-      } else {
-        toast.error("Invalid choice.");
-      }
-    }
-  }, [selectedLeadIds, agents]);
 
   const handleBulkStatusUpdate = React.useCallback(async (newStatus: string) => {
     setIsSubmitting(true);
@@ -1243,26 +1225,6 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
       setBulkActionProgress({ progress: 0, title: '', total: 0, current: 0 });
     }
   }, [selectedLeadIds, companyId, refetchPaginated]);
-
-  const handleBulkStatusPrompt = React.useCallback(() => {
-    if (selectedLeadIds.length === 0) {
-      toast.error("Please select one or more leads to transfer status.");
-      return;
-    }
-    const statuses = ['New', 'Contacted', 'Interested', 'Call Back', 'Converted', 'Rejected'];
-    const statusChoices = statuses.map((s, i) => `${i + 1}. ${s}`).join('\n');
-    const choice = window.prompt(
-      `Enter the number of the new status for ${selectedLeadIds.length} leads:\n${statusChoices}`
-    );
-    if (choice) {
-      const idx = parseInt(choice) - 1;
-      if (idx >= 0 && idx < statuses.length) {
-        handleBulkStatusUpdate(statuses[idx]);
-      } else {
-        toast.error("Invalid choice.");
-      }
-    }
-  }, [selectedLeadIds, handleBulkStatusUpdate]);
 
   const handleBulkAssign = React.useCallback(async (agentId: string) => {
      if (selectedLeadIds.length === 0 || !agentId) return;
@@ -2064,15 +2026,6 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
                 <button onClick={() => setShowAddModal(true)} className="px-4 py-2.5 bg-blue-600 text-white font-bold rounded-lg text-xs hover:bg-blue-700 transition-colors uppercase tracking-wide flex items-center gap-2 shrink-0">
                    <Plus size={14} /> Add Leads
                 </button>
-                <button onClick={handleBulkStatusPrompt} className="px-4 py-2.5 bg-orange-400 text-white font-bold rounded-lg text-xs hover:bg-orange-500 transition-colors uppercase tracking-wide shrink-0">
-                   Transfer Lead Status
-                </button>
-                <button onClick={handleBulkAssignPrompt} className="px-4 py-2.5 bg-slate-500 text-white font-bold rounded-lg text-xs hover:bg-slate-600 transition-colors uppercase tracking-wide shrink-0">
-                   Assign
-                </button>
-                <button onClick={handleBulkDelete} className="px-4 py-2.5 bg-red-600 text-white font-bold rounded-lg text-xs hover:bg-red-700 transition-colors uppercase tracking-wide shrink-0">
-                   Delete Lead
-                </button>
                 <button 
                   onClick={() => setShowFieldSettings(true)}
                   className="px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-lg text-xs hover:bg-indigo-700 transition-colors uppercase tracking-wide flex items-center gap-2 shrink-0"
@@ -2136,6 +2089,7 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
               selectedCount={selectedLeadIds.length}
               agents={agents}
               onBulkAssign={handleBulkAssign}
+              onBulkStatusChange={handleBulkStatusUpdate}
               onBulkDelete={handleBulkDelete}
               onBulkExport={handleBulkExport}
               onClearSelection={() => setSelectedLeadIds([])}
