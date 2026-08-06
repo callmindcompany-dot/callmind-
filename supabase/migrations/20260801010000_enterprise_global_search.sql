@@ -55,10 +55,17 @@ ON public.recent_searches(company_id, user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_saved_searches_tenant_user 
 ON public.saved_searches(company_id, user_id, is_favourite);
 
+-- Trigram indexes so global search can match mid-string without scanning the
+-- tenant. The columns come from 20260731999999_leads_base_columns.sql, which
+-- adds what schema.sql always assumed but never actually created.
 CREATE INDEX IF NOT EXISTS idx_leads_trgm_name ON public.leads USING gin (name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_leads_trgm_phone ON public.leads USING gin (phone gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_leads_trgm_email ON public.leads USING gin (email gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS idx_leads_trgm_company ON public.leads USING gin (company gin_trgm_ops);
+
+-- There is no `leads.company` column and never was. The tenant key is
+-- `company_id`, which is an exact-match foreign key -- a trigram index on it
+-- would serve no query this product runs. Dropped rather than pointed at
+-- company_id.
 
 -- 6. ROW-LEVEL SECURITY POLICIES
 ALTER TABLE public.recent_searches ENABLE ROW LEVEL SECURITY;
