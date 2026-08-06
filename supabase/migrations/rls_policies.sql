@@ -118,17 +118,6 @@ CREATE POLICY "announcements_all_own_company"
 -- ============================================================
 -- AUTOMATIONS
 -- ============================================================
-ALTER TABLE automations ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "automations_select_own_company" ON automations;
-CREATE POLICY "automations_select_own_company"
-  ON automations FOR SELECT
-  USING (company_id = auth_company_id());
-
-DROP POLICY IF EXISTS "automations_all_own_company" ON automations;
-CREATE POLICY "automations_all_own_company"
-  ON automations FOR ALL
-  USING (company_id = auth_company_id());
 
 -- ============================================================
 -- SEQUENCES
@@ -249,3 +238,26 @@ DROP POLICY IF EXISTS "agent_status_all_own_company" ON agent_status;
 CREATE POLICY "agent_status_all_own_company"
   ON agent_status FOR ALL
   USING (company_id = auth_company_id());
+
+-- automations
+-- Referenced by this migration but created by none, and no application
+-- code touches it. Guarded so a database without it does not fail with
+-- 42P01, while one that has it still gets the policies.
+DO $automations$
+BEGIN
+  IF to_regclass('public.automations') IS NULL THEN
+    RAISE NOTICE 'Skipping automations policies: table not present';
+  ELSE
+    EXECUTE $ddl$
+    ALTER TABLE automations ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS "automations_select_own_company" ON automations;
+    DROP POLICY IF EXISTS "automations_all_own_company" ON automations;
+    CREATE POLICY "automations_select_own_company"
+      ON automations FOR SELECT
+      USING (company_id = auth_company_id());
+    CREATE POLICY "automations_all_own_company"
+      ON automations FOR ALL
+      USING (company_id = auth_company_id());
+    $ddl$;
+  END IF;
+END $automations$;

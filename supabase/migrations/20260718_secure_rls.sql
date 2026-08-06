@@ -566,6 +566,11 @@ CREATE POLICY "tenant_notifications_update" ON public.notifications FOR UPDATE U
 CREATE POLICY "tenant_notifications_delete" ON public.notifications FOR DELETE USING (company_id = public.get_my_company_id());
 
 -- routing_state
+--
+-- Created by 20260717999999_missing_core_tables.sql. It is written by
+-- increment_routing_index above -- the round-robin lead assignment RPC called
+-- from src/routes/leads.ts and src/lib/dbAdapter.ts -- but no migration had
+-- ever created it, so every round-robin assignment was failing.
 ALTER TABLE public.routing_state ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "tenant_routing_state_policy" ON public.routing_state;
 DROP POLICY IF EXISTS "tenant_select_routing_state" ON public.routing_state;
@@ -577,7 +582,6 @@ DROP POLICY IF EXISTS "tenant_routing_state_select" ON public.routing_state;
 DROP POLICY IF EXISTS "tenant_routing_state_insert" ON public.routing_state;
 DROP POLICY IF EXISTS "tenant_routing_state_update" ON public.routing_state;
 DROP POLICY IF EXISTS "tenant_routing_state_delete" ON public.routing_state;
-
 CREATE POLICY "tenant_routing_state_select" ON public.routing_state FOR SELECT USING (company_id = public.get_my_company_id());
 CREATE POLICY "tenant_routing_state_insert" ON public.routing_state FOR INSERT WITH CHECK (company_id = public.get_my_company_id());
 CREATE POLICY "tenant_routing_state_update" ON public.routing_state FOR UPDATE USING (company_id = public.get_my_company_id()) WITH CHECK (company_id = public.get_my_company_id());

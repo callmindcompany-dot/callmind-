@@ -132,7 +132,144 @@ CREATE INDEX IF NOT EXISTS idx_webhook_logs_company_created
 
 ALTER TABLE public.webhook_logs ENABLE ROW LEVEL SECURITY;
 
+-- ---------------------------------------------------------------------------
+-- The rest of the set
+-- ---------------------------------------------------------------------------
+-- The first version of this migration created four tables, because a survey
+-- said four were missing. That survey was wrong: it counted CREATE TABLE in
+-- schema.sql and full_master_supabase_setup.sql, which are reference documents
+-- that have never been applied to this database. Counting only real migrations
+-- gives fifteen tables that are referenced but never created, and join_requests
+-- was simply the next one to fail.
+--
+-- These five are the ones shipped code actually uses. Creating them all here
+-- ends the failure chain instead of paying for another round trip each.
+--
+-- CREATE TABLE IF NOT EXISTS is a no-op against whatever already exists, so a
+-- table that was created outside migrations keeps its current shape.
+
+-- join_requests -- useTeam.ts usePendingRequests/approve/reject, and the
+-- submit_join_request RPC in 20260718_join_rebuild.sql. Columns are the ones
+-- types/supabase.ts already declares.
+CREATE TABLE IF NOT EXISTS public.join_requests (
+    id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    company_id    TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    user_id       TEXT,
+    name          TEXT NOT NULL,
+    email         TEXT NOT NULL,
+    phone         TEXT NOT NULL,
+    city          TEXT,
+    language      TEXT,
+    requested_via TEXT,
+    join_code     TEXT,
+    token         TEXT,
+    status        TEXT NOT NULL DEFAULT 'pending',
+    requested_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    processed_at  TIMESTAMPTZ,
+    processed_by  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_join_requests_company_status
+  ON public.join_requests (company_id, status, created_at DESC);
+ALTER TABLE public.join_requests ENABLE ROW LEVEL SECURITY;
+
+-- invites -- useTeam.ts, and validate_join_request/submit_join_request, which
+-- match a supplied code against join_code, token or id and bump used_count.
+CREATE TABLE IF NOT EXISTS public.invites (
+    id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    company_id  TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    email       TEXT,
+    role        TEXT,
+    type        TEXT,
+    join_code   TEXT,
+    token       TEXT,
+    status      TEXT NOT NULL DEFAULT 'active',
+    -- NULL max_uses means unlimited: validate_join_request only enforces the
+    -- cap when it is non-null.
+    max_uses    INTEGER,
+    used_count  INTEGER NOT NULL DEFAULT 0,
+    expires_at  TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_invites_company_created
+  ON public.invites (company_id, created_at DESC);
+-- Codes are matched case-insensitively via UPPER() in both RPCs.
+CREATE INDEX IF NOT EXISTS idx_invites_company_active_code
+  ON public.invites (company_id, status, UPPER(join_code));
+ALTER TABLE public.invites ENABLE ROW LEVEL SECURITY;
+
+-- agent_status -- useAgentMonitor.ts and useTeam.ts. `id` is joined against
+-- calls.created_by, which is TEXT.
+CREATE TABLE IF NOT EXISTS public.agent_status (
+    id         TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    user_name  TEXT,
+    status     TEXT NOT NULL DEFAULT 'offline',
+    last_seen  TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_agent_status_company
+  ON public.agent_status (company_id);
+ALTER TABLE public.agent_status ENABLE ROW LEVEL SECURITY;
+
+-- trial_events -- src/utils/trialTracking.ts, which supplies its own id.
+CREATE TABLE IF NOT EXISTS public.trial_events (
+    id         TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    user_id    TEXT,
+    event_type TEXT NOT NULL,
+    event_data JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_trial_events_company_created
+  ON public.trial_events (company_id, created_at DESC);
+ALTER TABLE public.trial_events ENABLE ROW LEVEL SECURITY;
+
+-- founder_configs -- read by the legal-actions edge function when it exports a
+-- company's data. Only company_id is known from the call site (`select('*')`),
+-- so the payload is a single JSONB column rather than invented named ones.
+CREATE TABLE IF NOT EXISTS public.founder_configs (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    config_key TEXT,
+    config     JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_founder_configs_company
+  ON public.founder_configs (company_id);
+ALTER TABLE public.founder_configs ENABLE ROW LEVEL SECURITY;
+
+-- routing_state -- round-robin lead assignment.
+--
+-- No React code queries this table, which is why a first pass over `.from(...)`
+-- calls missed it. It is written by the increment_routing_index RPC defined in
+-- 20260718_secure_rls.sql, which src/routes/leads.ts and src/lib/dbAdapter.ts
+-- call on every inbound lead. The table was never created, so that RPC has been
+-- failing and round-robin assignment with it.
+--
+-- The shape is not guessed: the ON CONFLICT upsert in that function names every
+-- column, and its id is company_id || '_' || source.
+CREATE TABLE IF NOT EXISTS public.routing_state (
+    id                  TEXT PRIMARY KEY,
+    company_id          TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    source              TEXT NOT NULL,
+    last_assigned_index INTEGER NOT NULL DEFAULT 0,
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_routing_state_company
+  ON public.routing_state (company_id);
+ALTER TABLE public.routing_state ENABLE ROW LEVEL SECURITY;
+
+-- Not created, deliberately: automations, call_logs, integrations and
+-- sim_cards. Migrations reference them, but nothing in the application reads,
+-- writes or calls anything that touches them -- there is no call site to derive
+-- a shape from, and inventing one would put a schema in the database that no
+-- feature asked for. Their policy blocks are guarded instead, so a database
+-- that does have them still gets the policies.
+
 -- Policies are not defined here. 20260718_secure_rls.sql creates
--- tenant_<table>_<action> on all four, keyed on company_id, and it runs next.
--- RLS is enabled above so that if it does not run, these tables deny by default
--- rather than being readable by every tenant.
+-- tenant_<table>_<action> keyed on company_id, and it runs next. RLS is enabled
+-- above so that if it does not run, these tables deny by default rather than
+-- being readable by every tenant.

@@ -53,12 +53,9 @@ DROP POLICY IF EXISTS "Enable all access for company users on cofounders" ON pub
 -- those policies allowed auth.role() = 'anon' and were applied TO public.
 DROP POLICY IF EXISTS "users_access_policy" ON public.users;
 DROP POLICY IF EXISTS "leads_company_access_policy" ON public.leads;
-DROP POLICY IF EXISTS "call_logs_company_access_policy" ON public.call_logs;
 DROP POLICY IF EXISTS "companies_access_policy" ON public.companies;
 DROP POLICY IF EXISTS "team_settings_access_policy" ON public.team_settings;
 DROP POLICY IF EXISTS "invoices_access_policy" ON public.invoices;
-DROP POLICY IF EXISTS "sim_cards_access_policy" ON public.sim_cards;
-DROP POLICY IF EXISTS "integrations_access_policy" ON public.integrations;
 DROP POLICY IF EXISTS "audit_logs_access_policy" ON public.audit_logs;
 DROP POLICY IF EXISTS "system_errors_access_policy" ON public.system_errors;
 DROP POLICY IF EXISTS "scheduled_messages_access_policy" ON public.scheduled_messages;
@@ -173,3 +170,48 @@ CREATE POLICY "security_cofounders_write" ON public.cofounders FOR ALL TO authen
   );
 
 COMMIT;
+
+-- call_logs
+-- Referenced by this migration but created by none, and no application
+-- code touches it. Guarded so a database without it does not fail with
+-- 42P01, while one that has it still gets the policies.
+DO $call_logs$
+BEGIN
+  IF to_regclass('public.call_logs') IS NULL THEN
+    RAISE NOTICE 'Skipping call_logs policies: table not present';
+  ELSE
+    EXECUTE $ddl$
+    DROP POLICY IF EXISTS "call_logs_company_access_policy" ON public.call_logs;
+    $ddl$;
+  END IF;
+END $call_logs$;
+
+-- sim_cards
+-- Referenced by this migration but created by none, and no application
+-- code touches it. Guarded so a database without it does not fail with
+-- 42P01, while one that has it still gets the policies.
+DO $sim_cards$
+BEGIN
+  IF to_regclass('public.sim_cards') IS NULL THEN
+    RAISE NOTICE 'Skipping sim_cards policies: table not present';
+  ELSE
+    EXECUTE $ddl$
+    DROP POLICY IF EXISTS "sim_cards_access_policy" ON public.sim_cards;
+    $ddl$;
+  END IF;
+END $sim_cards$;
+
+-- integrations
+-- Referenced by this migration but created by none, and no application
+-- code touches it. Guarded so a database without it does not fail with
+-- 42P01, while one that has it still gets the policies.
+DO $integrations$
+BEGIN
+  IF to_regclass('public.integrations') IS NULL THEN
+    RAISE NOTICE 'Skipping integrations policies: table not present';
+  ELSE
+    EXECUTE $ddl$
+    DROP POLICY IF EXISTS "integrations_access_policy" ON public.integrations;
+    $ddl$;
+  END IF;
+END $integrations$;
