@@ -138,7 +138,7 @@ DROP POLICY IF EXISTS "Users view own tenant notifications" ON public.notificati
 CREATE POLICY "Users view own tenant notifications" ON public.notifications
     FOR SELECT USING (
         company_id = public.get_my_company_id() 
-        AND user_id = auth.uid()
+        AND user_id = auth.uid()::text
         AND (
             -- Telecallers cannot view financial notifications (payment/invoice/renewal)
             public.get_my_role() != 'telecaller' 
@@ -149,13 +149,13 @@ CREATE POLICY "Users view own tenant notifications" ON public.notifications
 DROP POLICY IF EXISTS "Users update own tenant notifications" ON public.notifications;
 CREATE POLICY "Users update own tenant notifications" ON public.notifications
     FOR UPDATE USING (
-        company_id = public.get_my_company_id() AND user_id = auth.uid()
+        company_id = public.get_my_company_id() AND user_id = auth.uid()::text
     );
 
 DROP POLICY IF EXISTS "Users delete own tenant notifications" ON public.notifications;
 CREATE POLICY "Users delete own tenant notifications" ON public.notifications
     FOR DELETE USING (
-        company_id = public.get_my_company_id() AND user_id = auth.uid()
+        company_id = public.get_my_company_id() AND user_id = auth.uid()::text
     );
 
 DROP POLICY IF EXISTS "Service Role full access notifications" ON public.notifications;

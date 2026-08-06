@@ -67,11 +67,11 @@ ALTER TABLE public.search_analytics_logs ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users manage own recent searches" ON public.recent_searches;
 CREATE POLICY "Users manage own recent searches" ON public.recent_searches
-    FOR ALL USING (company_id = public.get_my_company_id() AND user_id = auth.uid());
+    FOR ALL USING (company_id = public.get_my_company_id() AND user_id = auth.uid()::text);
 
 DROP POLICY IF EXISTS "Users manage own saved searches" ON public.saved_searches;
 CREATE POLICY "Users manage own saved searches" ON public.saved_searches
-    FOR ALL USING (company_id = public.get_my_company_id() AND user_id = auth.uid());
+    FOR ALL USING (company_id = public.get_my_company_id() AND user_id = auth.uid()::text);
 
 -- 7. MULTI-MODULE GLOBAL SEARCH RPC FUNCTION (WITH RBAC MASKING)
 CREATE OR REPLACE FUNCTION public.search_global_crm(

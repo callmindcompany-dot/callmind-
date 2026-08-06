@@ -41,7 +41,7 @@ SET search_path = public
 AS $$
 BEGIN
   -- If user is updating their own record and is not a founder, block role or company change
-  IF (auth.uid() = OLD.id AND public.get_my_role() != 'founder') THEN
+  IF (auth.uid()::text = OLD.id AND public.get_my_role() != 'founder') THEN
     IF (NEW.role IS DISTINCT FROM OLD.role) THEN
       RAISE EXCEPTION 'Self role escalation is prohibited.';
     END IF;
