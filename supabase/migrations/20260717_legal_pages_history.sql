@@ -1,3 +1,10 @@
+-- NOTE: company_id and user_id are TEXT, not UUID.
+--
+-- public.companies.id and public.users.id are TEXT -- Firestore-era string
+-- identifiers, not generated UUIDs. A UUID foreign key against them fails with
+-- 42804, "Key columns are of incompatible types", which is why this migration
+-- has never successfully applied.
+
 -- Create legal_pages_history table
 CREATE TABLE IF NOT EXISTS legal_pages_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -5,7 +12,7 @@ CREATE TABLE IF NOT EXISTS legal_pages_history (
   version INTEGER NOT NULL,
   content TEXT NOT NULL,
   language TEXT DEFAULT 'en',
-  edited_by UUID REFERENCES users(id),
+  edited_by TEXT REFERENCES users(id),
   edited_at TIMESTAMPTZ DEFAULT now()
 );
 

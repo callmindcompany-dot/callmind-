@@ -1,9 +1,16 @@
+-- NOTE: company_id and user_id are TEXT, not UUID.
+--
+-- public.companies.id and public.users.id are TEXT -- Firestore-era string
+-- identifiers, not generated UUIDs. A UUID foreign key against them fails with
+-- 42804, "Key columns are of incompatible types", which is why this migration
+-- has never successfully applied.
+
 -- Migration: Sequences and AI Config table creations
 
 -- Create Sequences Table
 CREATE TABLE IF NOT EXISTS sequences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     enrolled INTEGER DEFAULT 0,
     completion INTEGER DEFAULT 0,
@@ -17,7 +24,7 @@ CREATE TABLE IF NOT EXISTS sequences (
 -- Create AI Configuration Table
 CREATE TABLE IF NOT EXISTS ai_config (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID UNIQUE NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT UNIQUE NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     auto_call BOOLEAN DEFAULT TRUE,
     record_calls BOOLEAN DEFAULT TRUE,
     sentiment_analysis BOOLEAN DEFAULT TRUE,
@@ -30,7 +37,7 @@ CREATE TABLE IF NOT EXISTS ai_config (
 -- Create AI FAQ Table
 CREATE TABLE IF NOT EXISTS ai_faqs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
     question TEXT NOT NULL,
     answer TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),

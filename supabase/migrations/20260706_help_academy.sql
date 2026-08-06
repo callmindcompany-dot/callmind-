@@ -1,9 +1,16 @@
+-- NOTE: company_id and user_id are TEXT, not UUID.
+--
+-- public.companies.id and public.users.id are TEXT -- Firestore-era string
+-- identifiers, not generated UUIDs. A UUID foreign key against them fails with
+-- 42804, "Key columns are of incompatible types", which is why this migration
+-- has never successfully applied.
+
 -- Migration: Help & Video Academy table creations
 
 -- Create Help FAQs table
 CREATE TABLE IF NOT EXISTS help_faqs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT REFERENCES companies(id) ON DELETE CASCADE,
     category TEXT NOT NULL,
     question TEXT NOT NULL,
     answer TEXT NOT NULL,
@@ -14,7 +21,7 @@ CREATE TABLE IF NOT EXISTS help_faqs (
 -- Create Support Chat History table
 CREATE TABLE IF NOT EXISTS support_chat_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT REFERENCES companies(id) ON DELETE CASCADE,
     user_id UUID NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('user', 'ai')),
     message TEXT NOT NULL,
@@ -45,7 +52,7 @@ CREATE TABLE IF NOT EXISTS pdf_guides (
 
 -- Create Company Support Settings table
 CREATE TABLE IF NOT EXISTS company_settings (
-    company_id UUID PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
     support_email TEXT DEFAULT 'support@callmind.company',
     support_whatsapp TEXT DEFAULT '919999999999',
     updated_at TIMESTAMPTZ DEFAULT NOW()

@@ -1,3 +1,10 @@
+-- NOTE: company_id and user_id are TEXT, not UUID.
+--
+-- public.companies.id and public.users.id are TEXT -- Firestore-era string
+-- identifiers, not generated UUIDs. A UUID foreign key against them fails with
+-- 42804, "Key columns are of incompatible types", which is why this migration
+-- has never successfully applied.
+
 -- Migration: Cleanup Settings, Logs, and Schema Additions
 
 -- Add is_archived to announcements if it doesn't exist
@@ -5,7 +12,7 @@ ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT f
 
 -- Create Cleanup Settings table
 CREATE TABLE IF NOT EXISTS cleanup_settings (
-    company_id UUID PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
     chats_enabled BOOLEAN DEFAULT true,
     logs_enabled BOOLEAN DEFAULT true,
     leads_enabled BOOLEAN DEFAULT true,
@@ -20,7 +27,7 @@ CREATE TABLE IF NOT EXISTS cleanup_settings (
 -- Create Cleanup Logs table
 CREATE TABLE IF NOT EXISTS cleanup_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
+    company_id TEXT REFERENCES companies(id) ON DELETE CASCADE,
     rule_name TEXT NOT NULL,
     records_deleted INTEGER DEFAULT 0,
     executed_at TIMESTAMPTZ DEFAULT NOW(),

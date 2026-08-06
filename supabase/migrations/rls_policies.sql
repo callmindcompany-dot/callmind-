@@ -7,7 +7,7 @@
 -- Helper: Get current user's company_id
 CREATE OR REPLACE FUNCTION auth_company_id()
 RETURNS TEXT AS $$
-  SELECT company_id FROM users WHERE id = auth.uid()
+  SELECT company_id FROM users WHERE id = auth.uid()::text
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 -- ============================================================

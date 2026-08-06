@@ -1,3 +1,10 @@
+-- NOTE: company_id and user_id are TEXT, not UUID.
+--
+-- public.companies.id and public.users.id are TEXT -- Firestore-era string
+-- identifiers, not generated UUIDs. A UUID foreign key against them fails with
+-- 42804, "Key columns are of incompatible types", which is why this migration
+-- has never successfully applied.
+
 -- Migration: Add indexes and improve RLS for announcements tables
 -- The core tables already exist from 20260706_announcements.sql
 -- This migration adds performance indexes and stricter RLS policies.
@@ -37,8 +44,8 @@ CREATE POLICY IF NOT EXISTS "Admins can manage announcements"
 CREATE POLICY IF NOT EXISTS "Users can manage own reads"
   ON announcement_reads FOR ALL
   TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (user_id = auth.uid()::text)
+  WITH CHECK (user_id = auth.uid()::text);
 
 -- Reads: users can see aggregated read counts for their company's announcements
 CREATE POLICY IF NOT EXISTS "Users can view read stats"

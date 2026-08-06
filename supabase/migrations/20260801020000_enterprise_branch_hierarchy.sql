@@ -77,9 +77,11 @@ ADD COLUMN IF NOT EXISTS state_id UUID REFERENCES public.states_hierarchy(id) ON
 ADD COLUMN IF NOT EXISTS branch_id UUID REFERENCES public.branches(id) ON DELETE SET NULL,
 ADD COLUMN IF NOT EXISTS department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL;
 
-ALTER TABLE public.teams 
-ADD COLUMN IF NOT EXISTS branch_id UUID REFERENCES public.branches(id) ON DELETE SET NULL,
-ADD COLUMN IF NOT EXISTS department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL;
+-- `teams` and `tasks` are not altered here. Neither table exists in this
+-- database, no migration creates one, and nothing in src/ or
+-- supabase/functions/ queries either -- they were assumed rather than built.
+-- ALTER TABLE has no IF EXISTS for the table itself, so referencing them fails
+-- the whole migration with 42P01.
 
 ALTER TABLE public.leads 
 ADD COLUMN IF NOT EXISTS region_id UUID REFERENCES public.regions(id) ON DELETE SET NULL,
@@ -91,9 +93,6 @@ ALTER TABLE public.calls
 ADD COLUMN IF NOT EXISTS branch_id UUID REFERENCES public.branches(id) ON DELETE SET NULL;
 
 ALTER TABLE public.invoices 
-ADD COLUMN IF NOT EXISTS branch_id UUID REFERENCES public.branches(id) ON DELETE SET NULL;
-
-ALTER TABLE public.tasks 
 ADD COLUMN IF NOT EXISTS branch_id UUID REFERENCES public.branches(id) ON DELETE SET NULL;
 
 -- 7. PERFORMANCE INDEXES FOR 100,000+ LEADS & FAST FILTERING
