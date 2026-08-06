@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, MessageSquare, Video, Mail, Smartphone, UploadCloud, CheckCircle, Bug } from 'lucide-react';
+import { ShieldCheck, MessageSquare, Video, Mail, Smartphone, UploadCloud, CheckCircle, Bug, Send } from 'lucide-react';
 import CallMindLoader from './CallMindLoader';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -227,7 +227,7 @@ export const SupportPage = () => {
                   disabled={isSubmitting}
                   className="w-full mt-4 py-4 flex justify-center items-center gap-2 bg-brand-600 disabled:bg-brand-300 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-brand-700 shadow-xl shadow-brand-100 disabled:shadow-none transition-all hover:scale-[1.01] active:scale-[0.98] btn-tactile"
                 >
-                  {isSubmitting ? <><CallMindLoader size="xs" /> Submitting...</> : <>Submit 🚀</>}
+                  {isSubmitting ? <><CallMindLoader size="xs" /> Submitting...</> : <><Send size={14} /> Submit Ticket</>}
                 </button>
               </motion.form>
             )}

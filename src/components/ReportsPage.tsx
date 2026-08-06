@@ -82,14 +82,14 @@ interface PerformanceCardProps {
 const PerformanceCard = React.memo(({ title, value, change, isPositive, icon: Icon }: PerformanceCardProps) => (
   <motion.div 
     whileHover={{ y: -4, scale: 1.01 }}
-    className="bg-white p-6 rounded-[28px] border border-gray-150/70 shadow-sm flex flex-col justify-between group transition-all"
+    className="bg-white p-6 rounded-[28px] border border-slate-100 shadow-sm flex flex-col justify-between group transition-all"
   >
     <div className="flex items-center justify-between mb-4">
       <div className="p-3 bg-brand-50 text-brand-600 rounded-2xl group-hover:bg-brand-600 group-hover:text-white transition-all duration-300 shadow-sm">
         <Icon size={18} />
       </div>
       {change && (
-        <div className={`flex items-center gap-0.5 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${isPositive ? 'text-emerald-600 bg-emerald-50 border-emerald-150' : 'text-rose-600 bg-rose-50 border-rose-150'}`}>
+        <div className={`flex items-center gap-0.5 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${isPositive ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200'}`}>
           {isPositive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
           {change}
         </div>
@@ -120,7 +120,7 @@ const ReportFeatureCard = React.memo(({ title, description, icon: Icon, color, o
     whileHover={!isLocked ? { y: -4, scale: 1.01 } : {}}
     onClick={onClick}
     disabled={isLocked && title !== 'Request a Report'}
-    className={`bg-white/80 p-6 rounded-[28px] border border-gray-150/70 text-left group flex flex-col justify-between h-full relative overflow-hidden transition-all shadow-sm
+    className={`bg-white/80 p-6 rounded-[28px] border border-slate-100 text-left group flex flex-col justify-between h-full relative overflow-hidden transition-all shadow-sm
       ${isLocked ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:shadow-md hover:border-brand-300/50 hover:bg-white'}
       ${isActive ? 'border-brand-500 ring-2 ring-brand-500 bg-white' : ''}`}
   >

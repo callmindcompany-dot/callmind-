@@ -12,7 +12,8 @@ import {
   TrendingDown,
   AlertTriangle,
   History,
-  Clock
+  Clock,
+  Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -82,11 +83,11 @@ const FounderEditor = ({ editTitle, setEditTitle, editContent, setEditContent, e
       </div>
       <div>
         <div className="flex gap-0 border border-gray-150 rounded-t-xl overflow-hidden">
-          <button onClick={() => setEditTab('edit')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${editTab === 'edit' ? 'bg-brand-600 text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>
-            ✏️ Edit
+          <button onClick={() => setEditTab('edit')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${editTab === 'edit' ? 'bg-brand-600 text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>
+            <Edit3 size={12} /> Edit
           </button>
-          <button onClick={() => setEditTab('preview')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${editTab === 'preview' ? 'bg-brand-600 text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>
-            👁️ Preview
+          <button onClick={() => setEditTab('preview')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${editTab === 'preview' ? 'bg-brand-600 text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>
+            <Eye size={12} /> Preview
           </button>
         </div>
         {editTab === 'edit' ? (

@@ -54,18 +54,18 @@ export const SubAdminManagementTab: React.FC<SubAdminManagementTabProps> = ({
   return (
     <div className="space-y-8 font-sans">
       {/* Top Banner & Allocation Summary */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-brand-950 rounded-3xl p-8 text-white shadow-xl border border-slate-800 relative overflow-hidden">
+      <div className="bg-white rounded-[28px] p-8 shadow-sm border border-slate-100 relative overflow-hidden">
         <div className="relative z-10 space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-6">
             <div>
-              <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-semibold mb-3">
+              <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-50 border border-brand-100 text-brand-600 text-xs font-semibold mb-3">
                 <ShieldCheck size={14} />
                 Multi-Admin Seat Allocation Architecture
               </span>
-              <h2 className="text-2xl md:text-3xl font-black font-display text-white">
+              <h2 className="text-2xl md:text-3xl font-black font-display text-slate-900">
                 Sub-Admin (Co-Manager) Management
               </h2>
-              <p className="text-xs text-slate-400 font-medium max-w-2xl mt-1">
+              <p className="text-xs text-slate-500 font-medium max-w-2xl mt-1">
                 Delegate operational management of your 50 telecaller team to Co-Admins with strict seat quota controls and isolated team views.
               </p>
             </div>
@@ -82,24 +82,24 @@ export const SubAdminManagementTab: React.FC<SubAdminManagementTabProps> = ({
 
           {/* Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-sans pt-2">
-            <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-1">
+            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-1">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Current Plan</span>
-              <div className="text-xl font-black text-white font-display flex items-baseline gap-2">
+              <div className="text-xl font-black text-slate-900 font-display flex items-baseline gap-2">
                 {plan.name} Plan
-                <span className="text-xs font-semibold text-brand-400">({plan.maxAdmins} Admins Allowed)</span>
+                <span className="text-xs font-semibold text-brand-600">({plan.maxAdmins} Admins Allowed)</span>
               </div>
             </div>
 
-            <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-1">
+            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-1">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Sub-Admin Slots</span>
-              <div className="text-xl font-black text-white font-display flex items-baseline gap-2">
+              <div className="text-xl font-black text-slate-900 font-display flex items-baseline gap-2">
                 {activeSubAdminsCount} / {maxAllowedSubAdmins} Slots Used
               </div>
             </div>
 
-            <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-1">
+            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-1">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Telecaller Seats</span>
-              <div className="text-xl font-black text-emerald-400 font-display flex items-baseline gap-2 font-grotesk">
+              <div className="text-xl font-black text-emerald-600 font-display flex items-baseline gap-2 font-grotesk">
                 {unallocatedSeats} Unallocated
                 <span className="text-xs font-semibold text-slate-400 font-sans">(Total {companySeatLimit})</span>
               </div>

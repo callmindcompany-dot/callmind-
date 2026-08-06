@@ -43,24 +43,24 @@ export const GeminiKeysManager: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Pool Header & Load Balancer Status */}
-      <div className="p-6 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-2xl text-white shadow-xl">
+      <div className="p-6 bg-white rounded-[28px] border border-slate-100 shadow-sm">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Key className="text-amber-400" size={20} />
-              <h5 className="text-base font-bold tracking-tight">Gemini Multi-Key AI Pool</h5>
+              <Key className="text-amber-500" size={20} />
+              <h5 className="text-base font-bold tracking-tight text-slate-900">Gemini Multi-Key AI Pool</h5>
             </div>
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-slate-500">
               Task-assigned load balancing with automatic failover & rate-limit resilience (up to 10 keys).
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="px-3.5 py-1.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/15 text-xs flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${activeKeysCount > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+            <div className="px-3.5 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center gap-2 text-slate-700">
+              <span className={`w-2 h-2 rounded-full ${activeKeysCount > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-red-400'}`} />
               <span className="font-semibold">{activeKeysCount} Active Key{activeKeysCount !== 1 ? 's' : ''}</span>
             </div>
             {isSaving && (
-              <span className="text-xs text-amber-300 font-medium animate-pulse">Syncing...</span>
+              <span className="text-xs text-amber-600 font-medium animate-pulse">Syncing...</span>
             )}
           </div>
         </div>

@@ -381,15 +381,15 @@ export const HelpCenterPage = () => {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-3xl p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl"
+        className="bg-brand-600 rounded-[28px] p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg shadow-brand-500/10"
       >
         <div className="flex items-center gap-4 text-white">
-          <div className="p-3.5 bg-white/10 rounded-2xl border border-white/20 shrink-0">
+          <div className="p-3.5 bg-white/15 rounded-2xl border border-white/20 shrink-0">
             <Headphones size={24} />
           </div>
           <div>
             <h3 className="text-lg font-black tracking-tight">Still need help?</h3>
-            <p className="text-slate-400 font-semibold text-xs mt-0.5 max-w-md">
+            <p className="text-brand-100 font-semibold text-xs mt-0.5 max-w-md">
               Our expert support engineers are available Mon–Sat, 10 AM – 7 PM IST. Average response time under 90 minutes.
             </p>
           </div>
@@ -397,14 +397,14 @@ export const HelpCenterPage = () => {
         <div className="flex flex-col sm:flex-row gap-3 shrink-0">
           <button
             onClick={() => setIsChatOpen(true)}
-            className="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all btn-tactile flex items-center gap-2 justify-center"
+            className="px-6 py-3 bg-white text-brand-600 text-xs font-black uppercase tracking-wider rounded-xl transition-all btn-tactile flex items-center gap-2 justify-center hover:shadow-lg"
           >
             <MessageSquare size={14} />
             Contact Support
           </button>
           <button
             onClick={() => navigate('/dashboard/support')}
-            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all border border-white/20 btn-tactile flex items-center gap-2 justify-center"
+            className="px-6 py-3 bg-white/15 hover:bg-white/25 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all border border-white/20 btn-tactile flex items-center gap-2 justify-center"
           >
             Raise Ticket <ArrowRight size={12} />
           </button>

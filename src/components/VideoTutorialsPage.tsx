@@ -38,11 +38,11 @@ const VideoCardSkeleton = () => (
 );
 
 const ContinueWatchingSkeleton = () => (
-  <div className="animate-pulse bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-5 space-y-3">
-    <div className="h-2 w-24 bg-slate-700 rounded-full" />
-    <div className="h-4 bg-slate-700 rounded-full w-4/5" />
-    <div className="h-2 bg-slate-700 rounded-full w-1/2" />
-    <div className="h-9 bg-slate-700 rounded-xl mt-4" />
+  <div className="animate-pulse bg-white rounded-[28px] border border-slate-100 p-5 space-y-3 shadow-sm">
+    <div className="h-2 w-24 bg-slate-200 rounded-full" />
+    <div className="h-4 bg-slate-200 rounded-full w-4/5" />
+    <div className="h-2 bg-slate-100 rounded-full w-1/2" />
+    <div className="h-9 bg-slate-100 rounded-xl mt-4" />
   </div>
 );
 
@@ -247,7 +247,7 @@ export const VideoTutorialsPage = () => {
             </div>
             {watchedPercent === 100 && (
               <div className="flex items-center gap-1.5 text-emerald-600 text-[10px] font-black">
-                <Check size={11} /> Academy complete! 🎉
+                <Check size={11} /> Academy complete!
               </div>
             )}
           </div>
@@ -259,11 +259,11 @@ export const VideoTutorialsPage = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-slate-950 text-slate-100 p-5 rounded-[24px] shadow-xs relative overflow-hidden flex flex-col justify-between border border-slate-900"
+              className="bg-white text-slate-900 p-5 rounded-[28px] shadow-sm relative overflow-hidden flex flex-col justify-between border border-slate-100"
             >
-              <div className="absolute top-0 right-0 w-24 h-24 bg-brand-500/10 rounded-full blur-xl pointer-events-none" />
+              <div className="absolute top-0 right-0 w-24 h-24 bg-brand-50 rounded-full blur-xl pointer-events-none" />
               <div>
-                <span className="text-[8px] font-black text-brand-400 uppercase tracking-widest bg-brand-500/10 px-2 py-0.5 rounded-md inline-block">
+                <span className="text-[8px] font-black text-brand-600 uppercase tracking-widest bg-brand-50 px-2 py-0.5 rounded-md inline-block border border-brand-100">
                   Continue Watching
                 </span>
                 <div className="relative rounded-lg overflow-hidden aspect-video mt-3 mb-3">
@@ -275,7 +275,7 @@ export const VideoTutorialsPage = () => {
                   <PlayCircle size={24} className="absolute inset-0 m-auto text-white opacity-80" />
                 </div>
                 <h4 className="font-bold text-xs line-clamp-2 leading-tight">{continueWatchingVideo.title}</h4>
-                <p className="text-[9px] text-slate-500 mt-1 font-semibold flex items-center gap-1">
+                <p className="text-[9px] text-slate-400 mt-1 font-semibold flex items-center gap-1">
                   <Clock size={9} /> {continueWatchingVideo.duration} · {continueWatchingVideo.category}
                 </p>
               </div>
