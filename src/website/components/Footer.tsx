@@ -207,7 +207,7 @@ export const Footer = () => {
           <div className="flex flex-col md:flex-row items-center gap-2 text-center">
             <span>© {new Date().getFullYear()} Voolabs Technologies. CallMind is a product of Voolabs. All rights reserved.</span>
             <span className="hidden md:inline text-slate-700">·</span>
-            <span>Mumbai, Maharashtra, India</span>
+            <span>Pune, Nashik, Satara, Maharashtra, India</span>
           </div>
         </div>
       </div>

@@ -86,7 +86,7 @@ export const FounderSection = () => {
                 <p className="text-xs font-bold text-slate-900 font-display flex items-center gap-1.5">
                   <Building2 size={14} className="text-brand-600" /> Voolabs Innovation Product
                 </p>
-                <p className="text-[11px] text-slate-500 font-medium">Architected in Pune, Maharashtra for pan-India sales teams.</p>
+                <p className="text-[11px] text-slate-500 font-medium">Architected in Pune, Nashik, Satara, Maharashtra for pan-India sales teams.</p>
               </div>
 
               <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm space-y-1">

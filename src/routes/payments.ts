@@ -30,6 +30,7 @@ const BILLING_ROLES = ['admin', 'founder'];
 const razorpayWebhookLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 60, // 60 requests per minute
+  validate: false,
   keyGenerator: (req: any) => {
     const sig = req.headers['x-razorpay-signature'] as string;
     if (sig && sig.trim()) {

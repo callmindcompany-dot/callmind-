@@ -88,7 +88,7 @@ export const CompanyPage = () => {
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
                   <MapPin size={16} className="text-brand-600" />
-                  <span>Voolabs Technologies · Pune, Maharashtra, India</span>
+                  <span>Voolabs Technologies · Pune, Nashik, Satara, Maharashtra, India</span>
                 </div>
               </div>
             </div>

@@ -53,8 +53,8 @@ export const ContactPage = () => {
                   <div>
                     <h3 className="text-xl font-bold text-slate-900 font-display">Sales & Demo</h3>
                     <p className="text-slate-500 mt-1 font-medium">Want to see CallMind in action? Schedule a 1-on-1 demo with our product experts.</p>
-                    <a href="mailto:sales@voolabs.in" className="inline-flex items-center gap-2 mt-3 text-brand-600 font-bold hover:text-brand-700">
-                      sales@voolabs.in
+                    <a href="mailto:sales@callmind.app" className="inline-flex items-center gap-2 mt-3 text-brand-600 font-bold hover:text-brand-700">
+                      sales@callmind.app
                     </a>
                   </div>
                 </motion.div>
@@ -88,7 +88,7 @@ export const ContactPage = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-slate-900 font-display">Office Headquarters</h3>
-                    <p className="text-slate-500 mt-1 font-medium">Voolabs Technology Solutions<br />Pune, Maharashtra, India</p>
+                    <p className="text-slate-500 mt-1 font-medium">Voolabs Technology Solutions<br />Pune, Nashik, Satara, Maharashtra, India</p>
                   </div>
                 </motion.div>
               </div>

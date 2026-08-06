@@ -15,4 +15,7 @@ export const SITE_DOMAIN = 'callmind.app';
 /** Legal entity behind the product. */
 export const COMPANY_NAME = 'Voolabs Technologies';
 
-export const CONTACT_EMAIL = 'voolabsofficial@gmail.com';
+export const CONTACT_EMAIL = 'support@callmind.app';
+export const SALES_EMAIL = 'sales@callmind.app';
+export const SUPPORT_EMAIL = 'support@callmind.app';
+export const COMPANY_LOCATIONS = 'Pune, Nashik, Satara, Maharashtra, India';

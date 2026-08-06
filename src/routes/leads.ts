@@ -9,6 +9,7 @@ const router = express.Router();
 const inboundWebhookLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 120, // 120 requests per minute per company tenant
+  validate: false,
   keyGenerator: (req: any) => {
     const companyId = req.params.companyId;
     if (companyId && companyId.trim()) {
@@ -257,7 +258,11 @@ export function startLeadsBackgroundCrons() {
         });
       }
     } catch (err: any) {
-      logger.error("[IndiaMART Cron Error]:", err.message);
+      if (err.message?.includes('schema cache') || err.message?.includes('does not exist')) {
+        logger.debug("[IndiaMART Cron Notice]: Lead sources table or schema pending.");
+      } else {
+        logger.error("[IndiaMART Cron Error]:", err.message);
+      }
     }
   }, POLL_INTERVAL_MS);
 
@@ -294,7 +299,11 @@ export function startLeadsBackgroundCrons() {
         });
       }
     } catch (err: any) {
-      logger.error("[Google Sheets Cron Error]:", err.message);
+      if (err.message?.includes('schema cache') || err.message?.includes('does not exist')) {
+        logger.debug("[Google Sheets Cron Notice]: Lead sources table or schema pending.");
+      } else {
+        logger.error("[Google Sheets Cron Error]:", err.message);
+      }
     }
   }, POLL_INTERVAL_MS);
 
@@ -318,7 +327,11 @@ export function startLeadsBackgroundCrons() {
         }
       }
     } catch (err: any) {
-      logger.error("[Night Hold Release Error]:", err.message);
+      if (err.message?.includes('schema cache') || err.message?.includes('does not exist')) {
+        logger.debug("[Night Hold Release Notice]: Leads hold schema pending.");
+      } else {
+        logger.error("[Night Hold Release Error]:", err.message);
+      }
     }
   }, POLL_INTERVAL_MS);
 }
