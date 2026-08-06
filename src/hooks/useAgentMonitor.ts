@@ -22,15 +22,43 @@ export interface AgentStats {
   status: 'active' | 'on_call' | 'offline';
   calls: number;
   connected: number;
-  avgTalkTime: string;
   connectRate: string;
-  firstCall: string;
-  lastCall: string;
-  breakTime: string;
-  talkTime: string;
-  checkIn: string;
   recentCalls: CallRecord[];
+  /** Calls per hour of the day, 24 buckets, from real call timestamps. */
   activityMap: number[];
+  // Everything below is null when there is nothing to compute it from. These
+  // were previously fixed strings -- every agent on every screen showed
+  // avgTalkTime "2m 15s", firstCall "09:15 AM", checkIn "09:00 AM",
+  // breakTime "25m" -- which looked like a working live monitor and was not.
+  avgTalkTime: string | null;
+  talkTime: string | null;
+  firstCall: string | null;
+  lastCall: string | null;
+  /** Needs attendance_logs, which this hook does not read. Always null today. */
+  checkIn: string | null;
+  /** Nothing in the product records breaks. Always null today. */
+  breakTime: string | null;
+}
+
+/** calls.duration is TEXT in the "Xm Ys" shape CallsPage writes and parses. */
+function parseDurationSeconds(duration: string | null): number {
+  if (!duration) return 0;
+  const mins = parseInt(duration.match(/(\d+)m/)?.[1] ?? '0', 10);
+  const secs = parseInt(duration.match(/(\d+)s/)?.[1] ?? '0', 10);
+  return mins * 60 + secs;
+}
+
+function formatDuration(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+function formatClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 export function useAgentStatusesQuery(companyId: string | null) {
@@ -53,19 +81,24 @@ export function useAgentStatusesQuery(companyId: string | null) {
         return [];
       }
 
-      // Fetch calls count per agent to compute real stats
+      // timestamp and duration are selected because the per-agent figures below
+      // are computed from them. Previously only created_by and outcome were
+      // fetched, and everything the two could not produce was made up.
       const agentIds = statusData.map(s => s.id);
       const { data: callsSummary, error: callsError } = await supabase
         .from('calls')
-        .select('created_by, outcome')
+        .select('created_by, outcome, timestamp, duration')
         .eq('company_id', companyId)
         .in('created_by', agentIds);
 
+      // Not thrown, because agent presence is still worth showing without call
+      // figures -- but the figures then have to read as absent, not as zero.
       if (callsError) {
         console.error('Failed to fetch calls summary:', callsError);
       }
 
       const callsList = callsSummary || [];
+      const callsFailed = !!callsError;
 
       return statusData.map((agent): AgentStats => {
         const agentCalls = callsList.filter(c => c.created_by === agent.id);
@@ -73,21 +106,39 @@ export function useAgentStatusesQuery(companyId: string | null) {
         const connectedCalls = agentCalls.filter(c => c.outcome === 'Answered' || c.outcome === 'Connected').length;
         const connectRateVal = totalCalls > 0 ? Math.round((connectedCalls / totalCalls) * 100) : 0;
 
+        const stamps = agentCalls
+          .map(c => c.timestamp)
+          .filter((t): t is string => !!t)
+          .sort();
+
+        const activityMap = new Array(24).fill(0) as number[];
+        for (const t of stamps) {
+          const hour = new Date(t).getHours();
+          if (hour >= 0 && hour < 24) activityMap[hour] += 1;
+        }
+
+        const talkSeconds = agentCalls.reduce((sum, c) => sum + parseDurationSeconds(c.duration), 0);
+        const haveCalls = !callsFailed && totalCalls > 0;
+
         return {
           id: agent.id,
           name: agent.user_name || 'Unknown Agent',
           status: (agent.status as AgentStats['status']) || 'offline',
           calls: totalCalls,
           connected: connectedCalls,
-          avgTalkTime: '2m 15s',
           connectRate: `${connectRateVal}%`,
-          firstCall: '09:15 AM',
-          lastCall: agent.last_seen ? new Date(agent.last_seen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '05:45 PM',
-          talkTime: '2h 15m',
-          checkIn: '09:00 AM',
-          breakTime: '25m',
-          recentCalls: [],
-          activityMap: [0,0,0,0,0,0,0,0,2,8,12,15,5,10,14,18,10,5,2,0,0,0,0,0]
+          activityMap,
+          // talkSeconds is 0 when every call has a "0m 0s" duration, which is
+          // what the manual-call form defaults to. That is a real zero.
+          talkTime: haveCalls ? formatDuration(talkSeconds) : null,
+          avgTalkTime: haveCalls ? formatDuration(Math.round(talkSeconds / totalCalls)) : null,
+          firstCall: stamps.length ? formatClock(stamps[0]) : null,
+          lastCall: stamps.length
+            ? formatClock(stamps[stamps.length - 1])
+            : (agent.last_seen ? formatClock(agent.last_seen) : null),
+          checkIn: null,
+          breakTime: null,
+          recentCalls: []
         };
       });
     },
@@ -145,11 +196,14 @@ export function useAgentCallsQuery(companyId: string | null, agentId: string | n
         return {
           id: c.id,
           leadName,
-          duration: '2:15', // Static placeholder for call length or computed duration if available
+          // calls.duration holds the real value. This was '2:15' on every row.
+          duration: c.duration || '—',
           startTime,
           outcome: c.outcome || 'No Answer',
           status: outcomeStatus as CallRecord['status'],
-          recordingUrl: undefined,
+          // The column exists and was being discarded, so no recording ever
+          // reached the UI even when one had been stored.
+          recordingUrl: c.recording_url ?? undefined,
           timestamp: c.timestamp || ''
         };
       });

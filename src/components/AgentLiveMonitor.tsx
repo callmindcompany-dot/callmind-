@@ -93,47 +93,15 @@ const ActivityBar = ({ data }: { data: number[] }) => {
 };
 
 
-const DEFAULT_AGENTS: AgentStats[] = [
-  {
-    id: '1',
-    name: 'Amit Kumar',
-    status: 'active',
-    calls: 45,
-    connected: 30,
-    avgTalkTime: '2m 15s',
-    connectRate: '68%',
-    firstCall: '09:15 AM',
-    lastCall: '05:45 PM',
-    talkTime: '2h 15m',
-    checkIn: '09:00 AM',
-    breakTime: '25m',
-    recentCalls: [],
-    activityMap: [0,0,0,0,0,0,0,0,2,8,12,15,5,10,14,18,10,5,2,0,0,0,0,0]
-  },
-  {
-    id: '2',
-    name: 'Priya Patel',
-    status: 'on_call',
-    calls: 38,
-    connected: 25,
-    avgTalkTime: '3m 10s',
-    connectRate: '65%',
-    firstCall: '09:30 AM',
-    lastCall: '06:00 PM',
-    talkTime: '1h 55m',
-    checkIn: '09:15 AM',
-    breakTime: '15m',
-    recentCalls: [],
-    activityMap: [0,0,0,0,0,0,0,0,5,12,18,14,10,8,12,15,8,4,1,0,0,0,0,0]
-  }
-];
-
-const DEFAULT_CALLS: CallRecord[] = [
-  { id: 'm1', leadName: 'Amit Gupta', duration: '04:20', startTime: '10:45 AM', outcome: 'Answered', status: 'completed', timestamp: '2026-04-16T10:45:00Z' },
-  { id: 'm2', leadName: 'Priya Verma', duration: '00:45', startTime: '10:30 AM', outcome: 'Busy', status: 'busy', timestamp: '2026-04-16T10:30:00Z' },
-  { id: 'm3', leadName: 'Karan Singh', duration: '12:10', startTime: '10:15 AM', outcome: 'Answered', status: 'completed', timestamp: '2026-04-16T10:15:00Z' },
-  { id: 'm4', leadName: 'Suresh Raina', duration: '00:00', startTime: '10:00 AM', outcome: 'No Answer', status: 'missed', timestamp: '2026-04-16T10:00:00Z' }
-];
+// DEFAULT_AGENTS and DEFAULT_CALLS lived here: two invented agents, "Amit
+// Kumar" with 45 calls and "Priya Patel" with 38, plus four invented calls to
+// "Amit Gupta", "Priya Verma", "Karan Singh" and "Suresh Raina".
+//
+// They were not a storybook fixture. The component fell back to them whenever
+// the real query returned nothing, so a customer whose team had not started
+// yet -- or whose query had just failed -- saw two strangers on their own live
+// monitor with a full day of performance figures, and no way to tell they were
+// not real.
 
 export const AgentLiveMonitor = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -142,13 +110,46 @@ export const AgentLiveMonitor = () => {
   const agentsQuery = useAgentStatusesQuery(companyId);
   const callsQuery = useAgentCallsQuery(companyId, expandedId);
 
-  const agents = agentsQuery.data && agentsQuery.data.length > 0 ? agentsQuery.data : DEFAULT_AGENTS;
-  const loading = agentsQuery.isLoading;
+  const agents = agentsQuery.data ?? [];
 
-  if (loading) {
+  if (agentsQuery.isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
         <Activity className="animate-spin text-brand-600" />
+      </div>
+    );
+  }
+
+  // A failure and an empty team are different things, and the screen has to say
+  // which. "No agents" shown after a failed query is the bug.
+  if (agentsQuery.isError) {
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="bg-white/70 backdrop-blur-xl border border-red-100 rounded-[32px] p-10 text-center">
+          <h3 className="text-sm font-bold text-red-600">Could not load agent status</h3>
+          <p className="text-xs text-gray-500 mt-2">
+            {agentsQuery.error instanceof Error ? agentsQuery.error.message : 'Unknown error'}
+          </p>
+          <button
+            onClick={() => agentsQuery.refetch()}
+            className="mt-5 px-5 py-2 rounded-2xl bg-brand-600 text-white text-xs font-black uppercase tracking-widest"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (agents.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-[32px] p-10 text-center">
+          <h3 className="text-sm font-bold text-gray-600">No agents are reporting status yet</h3>
+          <p className="text-xs text-gray-400 mt-2">
+            Agents appear here once they sign in from the mobile app.
+          </p>
+        </div>
       </div>
     );
   }
@@ -165,9 +166,7 @@ export const AgentLiveMonitor = () => {
 
       <div className="space-y-3">
         {agents.map((agent) => {
-          const displayCalls = (expandedId === agent.id && callsQuery.data && callsQuery.data.length > 0)
-            ? callsQuery.data
-            : DEFAULT_CALLS;
+          const displayCalls = expandedId === agent.id ? (callsQuery.data ?? []) : [];
 
           return (
             <div 
@@ -206,7 +205,7 @@ export const AgentLiveMonitor = () => {
 
                 <div className="flex items-center gap-8 self-end sm:self-center">
                   <div className="hidden md:block text-right">
-                    <p className="text-sm font-black text-gray-900">{agent.avgTalkTime}</p>
+                    <p className="text-sm font-black text-gray-900">{agent.avgTalkTime ?? '—'}</p>
                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Avg Talk Time</p>
                   </div>
                   <div className="text-right">
@@ -242,7 +241,7 @@ export const AgentLiveMonitor = () => {
                           <div className="space-y-2">
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Current Status</p>
                             <h4 className="text-2xl font-black text-gray-900 capitalize tracking-tight">{agent.status.replace('_', ' ')}</h4>
-                            <p className="text-[10px] text-gray-400 font-bold">Since {agent.lastCall}</p>
+                            <p className="text-[10px] text-gray-400 font-bold">{agent.lastCall ? `Since ${agent.lastCall}` : 'No calls yet'}</p>
                           </div>
                           <div className="w-12 h-12 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600">
                             <Activity size={24} />
@@ -274,14 +273,14 @@ export const AgentLiveMonitor = () => {
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Check-In</p>
                             <History className="text-gray-400" size={16} />
                           </div>
-                          <p className="text-2xl font-black text-gray-900 tracking-tight">{agent.checkIn}</p>
+                          <p className="text-2xl font-black text-gray-900 tracking-tight">{agent.checkIn ?? '—'}</p>
                         </div>
                         <div className="p-5 bg-white border border-gray-100 rounded-3xl group/card hover:border-brand-200 transition-colors shadow-sm">
                           <div className="flex items-center justify-between mb-3">
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Availability</p>
                             <Coffee className="text-orange-600" size={16} />
                           </div>
-                          <p className="text-2xl font-black text-gray-900 tracking-tight">{agent.breakTime}</p>
+                          <p className="text-2xl font-black text-gray-900 tracking-tight">{agent.breakTime ?? '—'}</p>
                           <p className="text-[10px] text-gray-400 font-bold mt-1">Total Break</p>
                         </div>
                         <div className="p-5 bg-white border border-gray-100 rounded-3xl group/card hover:border-brand-200 transition-colors shadow-sm">
@@ -289,7 +288,7 @@ export const AgentLiveMonitor = () => {
                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Talk Time</p>
                             <Clock className="text-emerald-600" size={16} />
                           </div>
-                          <p className="text-2xl font-black text-gray-900 tracking-tight">{agent.talkTime}</p>
+                          <p className="text-2xl font-black text-gray-900 tracking-tight">{agent.talkTime ?? '—'}</p>
                           <p className="text-[10px] text-gray-400 font-bold mt-1">Total Active</p>
                         </div>
                       </div>
@@ -335,9 +334,23 @@ export const AgentLiveMonitor = () => {
                                   <StatusBadge outcome={call.outcome} status={call.status} />
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                  <button className="p-2.5 rounded-2xl bg-gray-50 text-gray-400 hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-90" title="Play Recording">
-                                    <Play size={16} fill="currentColor" />
-                                  </button>
+                                  {/* Rendered only when there is something to play. The button used
+                                      to show on every row and do nothing at all. */}
+                                  {call.recordingUrl ? (
+                                    <a
+                                      href={call.recordingUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex p-2.5 rounded-2xl bg-gray-50 text-gray-400 hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-90"
+                                      title="Play recording"
+                                    >
+                                      <Play size={16} fill="currentColor" />
+                                    </a>
+                                  ) : (
+                                    <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
+                                      No recording
+                                    </span>
+                                  )}
                                 </td>
                               </tr>
                             )) : (
