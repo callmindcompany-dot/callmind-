@@ -33,7 +33,7 @@ const __dirname_resolved = typeof import.meta !== "undefined" && import.meta.url
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 5173;
 
   // Rate Limiting Guards
   const aiLimiter = rateLimit({
@@ -53,7 +53,7 @@ async function startServer() {
 
   // Global Middlewares & Security Headers
   app.use(helmet({
-    contentSecurityPolicy: {
+    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
@@ -80,10 +80,23 @@ async function startServer() {
         // F-17 FIX: Report CSP violations to a log endpoint so we can see breakage
         reportUri: ["/api/csp-report"]
       }
-    }
+    } : false
   }));
 
-  app.use(cors({ origin: process.env.APP_URL || 'http://localhost:5173', credentials: true }));
+  const allowedOrigins = process.env.APP_URL 
+    ? [process.env.APP_URL, 'http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174', 'http://127.0.0.1:3000'] 
+    : ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5174', 'http://127.0.0.1:3000'];
+
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
+    credentials: true,
+  }));
   // Retain the raw request bytes — webhook HMAC verification must hash exactly
   // what the provider signed, which JSON.stringify(req.body) does not reproduce.
   app.use(express.json({
@@ -128,8 +141,13 @@ async function startServer() {
     },
   });
 
-  // Apply CSRF protection globally to subsequent routes
-  app.use(doubleCsrfProtection);
+  // Apply CSRF protection to API routes only (exempting static SPA pages)
+  app.use('/api', (req, res, next) => {
+    if (process.env.NODE_ENV !== 'production' && req.method === 'GET') {
+      return next();
+    }
+    doubleCsrfProtection(req, res, next);
+  });
 
   // CSRF token provider endpoint
   app.get("/api/csrf-token", (req, res) => {
@@ -196,9 +214,24 @@ async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: "spa",
+      appType: "custom",
     });
     app.use(vite.middlewares);
+
+    app.get('*', async (req, res, next) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/v1')) {
+        return next();
+      }
+      try {
+        const url = req.originalUrl;
+        let template = fs.readFileSync(path.resolve(process.cwd(), 'index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e: any) {
+        vite.ssrFixStacktrace(e);
+        next(e);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
 
@@ -294,6 +327,32 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+
+  // Global Express Error Handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    logger.error(`[Express Error] ${req.method} ${req.path}:`, {
+      message: err.message || String(err),
+      code: err.code,
+      stack: err.stack,
+    });
+
+    if (res.headersSent) {
+      return next(err);
+    }
+
+    if (err.code === 'EBADCSRFTOKEN') {
+      return res.status(403).json({
+        error: 'Invalid or missing CSRF token',
+        message: 'Please refresh the page and try again.',
+      });
+    }
+
+    const status = typeof err.status === 'number' && err.status >= 400 && err.status < 600 ? err.status : 500;
+    res.status(status).json({
+      error: err.message || 'Internal Server Error',
+      correlationId: (req as any).correlationId,
+    });
+  });
 
   const server = app.listen(PORT, "0.0.0.0", () => {
     logger.info(`Server running on http://localhost:${PORT}`);
