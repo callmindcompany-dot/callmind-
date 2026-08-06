@@ -97,8 +97,9 @@ export const SubscriptionStatusHeader: React.FC<SubscriptionStatusHeaderProps> =
                     className="absolute inset-0 bg-brand-600/30 blur-sm rounded-full"
                   />
                 </div>
-                <span className="text-[11px] font-black text-slate-700 uppercase tracking-[0.15em]">
-                  🎁 Free Trial: <span className="text-slate-900">2 Users</span> | <span className="text-slate-900">1,000 Leads Limit</span>
+                <span className="text-[11px] font-black text-slate-700 uppercase tracking-[0.15em] flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-amber-500 fill-amber-400" />
+                  Free Trial: <span className="text-slate-900">2 Users</span> | <span className="text-slate-900">1,000 Leads Limit</span>
                 </span>
               </div>
               

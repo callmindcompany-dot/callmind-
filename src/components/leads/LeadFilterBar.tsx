@@ -426,9 +426,9 @@ export const LeadFilterBar = React.memo(({
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-brand-500 transition-all font-bold text-gray-600 appearance-none"
                 >
                   <option value="">Select Temperature</option>
-                  <option value="Hot">🔥 Hot</option>
-                  <option value="Warm">☀️ Warm</option>
-                  <option value="Cold">❄️ Cold</option>
+                  <option value="Hot">Hot (High Intent)</option>
+                  <option value="Warm">Warm (Medium Intent)</option>
+                  <option value="Cold">Cold (Low Intent)</option>
                 </select>
               </div>
 
