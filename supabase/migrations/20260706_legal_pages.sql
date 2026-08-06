@@ -31,49 +31,81 @@ CREATE TABLE IF NOT EXISTS user_acceptances (
     ip_address TEXT
 );
 
+-- The live table also has a `status` column, which useLegalCompliance.ts filters
+-- on ("published"). CREATE TABLE IF NOT EXISTS above is a no-op against the
+-- existing table, so state it rather than assume it -- the same way
+-- companies.active_members_count came to be missing.
+ALTER TABLE legal_pages ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'published';
+
 -- Enable RLS
 ALTER TABLE legal_pages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_acceptances ENABLE ROW LEVEL SECURITY;
 
 -- Policies
+--
+-- Both tables previously had FOR ALL USING (true) WITH CHECK (true). Postgres
+-- ORs permissive policies, so those cancelled the tenant-scoped policies that
+-- 20260718_secure_rls.sql creates on user_acceptances.
+--
+-- legal_pages is platform-wide published content, so a global read is correct.
+-- A global *write* was not: any logged-in customer could rewrite the terms of
+-- service every other customer sees.
 DROP POLICY IF EXISTS "Allow all access to legal_pages" ON legal_pages;
-CREATE POLICY "Allow all access to legal_pages" ON legal_pages FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "global_select_legal_pages" ON legal_pages;
+CREATE POLICY "global_select_legal_pages" ON legal_pages FOR SELECT USING (true);
+-- No insert/update/delete policy: these pages are edited through the service
+-- role, never from the browser.
+
+-- user_acceptances records who accepted which version of which document, with
+-- their IP. It is consent evidence. Wide open, any user could read everyone
+-- else's, forge one, or delete their own -- which is exactly the value the
+-- record is supposed to have. Scoped to the acceptor.
 DROP POLICY IF EXISTS "Allow all access to user_acceptances" ON user_acceptances;
-CREATE POLICY "Allow all access to user_acceptances" ON user_acceptances FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "own_select_user_acceptances" ON user_acceptances;
+DROP POLICY IF EXISTS "own_insert_user_acceptances" ON user_acceptances;
+CREATE POLICY "own_select_user_acceptances" ON user_acceptances
+  FOR SELECT USING (user_id = auth.uid()::text);
+CREATE POLICY "own_insert_user_acceptances" ON user_acceptances
+  FOR INSERT WITH CHECK (user_id = auth.uid()::text);
+-- Deliberately no UPDATE and no DELETE. An acceptance is a fact about a moment;
+-- it is not editable and not erasable from the browser.
 
--- Seed initial English versions of the 3 legal documents
-INSERT INTO legal_pages (slug, title, content, version, language)
-VALUES 
-('privacy', 'Privacy Policy & Data Security', '## Zero Call Recording Guidelines
-We process conversational context purely in RAM during active sessions. Unless explicitly toggled by the admin for quality assurance, audio streams are dropped post-analysis. 
-
-## 14-Layer Security (SQLCipher)
-Your leads, metadata, and systemic analytics are encrypted at rest using AES-256 standards with SQLCipher 14-layer architectural boundaries. No cross-tenant bleeding.
-
-## Data Subject Rights
-In compliance with global privacy directives, you reserve the absolute right to request a complete export of your pipeline metadata or request a total pipeline purge at any time.', '2.3', 'English')
-ON CONFLICT (slug, language) DO NOTHING;
-
-INSERT INTO legal_pages (slug, title, content, version, language)
-VALUES 
-('terms', 'System Rule Book (Terms of Service)', '## SIM-Based Responsibilities
-You acknowledge that our platform connects to your physical Android device to route calls. You are explicitly responsible for maintaining the health and validity of the physical SIM card processing these algorithms.
-
-## No Spam & DNC Compliance
-You are strictly responsible for complying with local telecommunication regulations (TRAI, TCPA) regarding automated calling. Utilizing high-volume outreach capacity to execute phishing, scams, or sustained harassment is a zero-tolerance restricted action.
-
-## AI Usage & Rate Limits
-We reserve the absolute right to terminate or pause your API keys and instance access instantly if heuristic monitors detect restricted actions or excessive localized abuse patterns hitting our AI infrastructure.', '1.5', 'English')
-ON CONFLICT (slug, language) DO NOTHING;
-
-INSERT INTO legal_pages (slug, title, content, version, language)
-VALUES 
-('refund', 'Refund & Cancellation Policy', '## Billing & Refund Rules
-We do not offer pro-rated refunds for partial months deployed. Once a billing cycle triggers, the structural access is locked in for that frame.
-
-## Cancel Anytime
-You possess the capacity to downgrade or cancel your subscription pipeline at any time via the Billing console without any hidden exit fees.
-
-## Add-on Credits
-Due to the immediate infrastructural costs of synthesizing AI parameters, consumed computational minutes or add-on credits are inherently non-refundable.', '1.0', 'English')
-ON CONFLICT (slug, language) DO NOTHING;
+-- No seed content.
+--
+-- This file used to INSERT the Privacy Policy, Terms of Service and Refund
+-- Policy as published rows. That is what raised the 42P10: the seeds say
+-- ON CONFLICT (slug, language), and the live table's constraint is
+-- (slug, language, status).
+--
+-- The constraint is not the reason they are gone. The text made specific
+-- factual claims about this system that are not true, and unlike marketing copy
+-- these are the documents a customer is shown and asked to accept:
+--
+--   "14-Layer Security (SQLCipher)" / "encrypted at rest using AES-256 with
+--   SQLCipher 14-layer architectural boundaries"
+--     SQLCipher appears nowhere in this codebase. It is a SQLite extension;
+--     this product runs on Postgres and Cloudflare R2. "14-layer architectural
+--     boundaries" does not describe anything.
+--
+--   "No cross-tenant bleeding"
+--     Stated as a security guarantee in a privacy policy. It is the claim this
+--     migration set has been disproving all week -- announcements readable by
+--     every tenant, organization_tenants_view reading straight through RLS,
+--     and a long list of USING (true) policies still open.
+--
+--   "audio streams are dropped post-analysis" / "purely in RAM"
+--     calls.recording_url exists and holds a stored recording
+--     (20260718_calls_recording_url.sql).
+--
+--   "heuristic monitors detect restricted actions"
+--     No such monitor exists.
+--
+-- Publishing a privacy policy that overstates the security a product actually
+-- provides is a misrepresentation, and this one would be presented to every
+-- customer at signup. Correct text has to come from the founder, and for the
+-- legal documents specifically it should be reviewed by someone qualified --
+-- it is not something to reconstruct from the code.
+--
+-- Seeding them from a migration was also the wrong mechanism regardless of
+-- content: legal documents get versioned and re-accepted, so they belong in an
+-- editing flow, not in a file that runs on every deploy.
