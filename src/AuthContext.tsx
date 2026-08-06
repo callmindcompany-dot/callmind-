@@ -574,9 +574,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const hasExpiredTrial = useMemo(() => {
     if (isGodMode) return false;
+
+    const activePlans = ['starter', 'pro', 'growth', 'business', 'enterprise'];
+    const userPlan = (profileWithOverrides?.plan || profileWithOverrides?.subscriptionPlan || '').toLowerCase();
+    const userPlanStatus = (profileWithOverrides?.planStatus || profileWithOverrides?.plan_status || '').toLowerCase();
+
+    if (userPlanStatus === 'active' || (userPlan && activePlans.includes(userPlan))) {
+      return false;
+    }
+
     if (trialStatus === 'expired' || accountStatus === 'deleted') return true;
     return false;
-  }, [isGodMode, trialStatus, accountStatus]);
+  }, [isGodMode, trialStatus, accountStatus, profileWithOverrides]);
 
   const trialEndsAt = useMemo(() => {
     if (isGodMode) return new Date('2030-01-01');

@@ -83,15 +83,13 @@ router.get('/trial/status', async (req, res) => {
       return isNaN(parsed.getTime()) ? null : parsed;
     };
 
-    const trialStartDate = parseDbDate(userData.trialStartDate || userData.trial_start_date);
-    const trialEndDate = parseDbDate(userData.trialEndDate || userData.trial_end_date);
+    const createdAtDate = parseDbDate(userData.createdAt || userData.created_at) || new Date();
+    const trialStartDate = parseDbDate(userData.trialStartDate || userData.trial_start_date) || createdAtDate;
+    const trialEndDate = parseDbDate(userData.trialEndDate || userData.trial_end_date) || new Date(trialStartDate.getTime() + 7 * 24 * 60 * 60 * 1000);
     const today = new Date();
 
-    let daysRemaining = 0;
-    if (trialEndDate) {
-      const diff = trialEndDate.getTime() - today.getTime();
-      daysRemaining = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    }
+    const diff = trialEndDate.getTime() - today.getTime();
+    const daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 
     const trialStatus = daysRemaining > 0 ? "active" : "expired";
     const accountStatus = userData.planStatus || userData.plan_status || "trial";
