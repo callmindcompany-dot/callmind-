@@ -142,8 +142,11 @@ const DynamicStatusRibbon = ({
           )}
           
           <button 
-            onClick={onOpenHistory}
-            className="flex items-center gap-3 text-slate-500 hover:text-blue-600 transition-all group"
+            onClick={() => {
+              const el = document.getElementById('billing-history-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="flex items-center gap-3 text-slate-500 hover:text-blue-600 transition-all group cursor-pointer"
           >
             <History size={16} strokeWidth={1.5} className="group-hover:rotate-[-10deg] transition-transform text-slate-400 group-hover:text-blue-600" />
             <span className="text-[9px] font-black uppercase tracking-[0.3em] hidden md:block border-b border-transparent group-hover:border-blue-200 pb-0.5 font-sans">Invoices & Logs</span>
@@ -936,124 +939,119 @@ export const BillingPage = () => {
            </div>
         </div>
       </div>
-      <AnimatePresence>
-        {historyOpen && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setHistoryOpen(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-[32px] shadow-2xl overflow-hidden"
-            >
-              <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <History size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Billing Archive</h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Transaction History & Invoices</p>
-                  </div>
+        {/* DEDICATED BILLING HISTORY & GST INVOICES SECTION */}
+        <section id="billing-history-section" className="pt-8 pb-12">
+          <div className="bg-white rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/50 p-8 sm:p-10 space-y-8">
+            
+            {/* Section Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shadow-sm">
+                  <History size={28} strokeWidth={1.5} />
                 </div>
-                <button 
-                  onClick={() => setHistoryOpen(false)}
-                  className="w-10 h-10 rounded-full border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors"
-                >
-                  <X size={20} />
-                </button>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 font-display tracking-tight uppercase">Billing History & GST Invoices</h3>
+                  <p className="text-xs text-slate-500 font-medium mt-1">Official records of all completed Razorpay subscriptions and 18% GST tax invoices.</p>
+                </div>
               </div>
 
-              <div className="p-8 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-4">
-                {invoicesQuery.isLoading ? (
-                  <div className="py-12 text-center text-slate-400 font-bold uppercase tracking-widest text-[10px] animate-pulse">
-                    Loading Billing Records...
-                  </div>
-                ) : invoicesQuery.data && invoicesQuery.data.length > 0 ? (
-                  <div className="space-y-4">
-                    {invoicesQuery.data.map((invoice) => (
-                      <div 
-                        key={invoice.id} 
-                        className="p-5 rounded-2xl border border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-blue-100 hover:bg-white transition-all shadow-sm group"
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                            <FileText size={20} strokeWidth={1.5} />
-                          </div>
-                          <div>
-                            <h4 className="text-[12px] font-black text-slate-900 uppercase tracking-wider">{invoice.invoice_number}</h4>
-                            <p className="text-[9px] font-medium text-slate-400 mt-0.5">
-                              Period: {new Date(invoice.billing_period_start).toLocaleDateString()} - {new Date(invoice.billing_period_end).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
+              <button
+                onClick={() => handleDownloadTaxInvoice()}
+                className="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-blue-500/20 active:scale-95 flex items-center justify-center gap-2 self-start md:self-auto"
+              >
+                <Download size={16} />
+                <span>Generate Current Tax Invoice</span>
+              </button>
+            </div>
 
-                        <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
-                          <div className="text-right">
-                            <p className="text-[14px] font-black text-slate-900">₹{invoice.amount.toLocaleString('en-IN')}</p>
-                            <span className={`inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md mt-1 border ${
-                              invoice.status === 'paid' 
-                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                                : invoice.status === 'refunded'
-                                ? 'bg-amber-50 text-amber-600 border-amber-100'
-                                : 'bg-red-50 text-red-600 border-red-100'
-                            }`}>
-                              {invoice.status}
-                            </span>
-                          </div>
-
-                          <button 
-                            onClick={() => handleDownloadTaxInvoice(invoice.id, invoice.amount, selectedPlan)}
-                            className="px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl text-[10px] font-black uppercase tracking-wider text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm flex items-center gap-1.5"
-                          >
-                            <Download size={12} />
-                            <span>Tax Invoice PDF</span>
-                          </button>
-                        </div>
+            {/* Invoices List / Table */}
+            {invoicesQuery.isLoading ? (
+              <div className="py-16 text-center text-slate-400 font-bold uppercase tracking-widest text-xs animate-pulse">
+                Loading Billing & Invoice Records...
+              </div>
+            ) : invoicesQuery.data && invoicesQuery.data.length > 0 ? (
+              <div className="space-y-4">
+                {invoicesQuery.data.map((invoice) => (
+                  <div 
+                    key={invoice.id} 
+                    className="p-6 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-blue-200 transition-all shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 group"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                        <FileText size={22} strokeWidth={1.5} />
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-10 text-center space-y-5">
-                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl mx-auto flex items-center justify-center">
-                      <FileText size={32} />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3">
+                          <h4 className="text-sm font-black text-slate-900 font-display uppercase tracking-wider">{invoice.invoice_number}</h4>
+                          <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${
+                            invoice.status === 'paid' 
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                              : invoice.status === 'refunded'
+                              ? 'bg-amber-50 text-amber-600 border-amber-100'
+                              : 'bg-red-50 text-red-600 border-red-100'
+                          }`}>
+                            {invoice.status}
+                          </span>
+                        </div>
+                        <p className="text-xs font-medium text-slate-500">
+                          Billing Period: {new Date(invoice.billing_period_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} – {new Date(invoice.billing_period_end).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">GST Tax Invoice Generator</h4>
-                      <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto leading-relaxed mt-1">
-                        Download official GST-compliant tax invoices for all completed Razorpay plan subscriptions.
-                      </p>
-                    </div>
-                    <div>
+
+                    <div className="flex items-center justify-between md:justify-end gap-6 pt-4 md:pt-0 border-t md:border-t-0 border-slate-200/60">
+                      <div className="text-left md:text-right">
+                        <p className="text-xl font-black text-slate-900 tracking-tight font-display">₹{invoice.amount.toLocaleString('en-IN')}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Incl. 18% GST</p>
+                      </div>
+
                       <button 
-                        onClick={() => handleDownloadTaxInvoice()}
-                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-blue-500/20 active:scale-95 inline-flex items-center gap-2"
+                        onClick={() => handleDownloadTaxInvoice(invoice.id, invoice.amount, selectedPlan)}
+                        className="px-5 py-2.5 bg-white border border-slate-200 hover:border-blue-600 hover:bg-blue-600 hover:text-white rounded-xl text-xs font-black uppercase tracking-wider text-slate-700 transition-all shadow-xs flex items-center gap-2"
                       >
-                        <Download size={16} />
-                        <span>Generate Current Tax Invoice (PDF)</span>
+                        <Download size={14} />
+                        <span>Tax Invoice PDF</span>
                       </button>
                     </div>
                   </div>
-                )}
-                <div className="pt-4 flex justify-end">
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 px-6 rounded-3xl bg-slate-50 border border-slate-100 text-center space-y-4">
+                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl mx-auto flex items-center justify-center shadow-inner">
+                  <FileText size={32} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-lg font-black text-slate-900 font-display uppercase tracking-tight">No Previous Transactions Yet</h4>
+                  <p className="text-xs text-slate-500 font-medium max-w-md mx-auto leading-relaxed">
+                    Once you upgrade your subscription via Razorpay, all official B2B 18% GST tax invoices will be archived here for instant PDF download.
+                  </p>
+                </div>
+                <div className="pt-2">
                   <button 
-                    onClick={() => setHistoryOpen(false)}
-                    className="px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-slate-800 transition-colors"
+                    onClick={() => handleDownloadTaxInvoice()}
+                    className="px-6 py-3 bg-white border border-slate-200 hover:border-blue-600 text-blue-600 hover:bg-blue-50 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-xs inline-flex items-center gap-2"
                   >
-                    Close Archive
+                    <Download size={14} />
+                    <span>Download Preview GST Tax Invoice</span>
                   </button>
                 </div>
               </div>
-            </motion.div>
+            )}
+
+            {/* Footer Assurance Banner */}
+            <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100/60 flex items-center justify-between gap-4 text-xs font-semibold text-blue-900">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={16} className="text-blue-600 shrink-0" />
+                <span>100% Tax Compliant • Computer Generated GST Tax Invoices • Valid for Corporate Accounting</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600">
+                <span>Verified B2B Billing</span>
+              </div>
+            </div>
+
           </div>
-        )}
-      </AnimatePresence>
+        </section>
 
       <style>{`
         .perspective-1000 { perspective: 1000px; } 

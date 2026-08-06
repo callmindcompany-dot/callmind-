@@ -72,9 +72,6 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: LayoutProp
           isExpired={plan.isLapsed || plan_status === 'expired'}
           planName={plan.plan.name}
           expiryDays={plan.daysRemaining}
-          onOpenHistory={() => {
-            onTabChange('Subscription');
-          }}
         />
         
         {/* Header */}

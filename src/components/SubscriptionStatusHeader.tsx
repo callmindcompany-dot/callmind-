@@ -122,19 +122,10 @@ export const SubscriptionStatusHeader: React.FC<SubscriptionStatusHeaderProps> =
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="hidden md:flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest border-r border-slate-100 pr-4">
+        <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
            <ShieldCheck size={12} className="text-emerald-500" />
            Cognitive Verified
         </div>
-        <button 
-          onClick={onOpenHistory}
-          className="flex items-center gap-2.5 text-slate-400 hover:text-slate-900 transition-all duration-300 group"
-        >
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all">Billing & History</span>
-          <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center group-hover:bg-brand-50 group-hover:border-brand-100 group-hover:text-brand-600 transition-all">
-            <Clock size={16} />
-          </div>
-        </button>
       </div>
     </motion.div>
   );
