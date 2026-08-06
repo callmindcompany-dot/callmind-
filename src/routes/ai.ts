@@ -61,14 +61,21 @@ router.post('/generate', async (req, res) => {
     const userData = userDoc.data() || {};
     const companyId: string | undefined = userData.company_id || userData.companyId;
 
-    const MASTER_FOUNDER = masterFounderEmail;
-    const TESTER_EMAILS = FOUNDER_OWNERS;
-    
-    const isGodMode = userEmail === MASTER_FOUNDER || 
-                      TESTER_EMAILS.includes(userEmail || "") ||
-                      userData.role === "super_admin" ||
-                      userData.role === "founder" ||
-                      userData.role === "tester";
+    // God mode is the CallMind staff allow-list, and nothing else.
+    //
+    // `role === "founder"` used to grant it. That role belongs to whoever signs
+    // up and creates a company (src/AuthContext.tsx), so every customer has
+    // one -- meaning the person most likely to use AI heavily was the one
+    // exempted from the credit limit, and their Gemini usage came out of our
+    // margin rather than their plan. Same mistake, in a cheaper place, as the
+    // one that let a customer impersonate another tenant.
+    //
+    // `tester` is left in deliberately: it is only ever set for internal
+    // accounts (USER_PERSPECTIVE_TESTERS), not by signup.
+    const normalisedEmail = (userEmail || "").toLowerCase();
+    const staffEmails = [masterFounderEmail, ...FOUNDER_OWNERS].map((e) => e.toLowerCase());
+
+    const isGodMode = staffEmails.includes(normalisedEmail) || userData.role === "tester";
     const isWhatsAppDraft = targetTask === 'draft';
 
     // 2. Global kill-switch

@@ -59,10 +59,16 @@ export function requirePermission(moduleName: string, actionName: string) {
       return;
     }
 
-    const role = user.role || user.user_metadata?.role || 'telecaller';
-    const companyId = user.company_id || user.user_metadata?.company_id;
+    // Never fall back to user_metadata: a signed-in user can write their own,
+    // so reading role or company_id from it would let anyone promote themselves
+    // to founder and clear every permission check below. authGuard resolves
+    // both from app_metadata, which only the service role can set.
+    const role = user.role || 'telecaller';
+    const companyId = user.company_id;
 
-    // Founder bypass
+    // A company's founder holds every permission inside their own tenant. This
+    // is tenant-scoped by design -- companyId still comes from the token, so it
+    // grants nothing outside the caller's own company.
     if (role === 'founder') {
       next();
       return;

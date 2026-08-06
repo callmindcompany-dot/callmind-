@@ -102,6 +102,35 @@ describe('route authorization', () => {
     expect(guard).not.toMatch(/user_metadata\?\.role/);
   });
 
+  it('never reads tenancy from user_metadata anywhere on the server', () => {
+    // Supabase lets a signed-in user write their own user_metadata. Any server
+    // code that falls back to it for company_id or role hands every user the
+    // ability to move themselves into another tenant or promote their role.
+    // authGuard resolves both from app_metadata, which only the service role
+    // can set, so nothing downstream needs a fallback.
+    const files = [
+      ...readdirSync(ROUTES_DIR).map((f) => join(ROUTES_DIR, f)),
+      join(__dirname, '..', 'middleware', 'authGuard.ts'),
+      join(__dirname, '..', 'middleware', 'rbac.middleware.ts'),
+    ].filter((f) => f.endsWith('.ts'));
+
+    const offenders = files.filter((f) =>
+      /user_metadata\??\.(company_id|role)/.test(stripComments(readFileSync(f, 'utf8'))),
+    );
+
+    expect(offenders, `these read tenancy from user_metadata: ${offenders.join(', ')}`)
+      .toEqual([]);
+  });
+
+  it('grants AI god mode by staff allow-list, not by tenant role', () => {
+    // `role === 'founder'` is assigned to every customer on signup, so granting
+    // god mode on it exempted the heaviest AI user in each company from their
+    // own credit limit -- at our cost.
+    const ai = read('ai.ts');
+    expect(ai).not.toMatch(/role *=== *["']founder["']/);
+    expect(ai).toMatch(/FOUNDER_OWNERS/);
+  });
+
   it('does not hand out a stub founder in production', () => {
     const guard = stripComments(
       readFileSync(join(__dirname, '..', 'middleware', 'authGuard.ts'), 'utf8'),

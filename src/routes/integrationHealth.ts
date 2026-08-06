@@ -8,7 +8,11 @@ export const integrationHealthRouter = Router();
 integrationHealthRouter.get('/', authGuard, async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
-    const companyId = user?.company_id || user?.user_metadata?.company_id;
+    // company_id and role come from app_metadata via authGuard. The old
+    // user_metadata fallback was writable by the signed-in user, so it would
+    // have let anyone move themselves into another tenant or promote their own
+    // role.
+    const companyId = user?.company_id;
 
     if (!companyId) {
       res.status(400).json({ error: 'Missing companyId' });
@@ -26,8 +30,8 @@ integrationHealthRouter.get('/', authGuard, async (req: Request, res: Response):
 integrationHealthRouter.post('/retry', authGuard, async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
-    const companyId = user?.company_id || user?.user_metadata?.company_id;
-    const userRole = user?.role || user?.user_metadata?.role || 'telecaller';
+    const companyId = user?.company_id;
+    const userRole = user?.role || 'telecaller';
     const userId = user?.id;
     const userEmail = user?.email || 'admin@callmind.app';
     const { providerName } = req.body;
