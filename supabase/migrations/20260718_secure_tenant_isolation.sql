@@ -123,10 +123,15 @@ DROP POLICY IF EXISTS "tenant_select_announcement_reads" ON public.announcement_
 DROP POLICY IF EXISTS "tenant_insert_announcement_reads" ON public.announcement_reads;
 DROP POLICY IF EXISTS "tenant_update_announcement_reads" ON public.announcement_reads;
 DROP POLICY IF EXISTS "tenant_delete_announcement_reads" ON public.announcement_reads;
-CREATE POLICY "tenant_select_announcement_reads" ON public.announcement_reads FOR SELECT USING (company_id = public.get_my_company_id());
-CREATE POLICY "tenant_insert_announcement_reads" ON public.announcement_reads FOR INSERT WITH CHECK (company_id = public.get_my_company_id());
-CREATE POLICY "tenant_update_announcement_reads" ON public.announcement_reads FOR UPDATE USING (company_id = public.get_my_company_id()) WITH CHECK (company_id = public.get_my_company_id());
-CREATE POLICY "tenant_delete_announcement_reads" ON public.announcement_reads FOR DELETE USING (company_id = public.get_my_company_id());
+-- No policies created here. announcement_reads has no company_id -- it is a
+-- join table and inherits its tenant from the announcement it points at, so
+-- these four raised 42703.
+--
+-- 20260718_secure_rls.sql runs just before this file and already covers the
+-- table transitively, under the names tenant_announcement_reads_<action>.
+-- Recreating a second set under tenant_<action>_announcement_reads would only
+-- add policies that Postgres ORs with the correct ones. The DROPs above stay,
+-- so a database still carrying the old names is cleaned up.
 
 -- user_acceptances
 ALTER TABLE public.user_acceptances ENABLE ROW LEVEL SECURITY;
