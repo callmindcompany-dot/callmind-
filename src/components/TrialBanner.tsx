@@ -98,7 +98,7 @@ export const TrialBanner = () => {
   if (daysRemaining <= 1) {
     config = {
       badge: { text: 'Final day!', color: 'bg-red-50 text-red-600 border-red-100', icon: AlertCircle },
-      message: 'Your trial ends today. Upgrade or get 3-day extension',
+      message: 'Your trial ends today. Upgrade or get extension',
       cta: { 
         label: 'Upgrade Now', 
         action: () => navigate('/dashboard/billing'), 

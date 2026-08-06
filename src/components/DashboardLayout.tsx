@@ -136,7 +136,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: LayoutProp
               </div>
               <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-4">Trial Expired</h2>
               <p className="text-gray-500 font-medium mb-8 leading-relaxed">
-                Your 3-day Free Trial of CallMind Pro has officially ended. Upgrade your subscription to restore full dashboard access and continue scaling your operations.
+                Your 7-day Free Trial of CallMind Pro has officially ended. Upgrade your subscription to restore full dashboard access and continue scaling your operations.
               </p>
               
               <div className="space-y-4">
