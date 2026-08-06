@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS public.companies (
     plan TEXT DEFAULT 'trial',
     plan_status TEXT DEFAULT 'trialing',
     seat_limit INTEGER DEFAULT 1,
-    active_members_count INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -29,7 +28,6 @@ DECLARE
     v_plan TEXT;
     v_plan_status TEXT;
     v_seat_limit INT;
-    v_active_members_count INT;
     v_invite_id TEXT;
     v_max_uses INT;
     v_used_count INT;
@@ -38,8 +36,8 @@ DECLARE
     v_actual_members INT;
 BEGIN
     -- 1. Check Company existence
-    SELECT name, plan, plan_status, seat_limit, active_members_count
-    INTO v_company_name, v_plan, v_plan_status, v_seat_limit, v_active_members_count
+    SELECT name, plan, plan_status, seat_limit
+    INTO v_company_name, v_plan, v_plan_status, v_seat_limit
     FROM public.companies
     WHERE id = p_company_id;
 
@@ -92,10 +90,11 @@ BEGIN
     WHERE company_id = p_company_id
       AND LOWER(COALESCE(status, 'active')) NOT IN ('disabled', 'removed');
 
-    -- Fallback to using active_members_count if no users exist or as a defensive check
-    IF v_actual_members < COALESCE(v_active_members_count, 0) THEN
-        v_actual_members := COALESCE(v_active_members_count, 0);
-    END IF;
+    -- The count above is the answer. There was a denormalised
+    -- companies.active_members_count here that could override it upwards, but
+    -- nothing in the product ever wrote to that column, so it would have been
+    -- permanently zero -- or, worse, permanently stale once something did write
+    -- it once. The users table is the only place seat occupancy actually lives.
 
     IF v_actual_members >= v_seat_limit THEN
         RETURN jsonb_build_object(
@@ -205,11 +204,10 @@ BEGIN
 END;
 $$;
 
--- 5. Seed a dummy test company and active invite code for verification
-INSERT INTO public.companies (id, name, plan, plan_status, seat_limit, active_members_count)
-VALUES ('comp_test', 'Test Company Hub', 'trial', 'active', 3, 0)
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.invites (id, company_id, type, join_code, status, max_uses, used_count)
-VALUES ('inv_test', 'comp_test', 'onboarding', 'TESTCODE', 'active', 10, 0)
-ON CONFLICT (id) DO NOTHING;
+-- 5. No seed data.
+--
+-- This used to insert a company called 'Test Company Hub' with a working join
+-- code of 'TESTCODE'. A migration runs everywhere, so that tenant and that code
+-- would exist in production -- anyone who guessed the code could join it. Test
+-- fixtures belong in a seed script that is run deliberately, not in a
+-- migration that runs on every deploy.

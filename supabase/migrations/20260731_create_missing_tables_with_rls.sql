@@ -43,6 +43,18 @@ CREATE TABLE IF NOT EXISTS public.calls (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- `calls` is the one table in this file that already existed, so the CREATE
+-- above is a no-op and none of the columns in it were applied. That is exactly
+-- how 20260718_join_rebuild.sql failed: it declared companies.active_members_count
+-- in an IF NOT EXISTS block, the table was already there, the column was never
+-- created, and a statement further down the same file referenced it.
+--
+-- The policies and indexes below depend on these three, so make them true
+-- rather than assume them.
+ALTER TABLE public.calls ADD COLUMN IF NOT EXISTS company_id TEXT;
+ALTER TABLE public.calls ADD COLUMN IF NOT EXISTS lead_id    TEXT;
+ALTER TABLE public.calls ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
 ALTER TABLE public.calls ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS tenant_select_calls ON public.calls;
