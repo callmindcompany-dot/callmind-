@@ -4,13 +4,14 @@ import { supabase } from '../supabaseClient';
 export interface Organization {
   id: string;
   name: string;
-  domain: string;
+  /** Always null today — no domain is collected at signup. */
+  domain: string | null;
   plan: 'Basic' | 'Professional' | 'Enterprise' | 'trial' | 'solo' | 'team' | string;
   status: 'Active' | 'Churned' | 'Trialing' | 'Paused' | 'Suspended' | string;
   userCount: number;
   leadCount: number;
-  mrr: number;
-  healthScore: number;
+  /** null when the tenant's plan is not in plan_limits, so revenue is unknown. */
+  mrr: number | null;
   seatLimit: number;
 }
 
@@ -62,13 +63,16 @@ export function useOrganizationTenants(
       const tenants: Organization[] = (data || []).map(row => ({
         id: row.id,
         name: row.name,
-        domain: row.domain || `${row.name.toLowerCase().replace(/\s+/g, '')}.com`,
+        // No domain is collected at signup. This used to guess one by
+        // slugifying the company name and appending .com, and the founder hub
+        // displayed the guess as though it were the tenant's real domain.
+        domain: row.domain ?? null,
         plan: row.plan || 'Trial',
         status: row.status || 'Active',
         userCount: row.user_count || 0,
         leadCount: row.lead_count || 0,
-        mrr: Number(row.mrr) || 0,
-        healthScore: row.health_score || 80,
+        // `|| 0` here would turn "unknown" into "₹0 revenue". Keep them apart.
+        mrr: row.mrr === null || row.mrr === undefined ? null : Number(row.mrr),
         seatLimit: row.seat_limit || 10
       }));
 

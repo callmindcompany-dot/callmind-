@@ -96,10 +96,11 @@ export const OrganizationTenants = ({ onBack }: { onBack: () => void }) => {
         'Status', 
         'Agents Count', 
         'Leads Count', 
-        'Monthly MRR (INR)', 
-        'Health Score'
+        'Monthly MRR (INR)'
       ];
-      
+
+      // The 'Health Score' column exported 85 for every tenant, or 80 when the
+      // view had not supplied it. Both were invented; the column is gone.
       const rows = allData.map(row => [
         row.id,
         row.name,
@@ -108,8 +109,8 @@ export const OrganizationTenants = ({ onBack }: { onBack: () => void }) => {
         row.status || 'Active',
         row.user_count || 0,
         row.lead_count || 0,
-        row.mrr || 0,
-        row.health_score || 80
+        // Blank, not 0 — a tenant on an unrecognised plan has unknown revenue.
+        row.mrr === null || row.mrr === undefined ? '' : row.mrr
       ]);
 
       const csvContent = [
@@ -280,7 +281,9 @@ export const OrganizationTenants = ({ onBack }: { onBack: () => void }) => {
                           </div>
                           <div className="min-w-0">
                             <p className="text-base font-black text-gray-900 leading-tight truncate">{tenant.name}</p>
-                            <p className="text-xs text-gray-400 font-bold mt-0.5 truncate">{tenant.domain}</p>
+                            {tenant.domain && (
+                              <p className="text-xs text-gray-400 font-bold mt-0.5 truncate">{tenant.domain}</p>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -324,7 +327,9 @@ export const OrganizationTenants = ({ onBack }: { onBack: () => void }) => {
                         </div>
                       </td>
                       <td className="px-8 py-6 text-right pr-8 shrink-0">
-                        <p className="text-lg font-black text-gray-900">₹{tenant.mrr.toLocaleString()}</p>
+                        <p className="text-lg font-black text-gray-900">
+                          {tenant.mrr === null ? '—' : `₹${tenant.mrr.toLocaleString()}`}
+                        </p>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Monthly MRR</p>
                       </td>
                       <td className="px-8 py-6 text-center">
