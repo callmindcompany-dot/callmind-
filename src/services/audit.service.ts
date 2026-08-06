@@ -37,13 +37,27 @@ export const AuditService = {
         console.warn('[AuditService] Missing companyId. Event might fail validation.');
       }
 
+      // Write both naming schemes. The live table uses user_id/user_email and
+      // created_at; this service was written against actor_id/actor_email and
+      // timestamp, and useAuditLogs reads user_name and category. Until the
+      // call sites converge, every event fills all of them -- a half-written
+      // audit row is worse than none, because it looks like a record.
+      //
+      // `timestamp` is generated from created_at in
+      // 20260718_audit_logs_columns.sql, so it is not set here.
       const logEntry = {
         company_id: companyId || null,
         action: params.action,
+        category: params.targetType || 'system',
+        target: params.targetId || null,
+        target_id: params.targetId || null,
+        user_id: user.id,
+        user_email: user.email || 'unknown',
+        user_name: user.user_metadata?.name || user.email || 'unknown',
         actor_id: user.id,
         actor_email: user.email || 'unknown',
         details: params.details ? JSON.stringify(params.details) : null,
-        timestamp: new Date().toISOString()
+        created_at: new Date().toISOString()
       };
 
       const { error } = await supabase
