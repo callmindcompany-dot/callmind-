@@ -65,6 +65,7 @@ serve(async (req) => {
 
           // Insert execution success log
           await supabase.from("automation_logs").insert({
+            company_id: rule.company_id,
             rule_id: rule.id,
             lead_id: lead.id,
             trigger_type: rule.trigger_type,
@@ -76,6 +77,7 @@ serve(async (req) => {
           Sentry.captureException(err);
           // Log failed action
           await supabase.from("automation_logs").insert({
+            company_id: rule.company_id,
             rule_id: rule.id,
             lead_id: lead.id,
             trigger_type: rule.trigger_type,

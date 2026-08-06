@@ -21,9 +21,14 @@ export function useAutomationLogs(companyId: string | null) {
       if (!companyId) return [];
       
       // 1. Fetch raw logs
+      // Scoped explicitly. RLS is the boundary that matters, but this query
+      // asked for every automation log on the platform and relied entirely on a
+      // policy that could not exist -- the table has only just gained a
+      // company_id to key one on.
       const { data: logs, error } = await supabase
         .from('automation_logs')
         .select('*')
+        .eq('company_id', companyId)
         .order('executed_at', { ascending: false });
 
       if (error) {
