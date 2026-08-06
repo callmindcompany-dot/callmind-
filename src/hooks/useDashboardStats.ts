@@ -11,13 +11,9 @@ export interface PipelineItem {
 }
 
 export interface DashboardStats {
-  revenueTrend: { name: string; val: number }[];
   leadStatusDistribution: { name: string; value: number; fill: string }[];
   agentPerformance: { name: string; top: number; bottom: number }[];
-  analyticsData: { name: string; p1: number; p2: number; p3: number }[];
   sourceData: { label: string; val: string; color: string }[];
-  regionalData: { name: string; value: number; fill: string }[];
-  stackedData: { name: string; v1: number; v2: number; v3: number }[];
   totalActive: number;
   kpis: {
     totalLeads: number;
@@ -37,13 +33,9 @@ export interface DashboardStats {
 
 function getFallbackStats(): DashboardStats {
   return {
-    revenueTrend: [],
     leadStatusDistribution: [],
     agentPerformance: [],
-    analyticsData: [],
     sourceData: [],
-    regionalData: [],
-    stackedData: [],
     totalActive: 0,
     kpis: {
       totalLeads: 0,
@@ -96,9 +88,12 @@ export function useDashboardStats(
       }
 
       // 2. Fetch sample active leads for the company (Limit 5000 for safe charting)
+      // Only the columns the aggregations below actually read. `select('*')`
+      // pulled every column of up to 5,000 leads into the browser on every
+      // dashboard load -- a large payload for a screen that uses five fields.
       const { data: leadsData, error: leadsError } = await supabase
         .from('leads')
-        .select('*')
+        .select('status, assigned_to, source, created_at, created_by')
         .eq('company_id', companyId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
@@ -119,7 +114,7 @@ export function useDashboardStats(
 
       const { data: callsData, error: callsError } = await supabase
         .from('calls')
-        .select('*')
+        .select('status, timestamp, created_by, outcome, is_ai_call, ai_processed, ai_success')
         .eq('company_id', companyId)
         .gte('timestamp', minDateStr)
         .order('timestamp', { ascending: false })
@@ -179,22 +174,11 @@ export function useDashboardStats(
       };
 
       // 2. Revenue Trend
-      const revenueTrendMap: Record<string, number> = {};
-      for (let i = 29; i >= 0; i--) {
-        const d = format(subDays(now, i), 'MMM dd');
-        revenueTrendMap[d] = 0;
-      }
-      leads.forEach(lead => {
-        if (lead && lead.status === 'Converted' && lead.created_at) {
-          const date = new Date(lead.created_at);
-          if (isAfter(date, thirtyDaysAgo)) {
-            const dateStr = format(date, 'MMM dd');
-            const budgetVal = parseFloat(String(lead.estimated_budget || '0').replace(/[^0-9.]/g, '')) || 500;
-            if (revenueTrendMap[dateStr] !== undefined) revenueTrendMap[dateStr] += budgetVal;
-          }
-        }
-      });
-      const revenueTrend = Object.entries(revenueTrendMap).map(([name, val]) => ({ name, val }));
+      // The revenue trend series was removed. Nothing rendered it, and it
+      // fabricated money: a converted lead with no estimated_budget was counted
+      // as Rs 500 (`|| 500`), so the chart showed income that did not exist.
+      // If a revenue chart is wanted, build it on deal values that are actually
+      // recorded, and show nothing where nothing was entered.
 
       // 3. Status Specs & Colors
       const statusSpecs: Record<string, { color: string; riskDays?: number; riskLevel?: string }> = {
@@ -299,20 +283,6 @@ export function useDashboardStats(
           color: funnelOrder[i % funnelOrder.length] && statusSpecs[funnelOrder[i % funnelOrder.length]] ? statusSpecs[funnelOrder[i % funnelOrder.length]].color : '#3b82f6'
         }));
 
-      // 8. Regional Data
-      const regionalMap: Record<string, number> = {};
-      leads.forEach(l => {
-        const region = l.city || l.state || 'Unknown';
-        regionalMap[region] = (regionalMap[region] || 0) + 1;
-      });
-      const regionalData = Object.entries(regionalMap)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([name, value], i) => ({ 
-          name, 
-          value: Math.round((value / (leads.length || 1)) * 100), 
-          fill: funnelOrder[i % funnelOrder.length] && statusSpecs[funnelOrder[i % funnelOrder.length]] ? statusSpecs[funnelOrder[i % funnelOrder.length]].color : '#3b82f6'
-        }));
 
       // 9. AI Assist stats
       const aiCalls = calls.filter(c => c && (c.is_ai_call || c.ai_processed));
@@ -322,41 +292,11 @@ export function useDashboardStats(
       };
 
       // 10. Analytics timeline chart
-      const analyticsMap: Record<string, { p1: number; p2: number; p3: number }> = {};
-      for (let i = 6; i >= 0; i--) {
-        const d = format(subDays(now, i), 'EEE');
-        analyticsMap[d] = { p1: 0, p2: 0, p3: 0 };
-      }
-      calls.forEach(call => {
-        if (call.timestamp) {
-          const date = new Date(call.timestamp);
-          if (isAfter(date, sevenDaysAgo)) {
-            const day = format(date, 'EEE');
-            if (analyticsMap[day]) {
-              if (call.status === 'completed') analyticsMap[day].p1++;
-              else if (call.status === 'missed') analyticsMap[day].p2++;
-              else analyticsMap[day].p3++;
-            }
-          }
-        }
-      });
-      const analyticsData = Object.entries(analyticsMap).map(([name, vals]) => ({ name, ...vals }));
 
       return {
-        revenueTrend,
         leadStatusDistribution: funnelStages.map(s => ({ ...s, fill: s.color })),
         agentPerformance,
-        analyticsData,
         sourceData,
-        regionalData,
-        stackedData: [
-          { name: 'Mar', v1: 40, v2: 24, v3: 20 },
-          { name: 'Apr', v1: 30, v2: 13, v3: 22 },
-          { name: 'May', v1: 20, v2: 98, v3: 22 },
-          { name: 'Jun', v1: 27, v2: 39, v3: 20 },
-          { name: 'Jul', v1: 18, v2: 48, v3: 21 },
-          { name: 'Aug', v1: 23, v2: 38, v3: 25 },
-        ],
         totalActive: leads.filter(l => l.status !== 'Rejected').length,
         kpis,
         funnelStages,
