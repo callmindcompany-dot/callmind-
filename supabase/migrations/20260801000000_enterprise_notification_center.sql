@@ -1,3 +1,10 @@
+-- NOTE: company_id and user_id are TEXT, not UUID.
+--
+-- public.companies.id and public.users.id are TEXT -- they carry Firestore-era
+-- identifiers, not generated UUIDs. Declaring a UUID foreign key against them
+-- fails at migration time with 42804 "Key columns are of incompatible types".
+-- Same reason leads.id is TEXT.
+
 -- ============================================================================
 -- CALLMIND CRM — ENTERPRISE NOTIFICATION CENTER DATABASE SCHEMA (ENHANCED)
 -- Migration: 20260801000000_enterprise_notification_center.sql
@@ -48,8 +55,8 @@ END $$;
 -- 2. NOTIFICATIONS MASTER TABLE (WITH EXPRIY & DEEP LINKING)
 CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     type public.notification_type NOT NULL,
     priority public.notification_priority NOT NULL DEFAULT 'medium',
     title VARCHAR(255) NOT NULL,
@@ -71,8 +78,8 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 -- 3. USER & ROLE LEVEL NOTIFICATION PREFERENCES (WITH QUIET HOURS / DND)
 CREATE TABLE IF NOT EXISTS public.notification_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES public.users(id) ON DELETE CASCADE,
     role_scope VARCHAR(50), -- Null for user-level, populated for role-default
     is_company_default BOOLEAN NOT NULL DEFAULT FALSE,
     type public.notification_type NOT NULL,
@@ -91,7 +98,7 @@ CREATE TABLE IF NOT EXISTS public.notification_preferences (
 -- 4. NOTIFICATION TEMPLATES TABLE (ADMIN CUSTOMIZABLE)
 CREATE TABLE IF NOT EXISTS public.notification_templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE, -- NULL for system default
+    company_id TEXT REFERENCES public.companies(id) ON DELETE CASCADE, -- NULL for system default
     type public.notification_type NOT NULL,
     title_template VARCHAR(255) NOT NULL,
     body_template TEXT NOT NULL,

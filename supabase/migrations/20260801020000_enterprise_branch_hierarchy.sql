@@ -1,3 +1,10 @@
+-- NOTE: company_id and user_id are TEXT, not UUID.
+--
+-- public.companies.id and public.users.id are TEXT -- they carry Firestore-era
+-- identifiers, not generated UUIDs. Declaring a UUID foreign key against them
+-- fails at migration time with 42804, "Key columns are of incompatible types".
+-- leads.id is TEXT for the same reason.
+
 -- ============================================================================
 -- CALLMIND CRM — ENTERPRISE BRANCH / REGION HIERARCHY SCHEMA
 -- Migration: 20260801020000_enterprise_branch_hierarchy.sql
@@ -11,7 +18,7 @@ ADD COLUMN IF NOT EXISTS default_branch_id UUID;
 -- 2. REGIONS TABLE
 CREATE TABLE IF NOT EXISTS public.regions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     code VARCHAR(20),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -23,7 +30,7 @@ CREATE TABLE IF NOT EXISTS public.regions (
 -- 3. STATES HIERARCHY TABLE
 CREATE TABLE IF NOT EXISTS public.states_hierarchy (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
     region_id UUID REFERENCES public.regions(id) ON DELETE SET NULL,
     name VARCHAR(100) NOT NULL,
     code VARCHAR(20),
@@ -36,7 +43,7 @@ CREATE TABLE IF NOT EXISTS public.states_hierarchy (
 -- 4. BRANCHES TABLE
 CREATE TABLE IF NOT EXISTS public.branches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
     region_id UUID REFERENCES public.regions(id) ON DELETE SET NULL,
     state_id UUID REFERENCES public.states_hierarchy(id) ON DELETE SET NULL,
     name VARCHAR(150) NOT NULL,
@@ -53,7 +60,7 @@ CREATE TABLE IF NOT EXISTS public.branches (
 -- 5. DEPARTMENTS TABLE
 CREATE TABLE IF NOT EXISTS public.departments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES public.branches(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     code VARCHAR(30),

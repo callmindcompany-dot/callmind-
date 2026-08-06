@@ -1,3 +1,10 @@
+-- NOTE: company_id and user_id are TEXT, not UUID.
+--
+-- public.companies.id and public.users.id are TEXT -- they carry Firestore-era
+-- identifiers, not generated UUIDs. Declaring a UUID foreign key against them
+-- fails at migration time with 42804, "Key columns are of incompatible types".
+-- leads.id is TEXT for the same reason.
+
 -- ============================================================================
 -- CALLMIND CRM — ENTERPRISE GLOBAL SEARCH DATABASE SCHEMA & RPC
 -- Migration: 20260801010000_enterprise_global_search.sql
@@ -9,8 +16,8 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 -- 2. RECENT SEARCHES TABLE
 CREATE TABLE IF NOT EXISTS public.recent_searches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     query_text VARCHAR(255) NOT NULL,
     category_filter VARCHAR(50) DEFAULT 'all',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -19,8 +26,8 @@ CREATE TABLE IF NOT EXISTS public.recent_searches (
 -- 3. SAVED / FAVOURITE SEARCHES TABLE
 CREATE TABLE IF NOT EXISTS public.saved_searches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     query_text VARCHAR(255) NOT NULL,
     category_filter VARCHAR(50) DEFAULT 'all',
@@ -33,8 +40,8 @@ CREATE TABLE IF NOT EXISTS public.saved_searches (
 -- 4. SEARCH ANALYTICS LOGS TABLE
 CREATE TABLE IF NOT EXISTS public.search_analytics_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     query_text VARCHAR(255) NOT NULL,
     results_count INT NOT NULL DEFAULT 0,
     execution_ms INT NOT NULL DEFAULT 0,
