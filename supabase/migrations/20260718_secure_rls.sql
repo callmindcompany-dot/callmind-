@@ -215,10 +215,49 @@ DROP POLICY IF EXISTS "tenant_announcement_reads_insert" ON public.announcement_
 DROP POLICY IF EXISTS "tenant_announcement_reads_update" ON public.announcement_reads;
 DROP POLICY IF EXISTS "tenant_announcement_reads_delete" ON public.announcement_reads;
 
-CREATE POLICY "tenant_announcement_reads_select" ON public.announcement_reads FOR SELECT USING (company_id = public.get_my_company_id());
-CREATE POLICY "tenant_announcement_reads_insert" ON public.announcement_reads FOR INSERT WITH CHECK (company_id = public.get_my_company_id());
-CREATE POLICY "tenant_announcement_reads_update" ON public.announcement_reads FOR UPDATE USING (company_id = public.get_my_company_id()) WITH CHECK (company_id = public.get_my_company_id());
-CREATE POLICY "tenant_announcement_reads_delete" ON public.announcement_reads FOR DELETE USING (company_id = public.get_my_company_id());
+-- announcement_reads has no company_id and does not need one. It is a join
+-- table: a read receipt inherits its tenant from the announcement it points at.
+-- The original policies here referenced company_id directly and failed with
+-- 42703. Adding the column would be the third denormalised counter in this
+-- migration set that nothing writes to -- see companies.active_members_count
+-- and subscriptions.mrr.
+--
+-- Reads within the tenant are visible so the "seen by N people" count works;
+-- writing a receipt is limited to the user it belongs to. user_id is UUID and
+-- holds the auth uid (AnnouncementsPage passes user.uid), so auth.uid()
+-- compares directly -- no ::text cast, unlike the TEXT ids on users/companies.
+CREATE POLICY "tenant_announcement_reads_select" ON public.announcement_reads
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.announcements a
+      WHERE a.id = announcement_reads.announcement_id
+        AND a.company_id = public.get_my_company_id()
+    )
+  );
+
+CREATE POLICY "tenant_announcement_reads_insert" ON public.announcement_reads
+  FOR INSERT WITH CHECK (
+    user_id = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM public.announcements a
+      WHERE a.id = announcement_reads.announcement_id
+        AND a.company_id = public.get_my_company_id()
+    )
+  );
+
+CREATE POLICY "tenant_announcement_reads_update" ON public.announcement_reads
+  FOR UPDATE USING (user_id = auth.uid())
+  WITH CHECK (
+    user_id = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM public.announcements a
+      WHERE a.id = announcement_reads.announcement_id
+        AND a.company_id = public.get_my_company_id()
+    )
+  );
+
+CREATE POLICY "tenant_announcement_reads_delete" ON public.announcement_reads
+  FOR DELETE USING (user_id = auth.uid());
 
 -- user_acceptances
 ALTER TABLE public.user_acceptances ENABLE ROW LEVEL SECURITY;

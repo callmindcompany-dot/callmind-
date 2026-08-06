@@ -18,55 +18,16 @@ export function useAnnouncements(companyId: string | null) {
 
       if (error) throw error;
 
-      if (!data || data.length === 0) {
-        // Seed default announcements
-        const defaultPosts = [
-          {
-            company_id: companyId,
-            title: 'New AI Voice Features Released!',
-            content: 'We have successfully launched our new low-latency neural speech voice models in standard regional accents. Train them now in Founders Lab.',
-            category: 'Product',
-            target_role: 'all',
-            is_pinned: true,
-            is_published: true,
-            scheduled_at: null as string | null
-          },
-          {
-            company_id: companyId,
-            title: 'Scheduled System Database Migration',
-            content: 'The platform servers will undergo structural database optimizations this Sunday at 2:00 AM. Expect temporary latency spikes for up to 15 minutes.',
-            category: 'Maintenance',
-            target_role: 'all',
-            is_pinned: false,
-            is_published: true,
-            scheduled_at: null
-          },
-          {
-            company_id: companyId,
-            title: 'Sales Team Targets Reached!',
-            content: 'Inbound CRM lead conversion rates are up 20% compared to last quarter! Excellent work team, let\'s keep this momentum going.',
-            category: 'Team',
-            target_role: 'all',
-            is_pinned: false,
-            is_published: true,
-            scheduled_at: null
-          }
-        ];
-
-        const { error: seedError } = await supabase.from('announcements').insert(defaultPosts);
-        if (seedError) throw seedError;
-
-        const { data: refetched } = await supabase
-          .from('announcements')
-          .select('*')
-          .eq('company_id', companyId)
-          .order('is_pinned', { ascending: false })
-          .order('published_at', { ascending: false });
-
-        return (refetched || []) as Announcement[];
-      }
-
-      return data as Announcement[];
+      // A company with no announcements has no announcements.
+      //
+      // This used to insert three posts into the customer's own database on
+      // first load and present them as their team's: an "AI Voice Features
+      // Released" product note, a maintenance window "this Sunday at 2:00 AM"
+      // that nobody had scheduled, and "conversion rates are up 20% compared to
+      // last quarter" attributed to their sales team. None of it was true, all
+      // of it was written to their tenant, and the customer could not tell it
+      // apart from something a colleague had posted.
+      return (data ?? []) as Announcement[];
     },
     enabled: !!companyId
   });

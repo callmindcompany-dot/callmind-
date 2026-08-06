@@ -27,35 +27,37 @@ CREATE INDEX IF NOT EXISTS idx_announcement_reads_announcement
 DROP POLICY IF EXISTS "Allow all access to announcements" ON announcements;
 DROP POLICY IF EXISTS "Allow all access to announcement_reads" ON announcement_reads;
 
--- Announcements: authenticated users can read their company's published posts
+-- The four policies that used to be here are gone rather than fixed. Postgres
+-- ORs permissive policies together, so each of them cancelled the tenant-scoped
+-- policies created one migration earlier in 20260718_secure_rls.sql:
+--
+--   "Company users can view announcements"  USING (is_published = true)
+--       No company_id anywhere in it. Every tenant could read every other
+--       tenant's announcements.
+--
+--   "Admins can manage announcements"  FOR ALL TO authenticated
+--       USING (true) WITH CHECK (true)
+--       Its own comment said "service role can do full CRUD", but it was
+--       granted TO authenticated. Any logged-in customer could edit or delete
+--       any other company's announcements.
+--
+--   "Users can manage own reads"  USING (user_id = auth.uid()::text)
+--       announcement_reads.user_id is UUID, so this compares uuid to text and
+--       fails with 42883. This migration could never have applied.
+--
+--   "Users can view read stats"  USING (true)
+--       Every read receipt on the platform, visible to everyone.
+--
+-- 20260718_secure_rls.sql already covers both tables correctly: announcements
+-- by company_id, announcement_reads transitively through the announcement it
+-- points at. Adding a second set here could only widen it.
+--
+-- The DROPs above stay, so a database that already has the wide-open 20260706
+-- policies is cleaned up. These two are dropped for the same reason.
 DROP POLICY IF EXISTS "Company users can view announcements" ON announcements;
-CREATE POLICY "Company users can view announcements"
-  ON announcements FOR SELECT
-  TO authenticated
-  USING (is_published = true);
-
--- Announcements: service role can do full CRUD
 DROP POLICY IF EXISTS "Admins can manage announcements" ON announcements;
-CREATE POLICY "Admins can manage announcements"
-  ON announcements FOR ALL
-  TO authenticated
-  USING (true)
-  WITH CHECK (true);
-
--- Reads: users can read and insert their own read records
 DROP POLICY IF EXISTS "Users can manage own reads" ON announcement_reads;
-CREATE POLICY "Users can manage own reads"
-  ON announcement_reads FOR ALL
-  TO authenticated
-  USING (user_id = auth.uid()::text)
-  WITH CHECK (user_id = auth.uid()::text);
-
--- Reads: users can see aggregated read counts for their company's announcements
 DROP POLICY IF EXISTS "Users can view read stats" ON announcement_reads;
-CREATE POLICY "Users can view read stats"
-  ON announcement_reads FOR SELECT
-  TO authenticated
-  USING (true);
 
 COMMENT ON TABLE announcements IS
   'Company-wide broadcast posts. Pinned posts appear first. Scheduled posts auto-publish when scheduled_at <= now().';
