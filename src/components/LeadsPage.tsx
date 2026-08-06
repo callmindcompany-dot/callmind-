@@ -769,12 +769,9 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
   const [sourceFilter, setSourceFilter] = useState('');
   const [stateFilter, setStateFilter] = useState('');
   const [cityFilter, setCityFilter] = useState('');
-  const [engagementFilter, setEngagementFilter] = useState('');
   const [customFilters, setCustomFilters] = useState<Record<string, string>>({});
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [showOnlyRotting, setShowOnlyRotting] = useState(false);
-  const [dndFilter, setDndFilter] = useState('All');
-  const [languageFilter, setLanguageFilter] = useState('');
   const [scoreFilter, setScoreFilter] = useState('');
   const [showSmartImport, setShowSmartImport] = useState(false);
   const [pageSize, setPageSize] = useState(50);
@@ -918,7 +915,7 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
     setPaginatedPage(1);
   }, [
     statusFilter, userFilter, sourceFilter, stateFilter, cityFilter,
-    engagementFilter, customFilters, dndFilter, languageFilter, 
+    customFilters,
     scoreFilter, showOnlyRotting
   ]);
 
@@ -931,13 +928,12 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
       assignedTo: userFilter || undefined,
       isFounderView: isFounder || isGodMode || canAccessSequences || activeView === 'all',
       userId: user?.uid,
-      // Pass all new dynamic filters
-      dndFilter,
-      languageFilter,
+      // dndFilter, languageFilter and engagementFilter were dropped: they
+      // filtered on columns that exist in no migration, so choosing one made
+      // the query fail and the list render empty.
       scoreFilter,
       stateFilter,
       cityFilter,
-      engagementFilter,
       customFilters,
       showOnlyRotting,
       rottingThreshold
@@ -966,15 +962,12 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
     assignedTo: userFilter ? [userFilter] : [],
     stateFilter,
     cityFilter,
-    engagementFilter,
     customFilters,
-    dndFilter,
-    languageFilter,
     scoreFilter,
     showOnlyRotting,
   }), [
     statusFilter, sourceFilter, userFilter, stateFilter, cityFilter,
-    engagementFilter, customFilters, dndFilter, languageFilter,
+    customFilters,
     scoreFilter, showOnlyRotting
   ]);
 
@@ -994,17 +987,8 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
     if (updated.cityFilter !== undefined) {
       setCityFilter(updated.cityFilter || '');
     }
-    if (updated.engagementFilter !== undefined) {
-      setEngagementFilter(updated.engagementFilter || '');
-    }
     if (updated.customFilters !== undefined) {
       setCustomFilters(updated.customFilters || {});
-    }
-    if (updated.dndFilter !== undefined) {
-      setDndFilter(updated.dndFilter || 'All');
-    }
-    if (updated.languageFilter !== undefined) {
-      setLanguageFilter(updated.languageFilter || '');
     }
     if (updated.scoreFilter !== undefined) {
       setScoreFilter(updated.scoreFilter || '');
@@ -1021,10 +1005,7 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
     setSourceFilter('');
     setStateFilter('');
     setCityFilter('');
-    setEngagementFilter('');
     setCustomFilters({});
-    setDndFilter('All');
-    setLanguageFilter('');
     setScoreFilter('');
     setShowOnlyRotting(false);
   }, []);
@@ -1448,14 +1429,15 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
     }
   };
 
-  const [newLead, setNewLead] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    status: 'New' as const,
-    brand: 'Default'
-  });
-  const [newLeadErrors, setNewLeadErrors] = useState<Record<string, string>>({});
+  // The manual add-lead form is src/features/leads/LeadForm, rendered by the
+  // Add Lead Modal below. It already collects city, state, budget, notes and
+  // custom fields, and runs duplicate detection.
+  //
+  // The state and handler that used to live here belonged to an older modal
+  // that is commented out further down. That insert sent `brand`, a column no
+  // migration ever created, so every submission through it was rejected by
+  // Postgres -- and TypeScript approved it because types/supabase.ts declared
+  // the column. Removed rather than repaired: there is one add-lead form.
 
 
 
@@ -1516,72 +1498,6 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
       toast.error('Failed to generate AI draft due to connection or authorization issues.');
     } finally {
       setIsGeneratingDraft(false);
-    }
-  };
-  const handleAddLead = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    setNewLeadErrors({});
-    let errors: Record<string, string> = {};
-    if (!newLead.name.trim()) errors.name = 'Name is required';
-    if (!newLead.phone.trim()) errors.phone = 'Phone number is required';
-    if (!newLead.email.trim()) {
-      errors.email = 'Email address is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newLead.email)) {
-      errors.email = 'Invalid email format';
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setNewLeadErrors(errors);
-      return;
-    }
-
-    // Lead limit.
-    //
-    // This used to read `profile.leadsCount` and `profile.lead_limit`, neither
-    // of which is ever written, and skipped itself entirely when
-    // `canAccessSequences` was true -- which it always was. It never fired.
-    // The counts now come from usePlan, and the database enforces the same
-    // limit independently if this is somehow bypassed.
-    if (plan.atLimit('leads')) {
-      setShowUpgradeModal(true);
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase.from('leads').insert({
-        name: newLead.name,
-        email: newLead.email || null,
-        phone: newLead.phone,
-        status: newLead.status,
-        brand: newLead.brand || 'Default',
-        source: 'Manual',
-        company_id: companyId,
-        assigned_to: user?.uid || 'unassigned',
-        is_deleted: false,
-        is_unseen: true,
-      });
-
-      if (error) throw error;
-
-      await logActivity({
-        action: 'Lead Created',
-        category: 'data',
-        target: newLead.name,
-        details: { phone: newLead.phone }
-      });
-
-      setShowAddModal(false);
-      setNewLead({ name: '', email: '', phone: '', status: 'New', brand: 'Default' });
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-      queryClient.invalidateQueries({ queryKey: ['allLeads', companyId] });
-      toast.success('Lead created successfully.');
-    } catch (error) {
-      console.error('Failed to create lead:', error);
-      toast.error('Failed to create lead.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -1787,7 +1703,6 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
     const matchesSource = sourceFilter === '' || (l.source || l.brand) === sourceFilter;
     const matchesState = stateFilter === '' || l.state === stateFilter;
     const matchesCity = cityFilter === '' || l.city === cityFilter;
-    const matchesEngagement = engagementFilter === '' || l.engagement === engagementFilter;
 
     // Custom fields processing
     let matchesCustom = true;
@@ -1801,12 +1716,12 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
        }
     }
     
-    return matchesCategory && matchesCustom && matchesSearch && matchesStatus && matchesRotting && matchesUser && matchesView && matchesSource && matchesState && matchesCity && matchesEngagement;
+    return matchesCategory && matchesCustom && matchesSearch && matchesStatus && matchesRotting && matchesUser && matchesView && matchesSource && matchesState && matchesCity;
   }).sort((a, b) => {
     if (a.status === 'New' && b.status !== 'New') return -1;
     if (a.status !== 'New' && b.status === 'New') return 1;
     return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
-  }), [leads, searchQuery, statusFilter, rottingThreshold, showOnlyRotting, userFilter, activeView, user, sourceFilter, stateFilter, cityFilter, engagementFilter, customFilters, activeSourceCategory]);
+  }), [leads, searchQuery, statusFilter, rottingThreshold, showOnlyRotting, userFilter, activeView, user, sourceFilter, stateFilter, cityFilter, customFilters, activeSourceCategory]);
 
   const isPlaceholder = false;
 
@@ -1955,8 +1870,6 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
               setStateFilter={setStateFilter}
               cityFilter={cityFilter}
               setCityFilter={setCityFilter}
-              engagementFilter={engagementFilter}
-              setEngagementFilter={setEngagementFilter}
               customFilters={customFilters}
               setCustomFilters={setCustomFilters}
               showMoreFilters={showMoreFilters}
@@ -1964,10 +1877,6 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
               teamSettings={teamSettings}
               agents={agents}
               setShowFieldSettings={setShowFieldSettings}
-              dndFilter={dndFilter}
-              setDndFilter={setDndFilter}
-              languageFilter={languageFilter}
-              setLanguageFilter={setLanguageFilter}
               scoreFilter={scoreFilter}
               setScoreFilter={setScoreFilter}
               showOnlyRotting={showOnlyRotting}
@@ -2117,7 +2026,7 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
                 setSourceFilter('');
                 setStateFilter('');
                 setCityFilter('');
-                setEngagementFilter('');
+
                 setCustomFilters({});
               }}
               currentPage={paginatedCurrentPage}

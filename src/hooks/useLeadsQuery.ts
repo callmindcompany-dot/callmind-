@@ -13,12 +13,9 @@ export interface LeadFiltersInput {
   companyId: string;
   
   // New extended CRM filters
-  dndFilter?: string;
-  languageFilter?: string;
   scoreFilter?: string;
   stateFilter?: string;
   cityFilter?: string;
-  engagementFilter?: string;
   customFilters?: Record<string, string>;
   dateRange?: { start: string | null; end: string | null };
   showOnlyRotting?: boolean;
@@ -150,22 +147,14 @@ export function useLeadsQuery(
         dataQuery = dataQuery.eq('source', filters.source);
       }
 
-      // DND status filter
-      if (filters.dndFilter && filters.dndFilter !== 'All') {
-        countQuery = countQuery.eq('dnd_status', filters.dndFilter);
-        dataQuery = dataQuery.eq('dnd_status', filters.dndFilter);
-      }
-
-      // Language filter
-      if (filters.languageFilter) {
-        countQuery = countQuery.eq('language', filters.languageFilter);
-        dataQuery = dataQuery.eq('language', filters.languageFilter);
-      }
-
-      // Score filter
+      // Minimum AI score. The old version filtered on a column called
+      // `score`, which does not exist; the value lives in neural_score.
       if (filters.scoreFilter) {
-        countQuery = countQuery.eq('score', filters.scoreFilter);
-        dataQuery = dataQuery.eq('score', filters.scoreFilter);
+        const min = Number(filters.scoreFilter);
+        if (!Number.isNaN(min)) {
+          countQuery = countQuery.gte('neural_score', min);
+          dataQuery = dataQuery.gte('neural_score', min);
+        }
       }
 
       // State filter
@@ -178,12 +167,6 @@ export function useLeadsQuery(
       if (filters.cityFilter) {
         countQuery = countQuery.eq('city', filters.cityFilter);
         dataQuery = dataQuery.eq('city', filters.cityFilter);
-      }
-
-      // Engagement filter
-      if (filters.engagementFilter) {
-        countQuery = countQuery.eq('engagement', filters.engagementFilter);
-        dataQuery = dataQuery.eq('engagement', filters.engagementFilter);
       }
 
       // Custom fields filter
@@ -258,13 +241,10 @@ export function useLeadsQuery(
         companyId: row.company_id,
         brand: row.brand,
         source: row.source,
-        engagement: row.engagement,
         state: row.state,
         city: row.city,
         address: row.address,
-        reference: row.reference,
         comment: row.comment,
-        branch: row.branch,
         priority: row.priority,
         description: row.description,
         estimatedBudget: row.estimated_budget,
@@ -273,7 +253,6 @@ export function useLeadsQuery(
         isUnseen: row.is_unseen,
         neuralScore: row.neural_score,
         isDuplicate: row.is_duplicate,
-        date: row.date,
         createdAt: row.created_at ? {
           toDate: () => new Date(row.created_at!),
           toMillis: () => new Date(row.created_at!).getTime(),

@@ -2,6 +2,11 @@ export interface Database {
   public: {
     Tables: {
       leads: {
+        // Hand-maintained -- there is no codegen step in package.json. It
+        // declared twelve columns the schema never created, so TypeScript
+        // approved inserts that Postgres then rejected. Keep it in step with
+        // supabase/migrations by hand, and prefer removing a field here over
+        // leaving one that does not exist.
         Row: {
           id: string;
           company_id: string;
@@ -25,13 +30,17 @@ export interface Database {
           estimated_budget: string | null;
           facebook_ad_name: string | null;
           brand: string | null;
-          engagement: string | null;
-          reference: string | null;
-          branch: string | null;
           neural_score: number | null;
           is_duplicate: boolean | null;
-          date: string | null;
           description: string | null;
+          /**
+           * @deprecated Superseded by custom_fields.
+           *
+           * The schema created this; eleven files write custom_fields. The two
+           * are merged in 20260812000000_lead_columns_reconcile.sql and this
+           * one is kept only so existing rows can still be read until it is
+           * dropped.
+           */
           custom_data: Record<string, any> | null;
         };
         Insert: Omit<Database['public']['Tables']['leads']['Row'], 'id' | 'created_at'> & {

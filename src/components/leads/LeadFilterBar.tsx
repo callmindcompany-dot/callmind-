@@ -30,8 +30,6 @@ interface LeadFilterBarProps {
   setStateFilter: (val: string) => void;
   cityFilter: string;
   setCityFilter: (val: string) => void;
-  engagementFilter: string;
-  setEngagementFilter: (val: string) => void;
   customFilters: Record<string, string>;
   setCustomFilters: (filters: Record<string, string>) => void;
   showMoreFilters: boolean;
@@ -41,10 +39,6 @@ interface LeadFilterBarProps {
   setShowFieldSettings: (show: boolean) => void;
 
   // New critical filters props
-  dndFilter: string;
-  setDndFilter: (val: string) => void;
-  languageFilter: string;
-  setLanguageFilter: (val: string) => void;
   scoreFilter: string;
   setScoreFilter: (val: string) => void;
   showOnlyRotting: boolean;
@@ -66,8 +60,6 @@ export const LeadFilterBar = React.memo(({
   setStateFilter,
   cityFilter,
   setCityFilter,
-  engagementFilter,
-  setEngagementFilter,
   customFilters,
   setCustomFilters,
   showMoreFilters,
@@ -75,11 +67,6 @@ export const LeadFilterBar = React.memo(({
   teamSettings,
   agents,
   setShowFieldSettings,
-  
-  dndFilter,
-  setDndFilter,
-  languageFilter,
-  setLanguageFilter,
   scoreFilter,
   setScoreFilter,
   showOnlyRotting,
@@ -134,9 +121,6 @@ export const LeadFilterBar = React.memo(({
       statusFilter,
       stateFilter,
       cityFilter,
-      engagementFilter,
-      dndFilter,
-      languageFilter,
       scoreFilter,
       showOnlyRotting,
       customFilters
@@ -159,9 +143,6 @@ export const LeadFilterBar = React.memo(({
     setStatusFilter(preset.statusFilter ?? 'All');
     setStateFilter(preset.stateFilter ?? '');
     setCityFilter(preset.cityFilter ?? '');
-    setEngagementFilter(preset.engagementFilter ?? '');
-    setDndFilter(preset.dndFilter ?? 'All');
-    setLanguageFilter(preset.languageFilter ?? '');
     setScoreFilter(preset.scoreFilter ?? '');
     setShowOnlyRotting(preset.showOnlyRotting ?? false);
     setCustomFilters(preset.customFilters ?? {});
@@ -188,9 +169,6 @@ export const LeadFilterBar = React.memo(({
     if (statusFilter && statusFilter !== 'All') count++;
     if (stateFilter) count++;
     if (cityFilter) count++;
-    if (engagementFilter) count++;
-    if (dndFilter && dndFilter !== 'All') count++;
-    if (languageFilter) count++;
     if (scoreFilter) count++;
     if (showOnlyRotting) count++;
     if (customFilters) {
@@ -199,7 +177,7 @@ export const LeadFilterBar = React.memo(({
     return count;
   }, [
     inputValue, userFilter, sourceFilter, statusFilter, stateFilter, 
-    cityFilter, engagementFilter, dndFilter, languageFilter, scoreFilter, 
+    cityFilter, scoreFilter,
     showOnlyRotting, customFilters
   ]);
 
@@ -387,37 +365,6 @@ export const LeadFilterBar = React.memo(({
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mt-4 pt-4 border-t border-gray-100">
               
-              {/* DND Status Filter */}
-              <div>
-                <select 
-                  value={dndFilter}
-                  onChange={(e) => setDndFilter(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-brand-500 transition-all font-bold text-gray-600 appearance-none"
-                >
-                  <option value="All">All DND Statuses</option>
-                  <option value="DND Active">DND Active</option>
-                  <option value="DND Inactive">DND Inactive</option>
-                  <option value="Unverified">Unverified</option>
-                </select>
-              </div>
-
-              {/* Language Filter */}
-              <div>
-                <select 
-                  value={languageFilter}
-                  onChange={(e) => setLanguageFilter(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-brand-500 transition-all font-bold text-gray-600 appearance-none"
-                >
-                  <option value="">Select Language</option>
-                  <option value="English">English</option>
-                  <option value="Hindi">Hindi</option>
-                  <option value="Marathi">Marathi</option>
-                  <option value="Tamil">Tamil</option>
-                  <option value="Telugu">Telugu</option>
-                  <option value="Others">Others</option>
-                </select>
-              </div>
-
               {/* Lead Score / Temperature */}
               <div>
                 <select 
@@ -425,25 +372,10 @@ export const LeadFilterBar = React.memo(({
                   onChange={(e) => setScoreFilter(e.target.value)}
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-brand-500 transition-all font-bold text-gray-600 appearance-none"
                 >
-                  <option value="">Select Temperature</option>
-                  <option value="Hot">Hot (High Intent)</option>
-                  <option value="Warm">Warm (Medium Intent)</option>
-                  <option value="Cold">Cold (Low Intent)</option>
-                </select>
-              </div>
-
-              {/* Engagement Status */}
-              <div>
-                <select 
-                  value={engagementFilter}
-                  onChange={(e) => setEngagementFilter(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-brand-500 transition-all font-bold text-gray-600 appearance-none"
-                >
-                  <option value="">Engagement Status</option>
-                  <option value="Connected">Connected</option>
-                  <option value="Not Connected">Not Connected</option>
-                  <option value="WhatsApp Connected">WhatsApp Connected</option>
-                  <option value="Connected Both">Connected Both</option>
+                  <option value="">Any score</option>
+                  <option value="80">Hot — 80 and above</option>
+                  <option value="50">Warm — 50 and above</option>
+                  <option value="1">Scored at all</option>
                 </select>
               </div>
 
@@ -487,10 +419,7 @@ export const LeadFilterBar = React.memo(({
     prev.statusFilter === next.statusFilter &&
     prev.stateFilter === next.stateFilter &&
     prev.cityFilter === next.cityFilter &&
-    prev.engagementFilter === next.engagementFilter &&
     prev.showMoreFilters === next.showMoreFilters &&
-    prev.dndFilter === next.dndFilter &&
-    prev.languageFilter === next.languageFilter &&
     prev.scoreFilter === next.scoreFilter &&
     prev.showOnlyRotting === next.showOnlyRotting &&
     JSON.stringify(prev.customFilters) === JSON.stringify(next.customFilters) &&
