@@ -31,6 +31,8 @@ import { supabase } from '@/supabaseClient';
 import { useAuth } from '@/AuthContext';
 import { usePlan } from '@/hooks/usePlan';
 import { toast } from 'react-hot-toast';
+import { parsePlanLimitError } from '@/lib/planErrors';
+import { bucketImportRows, DuplicatePolicy } from '@/lib/importBuckets';
 import { trackTrialEvent } from '@/utils/trialTracking';
 import { runAiMapper, type AICorrection } from '@/utils/aiMapper';
 import { detectColumnPattern, pickBestPhoneColumn } from '@/utils/fieldPatterns';
@@ -846,12 +848,22 @@ export const SmartImportModal = ({ isOpen, onClose, companyId }: SmartImportModa
 
       for (let i = 0; i < csvPhones.length; i += DEDUP_BATCH) {
         const batch = csvPhones.slice(i, i + DEDUP_BATCH);
-        const { data } = await supabase
+        const { data, error: dedupError } = await supabase
           .from('leads')
           .select('id, phone, custom_data, custom_fields')
           .eq('company_id', companyId)
           .in('phone', batch)
           .eq('is_deleted', false);
+
+        // The error used to be discarded. A failed lookup leaves the map empty,
+        // which makes every row look new -- so "skip duplicates" would insert
+        // the duplicates and "overwrite" would create second copies instead of
+        // updating. Silently, and only on the batches that failed.
+        if (dedupError) {
+          throw new Error(
+            `Could not check for existing leads, so the import was stopped before writing anything: ${dedupError.message}`,
+          );
+        }
 
         (data || []).forEach(lead => {
           if (lead.phone) {
@@ -865,39 +877,19 @@ export const SmartImportModal = ({ isOpen, onClose, companyId }: SmartImportModa
         });
       }
 
-      // 2. Bucket into inserts / updates / skips
-      const inserts: Record<string, unknown>[] = [];
-      const updates: { id: string; payload: Record<string, unknown> }[] = [];
-
-      rowsToProcess.forEach(item => {
-        const exists = existingPhoneMap.get(item.cleanedPhone);
-        if (exists && dupPolicy === 'skip') { skipped++; return; }
-        const leadPayload = buildLeadPayload(item);
-        if (exists) {
-          if (dupPolicy === 'overwrite') {
-            updates.push({ id: exists.id, payload: { ...leadPayload, updated_at: new Date().toISOString() } });
-          } else {
-            // merge
-            updates.push({
-              id: exists.id,
-              payload: {
-                custom_data: {
-                  ...exists.custom_data,
-                  ...(leadPayload.custom_data as Record<string, unknown>),
-                  mergedAt: new Date().toISOString(),
-                },
-                custom_fields: {
-                  ...exists.custom_fields,
-                  ...(leadPayload.custom_fields as Record<string, unknown>),
-                },
-                updated_at: new Date().toISOString(),
-              },
-            });
-          }
-        } else {
-          inserts.push(leadPayload);
-        }
-      });
+      // 2. Bucket into inserts / updates / skips.
+      //
+      // In src/lib/importBuckets.ts so it can be tested on its own: each bucket
+      // has to carry the index of the row it came from, and getting that wrong
+      // is invisible in the counts.
+      const buckets = bucketImportRows(
+        rowsToProcess,
+        existingPhoneMap,
+        dupPolicy as DuplicatePolicy,
+        buildLeadPayload,
+      );
+      const { inserts, updates } = buckets;
+      skipped += buckets.skipped;
 
       const totalOps = inserts.length + updates.length;
       let completedOps = 0;
@@ -913,10 +905,16 @@ export const SmartImportModal = ({ isOpen, onClose, companyId }: SmartImportModa
       // 3. Chunked inserts
       for (let i = 0; i < inserts.length; i += CHUNK_SIZE) {
         const chunk = inserts.slice(i, i + CHUNK_SIZE);
-        const { error } = await supabase.from('leads').insert(chunk);
+        const { error } = await supabase.from('leads').insert(chunk.map(c => c.payload));
         if (error) {
-          chunk.forEach((_, j) => {
-            newFailedRows.push({ rowIndex: i + j, row: rowsToProcess[i + j]?.row ?? {}, errors: [error.message] });
+          // The lead-limit trigger is statement-level, so an over-limit chunk
+          // rolls back whole -- every row in it failed, not just one.
+          chunk.forEach(({ sourceIndex }) => {
+            newFailedRows.push({
+              rowIndex: sourceIndex,
+              row: rowsToProcess[sourceIndex]?.row ?? {},
+              errors: [error.message],
+            });
             failed++;
           });
         } else {
@@ -937,7 +935,14 @@ export const SmartImportModal = ({ isOpen, onClose, companyId }: SmartImportModa
               ? String((result as PromiseRejectedResult).reason)
               : (result as PromiseFulfilledResult<{ error: { message: string } | null }>).value.error?.message;
           if (err) {
-            newFailedRows.push({ rowIndex: i + j, row: {}, errors: [err] });
+            // `row: {}` here meant a failed update produced a blank line in the
+            // error report and nothing for Retry to work with.
+            const { sourceIndex } = chunk[j];
+            newFailedRows.push({
+              rowIndex: sourceIndex,
+              row: rowsToProcess[sourceIndex]?.row ?? {},
+              errors: [err],
+            });
             failed++;
           } else {
             updated++;
@@ -958,8 +963,20 @@ export const SmartImportModal = ({ isOpen, onClose, companyId }: SmartImportModa
       setFailedRows(newFailedRows);
       setImportComplete(true);
     } catch (err) {
+      // The message was thrown away behind a generic alert, so a plan-limit
+      // rejection, an RLS denial and a dropped connection all read the same.
       console.error('[Import Error]', err);
-      alert('An unexpected error occurred during import. Please try again.');
+      const message = err instanceof Error ? err.message : String(err);
+      const planLimit = parsePlanLimitError(err);
+      toast.error(planLimit ? planLimit.message : `Import failed: ${message}`, { duration: 8000 });
+
+      // Whatever landed before the failure is real and already in the database.
+      // Reporting zero would tell the user to import the file again.
+      if (success > 0 || updated > 0 || failed > 0) {
+        setImportStats({ success, failed, skipped, updated, total });
+        setFailedRows(newFailedRows);
+        setImportComplete(true);
+      }
     } finally {
       setIsImporting(false);
     }
