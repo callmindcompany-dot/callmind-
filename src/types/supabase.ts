@@ -85,24 +85,33 @@ export interface Database {
       };
       users: {
         Row: {
+          // Checked against information_schema on the live database. This
+          // block declared eighteen columns where the table had twelve, so
+          // TypeScript approved writes Postgres would reject -- the exact
+          // failure AGENTS.md describes for `leads`.
+          //
+          // Removed as never-written and non-existent: photo_url, last_seen,
+          // managed_by_admin_id, sub_admin_quota. assigned_leads and
+          // calls_today are gone from here too and counted in useTeamMembers,
+          // which returns TeamMember rather than UserRow.
           id: string;
           company_id: string;
+          /** Added by 20260815000000. */
           display_name: string | null;
           name: string | null;
           email: string;
           phone: string | null;
           role: string;
           status: string;
+          designation: string | null;
+          onboarding_status: string | null;
+          plan_status: string | null;
           created_at: string | null;
           updated_at: string | null;
+          /** Added by 20260815000000. */
           seat_active: boolean | null;
-          photo_url: string | null;
+          /** Added by 20260815000000. */
           joined_via: string | null;
-          assigned_leads: number | null;
-          calls_today: number | null;
-          last_seen: string | null;
-          managed_by_admin_id: string | null;
-          sub_admin_quota: number | null;
         };
         Insert: Database['public']['Tables']['users']['Row'];
         Update: Partial<Database['public']['Tables']['users']['Row']>;

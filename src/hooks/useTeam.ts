@@ -14,13 +14,24 @@ export type AuditLogRow = Database['public']['Tables']['audit_logs']['Row'];
 export type CompanyRow = Database['public']['Tables']['companies']['Row'];
 
 /**
+ * A team member with the two figures the UI shows next to them.
+ *
+ * They are counted per render rather than stored, because nothing in the
+ * product ever wrote them — see useTeamMembers.
+ */
+export interface TeamMember extends UserRow {
+  assigned_leads: number;
+  calls_today: number;
+}
+
+/**
  * useTeamMembers
  * Queries users table scoping to company_id.
  */
 export function useTeamMembers(companyId: string | null) {
-  return useQuery<UserRow[]>({
+  return useQuery<TeamMember[]>({
     queryKey: ['teamMembers', companyId],
-    queryFn: async (): Promise<UserRow[]> => {
+    queryFn: async (): Promise<TeamMember[]> => {
       if (!companyId) return [];
       const { data, error } = await supabase
         .from('users')
@@ -31,7 +42,51 @@ export function useTeamMembers(companyId: string | null) {
         console.error('Failed to fetch team members:', error);
         throw error;
       }
-      return data || [];
+
+      const members = (data || []) as UserRow[];
+      if (members.length === 0) return [];
+
+      // assigned_leads and calls_today are counted, not stored.
+      //
+      // Both were read off the users row as `member.assigned_leads || 0`, and
+      // neither column exists -- nothing in the codebase has ever written them.
+      // So every member showed 0 leads and 0 calls, the removal dialog said
+      // "This member has 0 assigned leads" whatever the truth was, and the
+      // reassign-ALL control resolved a count of 0 and moved nothing.
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const [leadCounts, callCounts] = await Promise.all([
+        supabase
+          .from('leads')
+          .select('assigned_to')
+          .eq('company_id', companyId)
+          .eq('is_deleted', false),
+        supabase
+          .from('calls')
+          .select('created_by')
+          .eq('company_id', companyId)
+          .gte('timestamp', startOfToday.toISOString()),
+      ]);
+
+      if (leadCounts.error) throw leadCounts.error;
+      if (callCounts.error) throw callCounts.error;
+
+      const leadsByAgent = new Map<string, number>();
+      for (const row of leadCounts.data ?? []) {
+        if (row.assigned_to) leadsByAgent.set(row.assigned_to, (leadsByAgent.get(row.assigned_to) ?? 0) + 1);
+      }
+
+      const callsByAgent = new Map<string, number>();
+      for (const row of callCounts.data ?? []) {
+        if (row.created_by) callsByAgent.set(row.created_by, (callsByAgent.get(row.created_by) ?? 0) + 1);
+      }
+
+      return members.map((m) => ({
+        ...m,
+        assigned_leads: leadsByAgent.get(m.id) ?? 0,
+        calls_today: callsByAgent.get(m.id) ?? 0,
+      }));
     },
     enabled: !!companyId,
     refetchInterval: 10000, // Refetch every 10s for real-time updates

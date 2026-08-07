@@ -60,7 +60,7 @@ import {
   useRevokeInvite,
   useProcessMember,
   useUpdateTeamSettings,
-  UserRow as Member,
+  TeamMember as Member,
   JoinRequestRow as JoinRequest,
   InviteRow as Invite,
   AgentStatusRow as AgentStatus,
@@ -555,7 +555,9 @@ const TeamMemberRow = React.memo(({ member, teamSettings, getStatusColor, getVia
       <td className="px-6 py-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-700 font-bold border border-brand-100">
-            {member.photo_url ? <img src={member.photo_url} alt="" className="w-full h-full rounded-xl object-cover" /> : (member.display_name || member.name || member.email)?.charAt(0)}
+            {/* No photo_url column exists and nothing uploads one, so this
+                always fell through to the initial anyway. */}
+            {(member.display_name || member.name || member.email)?.charAt(0)}
           </div>
           <div>
             <p className="text-sm font-bold text-gray-900 group-hover:text-brand-600 transition-colors">{member.display_name || member.name || member.email}</p>
@@ -589,9 +591,10 @@ const TeamMemberRow = React.memo(({ member, teamSettings, getStatusColor, getVia
         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{member.calls_today || 0} Calls Today</p>
       </td>
       <td className="px-6 py-5">
-        <p className="text-[10px] font-medium text-gray-500">
-          {member.last_seen ? 'Recently' : 'Recently'}
-        </p>
+        {/* This read `member.last_seen ? 'Recently' : 'Recently'` -- both
+            branches identical, on a column that does not exist. Presence lives
+            in agent_status, which this table does not join. */}
+        <p className="text-[10px] font-medium text-gray-500">—</p>
       </td>
       <td className="px-6 py-5 text-right">
         <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1972,7 +1975,7 @@ export const TeamPage = ({ onTabChange }: { onTabChange?: (tab: string) => void 
                   {/* Identity Section */}
                   <div className="flex flex-col items-center text-center">
                      <div className="w-24 h-24 rounded-[32px] bg-brand-50 flex items-center justify-center text-brand-600 font-black text-3xl mb-4 border-4 border-white shadow-lg shadow-brand-100/50">
-                        {selectedItem.photo_url ? <img src={selectedItem.photo_url} alt="" className="w-full h-full object-cover rounded-[32px]" /> : (selectedItem.name || selectedItem.display_name || selectedItem.email)?.charAt(0)}
+                        {(selectedItem.name || selectedItem.display_name || selectedItem.email)?.charAt(0)}
                      </div>
                      <h2 className="text-2xl font-black text-gray-900">{selectedItem.name || selectedItem.display_name}</h2>
                      <p className="text-sm font-medium text-gray-500">{selectedItem.email}</p>

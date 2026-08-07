@@ -104,6 +104,35 @@ DROP POLICY IF EXISTS "Allow all access to pdf_guides"      ON public.pdf_guides
 DROP POLICY IF EXISTS "Allow all access to video_tutorials" ON public.video_tutorials;
 
 -- ---------------------------------------------------------------------------
+-- 5. Three more, found by querying the database rather than the files
+-- ---------------------------------------------------------------------------
+-- A survey of pg_policy on the live database turned up three that no migration
+-- in this repository drops. Two are INSERT policies, which is why reading the
+-- files missed them: an INSERT policy has no USING clause at all, so its
+-- polqual is NULL and only polwithcheck decides anything.
+--
+-- billing_intents: FOR ALL USING (true). It records payment intents per
+-- company, and payments.ts writes it through the service role.
+DROP POLICY IF EXISTS "Users can view and insert their company billing intents" ON public.billing_intents;
+DROP POLICY IF EXISTS "tenant_billing_intents_select" ON public.billing_intents;
+CREATE POLICY "tenant_billing_intents_select" ON public.billing_intents
+  FOR SELECT USING (company_id = public.get_my_company_id());
+
+-- support_tickets: WITH CHECK (true) on INSERT let anyone file a ticket
+-- attributed to any company. The scoped insert policy in section 2 replaces it.
+DROP POLICY IF EXISTS "Users can create support tickets" ON public.support_tickets;
+
+-- system_errors: WITH CHECK (true) on INSERT. Error reporting has to stay
+-- possible when things are broken, including before a company is resolved, so
+-- the write stays open -- but it is narrowed to authenticated callers rather
+-- than anon, and there is deliberately no read policy: error payloads can carry
+-- request detail from other tenants.
+DROP POLICY IF EXISTS "Allow error logs insert" ON public.system_errors;
+DROP POLICY IF EXISTS "authenticated_insert_system_errors" ON public.system_errors;
+CREATE POLICY "authenticated_insert_system_errors" ON public.system_errors
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+-- ---------------------------------------------------------------------------
 -- Consequence worth stating
 -- ---------------------------------------------------------------------------
 -- useFounderHooks.ts reads support_tickets with no company filter, and
