@@ -70,6 +70,7 @@ import { ConfirmDialog } from './src/screens/137_ConfirmDialogs';
 import { ThemeToggleScreen } from './src/screens/81_ThemeToggleScreen';
 import { AboutAppScreen } from './src/screens/83_AboutAppScreen';
 import type { LegalSlug } from './src/config/legal';
+import { useLegalAcceptance } from './src/services/useLegalAcceptance';
 import { PrivacyTermsWebView } from './src/screens/84_PrivacyTermsWebView';
 import { DeviceVerificationModal } from './src/screens/90_DeviceVerificationModal';
 import { CompanyJoinedSuccess } from './src/screens/17_CompanyJoinedSuccess';
@@ -366,6 +367,13 @@ function MainAppContent() {
     return () => subscription.remove();
   }, []);
 
+  // Has this user accepted the current version of each document?
+  //
+  // The web app checks this on sign-in; mobile did not check at all, and its
+  // accept button wrote nothing. Fails open, so a failed check does not lock a
+  // telecaller out of their leads.
+  const legal = useLegalAcceptance(isAuthenticated ? profile?.uid : null);
+
   // Auto-advance auth steps based on authenticated & profile state
   useEffect(() => {
     if (isAuthenticated) {
@@ -384,6 +392,15 @@ function MainAppContent() {
   if (isAppLocked) {
     return <BiometricLockScreen onUnlock={() => setIsAppLocked(false)} />;
   }
+
+  // Legal acceptance is prompted, not enforced.
+  //
+  // A first version of this returned the documents screen instead of the app
+  // until the user accepted, with no way past it — a telecaller who declined
+  // would have been stuck on a page with a back button that re-showed it. The
+  // web app shows a dismissible banner over the dashboard rather than blocking,
+  // so mobile matches: the banner below opens the documents, and the screen
+  // records the acceptance.
 
   // ─── AUTH & ONBOARDING FLOW ────────────────────────
   if (!isAuthenticated || !isOnboarded || !isApproved) {
@@ -587,6 +604,8 @@ function MainAppContent() {
         return (
           <PrivacyTermsWebView
             type={legalDocType}
+            requireAcceptance={legal.needsAcceptance}
+            onAccepted={() => legal.recheck()}
             onBack={() => setCurrentScreen('settings')}
           />
         );
@@ -755,6 +774,23 @@ function MainAppContent() {
         />
       )}
 
+      {/* Updated documents, prompted rather than enforced — the web app shows
+          the same thing as a dismissible banner over the dashboard. Hidden while
+          the legal screen is already open. */}
+      {legal.needsAcceptance && !legal.checking && currentScreen !== 'privacy_terms' && (
+        <TouchableOpacity
+          style={styles.legalBanner}
+          onPress={() => {
+            setLegalDocType('privacy');
+            setCurrentScreen('privacy_terms');
+          }}
+        >
+          <Text style={styles.legalBannerText}>
+            Our privacy policy and terms have been updated. Tap to review and accept.
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Screen Body */}
       <View style={styles.body}>{renderScreen()}</View>
 
@@ -868,6 +904,18 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+  },
+  legalBanner: {
+    backgroundColor: '#fffbeb',
+    borderBottomWidth: 1,
+    borderBottomColor: '#fde68a',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  legalBannerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400e',
   },
   bottomNav: {
     flexDirection: 'row',
