@@ -25,7 +25,7 @@ export const SITE_DOMAIN = 'callmind.app';
  */
 export { ENTITY } from '@/config/legal';
 import { ENTITY as LEGAL_ENTITY } from '@/config/legal';
-export const COMPANY_NAME = LEGAL_ENTITY.proprietor;
+export const COMPANY_NAME = LEGAL_ENTITY.business;
 
 export const CONTACT_EMAIL = 'support@callmind.app';
 export const SALES_EMAIL = 'sales@callmind.app';

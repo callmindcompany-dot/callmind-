@@ -42,21 +42,39 @@
  * position genuinely differs.
  */
 export const ENTITY = {
-  /** e.g. "CallMind" — the trading name customers see. */
+  /** The product customers use. */
   brand: 'CallMind',
-  /** TODO: the proprietor's full legal name, as on PAN. */
+  /** The business behind it. CallMind is a product of Voolabs. */
+  business: 'Voolabs Technologies',
+  /**
+   * The business is not a registered company, so it is a sole proprietorship:
+   * legally the counterparty is the individual, trading as Voolabs
+   * Technologies. Both names have to appear — "Voolabs Technologies" alone
+   * identifies nobody a customer could bring a claim against.
+   *
+   * TODO: the proprietor's full legal name, exactly as on PAN.
+   */
   proprietor: '{{PROPRIETOR_LEGAL_NAME}}',
-  /** TODO: the full registered business address, including PIN code. */
+  /** TODO: the full business address, including PIN code. */
   address: '{{BUSINESS_ADDRESS}}',
-  /** TODO: GSTIN if registered, otherwise leave empty and the line is omitted. */
+  /** GSTIN once registered. Left empty until then; the line is omitted. */
   gstin: '',
   /** The city whose courts have jurisdiction. */
   jurisdiction: 'Pune, Maharashtra',
-  supportEmail: 'support@callmind.app',
-  /** DPDP Act 2023 requires a named contact for data principal requests. */
-  grievanceEmail: 'support@callmind.app',
+  /** Product support — where customers write about CallMind. */
+  supportEmail: 'callmind.company@gmail.com',
+  /** The business itself, for anything about Voolabs rather than the product. */
+  businessEmail: 'voolabsofficial@gmail.com',
+  /**
+   * DPDP Act 2023 requires a contact that answers data-principal requests.
+   * It must be a mailbox someone actually reads.
+   */
+  grievanceEmail: 'callmind.company@gmail.com',
   website: 'https://callmind.app',
 } as const;
+
+/** How the operator is named in the documents: the person, and what they trade as. */
+export const OPERATOR_NAME = `${ENTITY.proprietor}, trading as ${ENTITY.business}`;
 
 /** True once the placeholders above have been filled in. */
 export const ENTITY_IS_COMPLETE =
@@ -94,7 +112,7 @@ const CONTACT_SECTION = (subject: string): LegalSection => ({
   title: 'Contact us',
   body: [
     `Questions about ${subject} go to ${ENTITY.supportEmail}. We aim to respond within three working days; we do not offer round-the-clock support and do not claim to.`,
-    `${ENTITY.brand} is operated by ${ENTITY.proprietor}, ${ENTITY.address}.`,
+    `${ENTITY.brand} is a product of ${ENTITY.business}, operated by ${OPERATOR_NAME}, ${ENTITY.address}.`,
   ],
 });
 
@@ -114,7 +132,8 @@ const PRIVACY: LegalDocument = {
       id: 'who-we-are',
       title: 'Who this covers',
       body: [
-        `${ENTITY.brand} is a customer relationship manager for telecalling teams. Two kinds of people appear in it, and they are not treated the same.`,
+        `${ENTITY.brand} is a customer relationship manager for telecalling teams, provided by ${OPERATOR_NAME}. Under the Digital Personal Data Protection Act 2023 that is the data fiduciary for the account data described below.`,
+        'Two kinds of people appear in the product, and they are not treated the same.',
         'Your team members — the people who sign in — are our users. We hold their account details directly.',
         'Your leads and customers — the people your team calls — are your data. You decide what to collect about them and why. We store and process it on your instruction, and we do not use it for anything of our own.',
       ],
@@ -234,7 +253,7 @@ const TERMS: LegalDocument = {
       id: 'agreement',
       title: 'The agreement',
       body: [
-        `These terms are between your business and ${ENTITY.proprietor}, trading as ${ENTITY.brand}. Creating an account accepts them on behalf of your business, so accept them only if you are authorised to.`,
+        `These terms are between your business and ${OPERATOR_NAME}, who provide ${ENTITY.brand}. Creating an account accepts them on behalf of your business, so accept them only if you are authorised to.`,
       ],
     },
     {

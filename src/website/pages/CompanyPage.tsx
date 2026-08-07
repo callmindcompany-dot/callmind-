@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { COMPANY_NAME, COMPANY_LOCATIONS } from '../siteConfig';
+import { COMPANY_LOCATIONS } from '../siteConfig';
+import { ENTITY } from '@/config/legal';
 import { motion } from 'framer-motion';
 import { Mail, MapPin, ShieldCheck, Building2, User, Send, CheckCircle2, ArrowLeft, HeartHandshake } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
@@ -54,7 +55,7 @@ export const CompanyPage = () => {
           </button>
           <div>
             <span className="inline-block px-4 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-xs font-semibold">
-              {COMPANY_NAME} — Creators of CallMind
+              {ENTITY.business} — Creators of CallMind
             </span>
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.08] font-display max-w-4xl mx-auto">
@@ -89,7 +90,7 @@ export const CompanyPage = () => {
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
                   <MapPin size={16} className="text-brand-600" />
-                  <span>{COMPANY_NAME} · {COMPANY_LOCATIONS}</span>
+                  <span>{ENTITY.business} · {COMPANY_LOCATIONS}</span>
                 </div>
               </div>
             </div>

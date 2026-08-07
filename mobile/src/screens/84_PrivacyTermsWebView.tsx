@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { ArrowLeft, ShieldCheck, ExternalLink, Check } from 'lucide-react-native';
 import { supabase } from '../services/supabase';
-import { LEGAL_DOCUMENTS, LEGAL_SLUGS, ENTITY, type LegalSlug } from '../config/legal';
+import { LEGAL_DOCUMENTS, LEGAL_SLUGS, ENTITY, OPERATOR_NAME, type LegalSlug } from '../config/legal';
 
 /**
  * The legal documents, in the app.
@@ -194,7 +194,7 @@ export const PrivacyTermsWebView: React.FC<PrivacyTermsWebViewProps> = ({
         <View style={styles.footer}>
           <ShieldCheck size={13} color="#94a3b8" />
           <Text style={styles.footerText}>
-            {ENTITY.brand} is operated by {ENTITY.proprietor}.
+            {ENTITY.brand} is a product of {ENTITY.business}, operated by {OPERATOR_NAME}.
           </Text>
         </View>
       </ScrollView>

@@ -106,15 +106,32 @@ describe('legal documents', () => {
     ).toBe(true);
   });
 
-  it('names one operating entity, everywhere', () => {
+  it('names the operator as a person trading under the business name', () => {
     const everything = LEGAL_SLUGS.map((s) => renderLegalText(LEGAL_DOCUMENTS[s])).join('\n');
 
-    // The old copies named three. Whatever ENTITY.proprietor is set to is the
-    // only one that may appear.
-    for (const stale of ['Voolabs Technologies', 'CallMind Technologies Inc']) {
-      expect(everything).not.toContain(stale);
-    }
+    // CallMind is a product of Voolabs Technologies, which is not a registered
+    // company — so the legal counterparty is the proprietor, trading as Voolabs.
+    // Naming only the trading name identifies nobody a customer could bring a
+    // claim against, and naming only the person hides which business it is.
     expect(everything).toContain(ENTITY.proprietor);
+    expect(everything).toContain(ENTITY.business);
+
+    // "Inc." was in the mobile copy alongside jurisdiction in Pune. There is no
+    // incorporated entity.
+    expect(everything).not.toContain('Inc.');
+    expect(everything).not.toContain('Private Limited');
+  });
+
+  it('uses contact addresses that belong to the right thing', () => {
+    const everything = LEGAL_SLUGS.map((s) => renderLegalText(LEGAL_DOCUMENTS[s])).join('\n');
+
+    // The mobile copy pointed at support@callmind.ai, which is not an address
+    // anyone reads. Product questions go to the product mailbox.
+    expect(everything).not.toContain('callmind.ai');
+    expect(everything).toContain(ENTITY.supportEmail);
+
+    // DPDP Act 2023 requires a reachable contact for data-principal requests.
+    expect(renderLegalText(LEGAL_DOCUMENTS.privacy)).toContain(ENTITY.grievanceEmail);
   });
 
   it('keeps prices out of the legal text', () => {
