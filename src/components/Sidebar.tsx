@@ -194,19 +194,19 @@ export const Sidebar = ({
       try {
         const { data, error } = await supabase
           .from('companies')
-          .select('logoUrl, name, sectionBEnabled, sectionKEnabled, sectionDEnabled')
+          // The column is logo_url. Selecting logoUrl made the whole statement
+          // fail with 42703, which is why the company logo and name never
+          // appeared in the sidebar -- the error went to console.warn and the
+          // defaults stayed. sectionBEnabled/KEnabled/DEnabled do not exist at
+          // all; they are gone along with the toggle they were meant to drive.
+          .select('logo_url, name')
           .eq('id', companyId)
           .maybeSingle();
 
         if (error) throw error;
         if (data) {
-          setLogoUrl(data.logoUrl || '');
+          setLogoUrl(data.logo_url || '');
           setCompanyName(data.name || 'CallMind');
-          setEnabledSections({
-            sectionBEnabled: data.sectionBEnabled ?? true,
-            sectionKEnabled: data.sectionKEnabled ?? true,
-            sectionDEnabled: data.sectionDEnabled ?? true,
-          });
         }
       } catch (err) {
         console.warn('[Sidebar] Failed to load company settings:', err);
@@ -227,13 +227,8 @@ export const Sidebar = ({
         },
         (payload) => {
           const data = payload.new;
-          setLogoUrl(data.logoUrl || '');
+          setLogoUrl(data.logo_url || '');
           setCompanyName(data.name || 'CallMind');
-          setEnabledSections({
-            sectionBEnabled: data.sectionBEnabled ?? true,
-            sectionKEnabled: data.sectionKEnabled ?? true,
-            sectionDEnabled: data.sectionDEnabled ?? true,
-          });
         }
       )
       .subscribe();

@@ -35,12 +35,11 @@ import CallMindLoader from './CallMindLoader';
 import { Callback } from '@/types/founder';
 
 export const SchedulerPage = () => {
-  const { isFounder, featureFlags, user } = useAuth();
+  const { user } = useAuth();
   const { companyId } = useCompany();
 
   // Dialog & Modal State
   const [showSimulateModal, setShowSimulateModal] = useState(false);
-  const [isSimulating, setIsSimulating] = useState(false);
   const [simulationResult, setSimulationResult] = useState<string | null>(null);
   
   const [showNewReminderModal, setShowNewReminderModal] = useState(false);
@@ -53,8 +52,21 @@ export const SchedulerPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'Pending' | 'Paused' | 'Completed'>('Pending');
 
-  const schedulerEnabled = featureFlags.scheduler;
-  const hasAccess = isFounder || schedulerEnabled;
+  // The scheduler is not gated.
+  //
+  // This was `isFounder || featureFlags.scheduler`. Neither half worked as
+  // intended. `featureFlags` comes from `profile.featureFlags`, and no migration
+  // creates that column, so it is permanently `{}` -- meaning the flag was
+  // always undefined and the expression collapsed to `isFounder`. And
+  // `isFounder` is the tenant role every company creator gets, so in practice
+  // the follow-up queue was visible to the owner and locked to every telecaller,
+  // with a message telling them to ask an administrator to enable it through a
+  // toggle that does not exist.
+  //
+  // Telecallers are the people who make the callbacks. This is core
+  // functionality in a telecalling CRM, not a feature to unlock. The locked
+  // screen that used to render here told the user to enable it from the Founder
+  // Hub, where there was no such control.
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -123,31 +135,25 @@ export const SchedulerPage = () => {
     };
   }, [callbacks, notificationPermission, statusFilter]);
 
-  // Outcomes simulation hook
-  const handleSimulateCall = async (outcome: CallOutcome) => {
-    setIsSimulating(true);
-    try {
-      const nextTime = await schedulerService.processCallOutcome(
-        'sim_lead_123', 
-        'Demo Lead (Simulation)', 
-        outcome, 
-        user?.email || 'unknown@callmind.ai',
-        companyId || undefined
-      );
-      
-      setSimulationResult(`Call Outcome: ${outcome}. Next retry scheduled for: ${nextTime?.toLocaleString() || 'N/A'}`);
-      refetch();
+  /**
+   * Shows what the retry rule would do for an outcome. Writes nothing.
+   *
+   * This used to call processCallOutcome with a lead id of 'sim_lead_123' and a
+   * name of 'Demo Lead (Simulation)'. The guards inside skipped the lead update
+   * and the callback, but not the calls insert -- so every press of Simulate
+   * Outcome left a real row in the customer's call history, for a lead that did
+   * not exist, with an invented phone number and an invented duration.
+   *
+   * A simulation that changes the thing it simulates is not a simulation.
+   */
+  const handleSimulateCall = (outcome: CallOutcome) => {
+    const nextTime = schedulerService.calculateNextRetryTime(outcome);
 
-      setTimeout(() => {
-        setShowSimulateModal(false);
-        setSimulationResult(null);
-      }, 3500);
-    } catch (error: any) {
-      console.error("Simulation failed:", error);
-      toast.error("Simulation error: " + error.message);
-    } finally {
-      setIsSimulating(false);
-    }
+    setSimulationResult(
+      nextTime
+        ? `${outcome} — the next attempt would be scheduled for ${nextTime.toLocaleString()}.`
+        : `${outcome} — no retry is scheduled for this outcome.`
+    );
   };
 
   const handleCreateReminder = async (e: React.FormEvent) => {
@@ -162,7 +168,11 @@ export const SchedulerPage = () => {
       await createReminderMutation.mutateAsync({
         companyId,
         leadId: selectedLeadId,
-        assignedTo: user?.uid || null,
+        // Email, not uid. CallsPage and log_manual_call both write the agent's
+        // email into callbacks.assigned_to; writing a uid here meant the same
+        // column held two different kinds of identifier, so nothing could
+        // reliably answer "whose callback is this".
+        assignedTo: user?.email || null,
         reminderDate: new Date(reminderDateTime).toISOString(),
         notes: reminderNotes
       });
@@ -270,23 +280,6 @@ export const SchedulerPage = () => {
     return filteredCallbacks.filter(c => new Date(c.reminder_date) > todayEnd);
   }, [filteredCallbacks]);
 
-  if (!hasAccess) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
-        <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center text-gray-300">
-          <Calendar size={40} />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-gray-900 font-display">Scheduler is Locked</h2>
-          <p className="text-gray-500 max-w-md text-sm">This internal engine is currently restricted. Please contact your administrator to enable access via the Founder Hub.</p>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-600 rounded-full text-xs font-bold uppercase tracking-widest">
-          <Lock size={14} /> Restricted Access
-        </div>
-      </div>
-    );
-  }
-
   const renderQueueSection = (title: string, items: Callback[], color: string) => (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
@@ -305,7 +298,7 @@ export const SchedulerPage = () => {
                 </div>
                 <div>
                   <h4 className="font-bold text-gray-900 text-xs flex items-center gap-2">
-                    {item.lead?.name || 'Client Representative'}
+                    {item.lead?.name || 'Lead unavailable'}
                     <span className="text-[10px] text-gray-400 font-normal">({item.lead?.phone || 'N/A'})</span>
                   </h4>
                   <p className="text-[10px] text-gray-400 mt-1 font-semibold">
@@ -624,7 +617,7 @@ export const SchedulerPage = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowSimulateModal(false)}
+              onClick={() => { setShowSimulateModal(false); setSimulationResult(null); }}
               className="absolute inset-0 bg-gray-900/60 backdrop-blur-xs"
             />
             <motion.div 
@@ -635,20 +628,27 @@ export const SchedulerPage = () => {
             >
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="text-xl font-black text-gray-900 tracking-tighter">Outcome Simulator</h3>
-                  <p className="text-xs text-gray-500">Test autonomous follow-up and retry intervals.</p>
+                  <h3 className="text-xl font-black text-gray-900 tracking-tighter">Retry Rules</h3>
+                  <p className="text-xs text-gray-500">When each call outcome schedules the next attempt.</p>
                 </div>
-                <button onClick={() => setShowSimulateModal(false)} className="p-1.5 hover:bg-gray-100 rounded-xl transition-all">
+                <button onClick={() => { setShowSimulateModal(false); setSimulationResult(null); }} className="p-1.5 hover:bg-gray-100 rounded-xl transition-all">
                   <X size={16} />
                 </button>
               </div>
 
               {simulationResult ? (
                 <div className="py-8 text-center space-y-4">
-                  <div className="w-12 h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto">
-                    <CheckCircle2 size={24} />
+                  <div className="w-12 h-12 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto">
+                    <Clock size={24} />
                   </div>
                   <p className="text-xs font-bold text-gray-800">{simulationResult}</p>
+                  <p className="text-[10px] text-gray-400">Nothing was saved — this only shows the retry rule.</p>
+                  <button
+                    onClick={() => setSimulationResult(null)}
+                    className="text-[10px] font-black text-brand-600 uppercase tracking-widest"
+                  >
+                    Try another outcome
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -661,7 +661,6 @@ export const SchedulerPage = () => {
                     ].map((outcome) => (
                       <button
                         key={outcome.id}
-                        disabled={isSimulating}
                         onClick={() => handleSimulateCall(outcome.id as CallOutcome)}
                         className="flex items-center justify-between p-3.5 rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-brand-50/40 transition-all text-left"
                       >

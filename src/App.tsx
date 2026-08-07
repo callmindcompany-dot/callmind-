@@ -140,58 +140,17 @@ const AppContent = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load active modules toggles in real-time
-  useEffect(() => {
-    if (!companyId) return;
-
-    const fetchSettings = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('companies')
-          .select('sectionBEnabled, sectionKEnabled, sectionDEnabled')
-          .eq('id', companyId)
-          .maybeSingle();
-
-        if (error) throw error;
-        if (data) {
-          setEnabledSections({
-            sectionBEnabled: data.sectionBEnabled ?? true,
-            sectionKEnabled: data.sectionKEnabled ?? true,
-            sectionDEnabled: data.sectionDEnabled ?? true,
-          });
-        }
-      } catch (err) {
-        console.warn('[App] Failed to fetch company modules:', err);
-      }
-    };
-
-    fetchSettings();
-
-    const channel = supabase
-      .channel(`company-settings-${companyId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'companies',
-          filter: `id=eq.${companyId}`,
-        },
-        (payload) => {
-          const data = payload.new;
-          setEnabledSections({
-            sectionBEnabled: data.sectionBEnabled ?? true,
-            sectionKEnabled: data.sectionKEnabled ?? true,
-            sectionDEnabled: data.sectionDEnabled ?? true,
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [companyId]);
+  // The per-company module toggles were never wired up.
+  //
+  // This block selected sectionBEnabled, sectionKEnabled and sectionDEnabled
+  // from `companies` and subscribed to realtime updates on them. No migration
+  // creates any of the three, so the select failed on every mount with 42703,
+  // the error was swallowed by a console.warn, and the state kept its default
+  // of all-true. The realtime channel was opened and torn down for nothing.
+  //
+  // Removed rather than repaired: three columns would have to be added, plus a
+  // UI to set them, and nothing in the product asks for that today. The
+  // defaults above are what the app has actually been running on all along.
 
   // Lifecycle Audit: Expose core context for debugging and legacy automation
   useEffect(() => {
