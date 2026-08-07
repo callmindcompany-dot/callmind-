@@ -1,3 +1,9 @@
+-- Renamed from 20260812000000. It adds the lead columns that
+-- 20260811000000_lead_search_indexes.sql builds indexes on -- neural_score
+-- among them -- so it has to sort before it, not after. As 20260812 it
+-- raised 42703 on the first index that referenced a column it had not
+-- created yet.
+
 -- Reconcile the leads table with what the application actually writes.
 --
 -- src/types/supabase.ts declares 30 columns on `leads`. The schema creates 18.

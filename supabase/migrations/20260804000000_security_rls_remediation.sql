@@ -70,8 +70,10 @@ DROP POLICY IF EXISTS "tenant_insert_users" ON public.users;
 DROP POLICY IF EXISTS "tenant_update_users" ON public.users;
 DROP POLICY IF EXISTS "tenant_delete_users" ON public.users;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "security_users_read_tenant" ON public.users;
 CREATE POLICY "security_users_read_tenant" ON public.users FOR SELECT TO authenticated
   USING (company_id::text = public.get_my_company_id());
+DROP POLICY IF EXISTS "security_users_update_self_or_founder" ON public.users;
 CREATE POLICY "security_users_update_self_or_founder" ON public.users FOR UPDATE TO authenticated
   USING (
     id::text = auth.uid()::text
@@ -115,15 +117,19 @@ ALTER TABLE public.ai_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_faqs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whatsapp_messages ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "security_sequences_tenant" ON public.sequences;
 CREATE POLICY "security_sequences_tenant" ON public.sequences FOR ALL TO authenticated
   USING (company_id::text = public.get_my_company_id())
   WITH CHECK (company_id::text = public.get_my_company_id());
+DROP POLICY IF EXISTS "security_ai_config_tenant" ON public.ai_config;
 CREATE POLICY "security_ai_config_tenant" ON public.ai_config FOR ALL TO authenticated
   USING (company_id::text = public.get_my_company_id())
   WITH CHECK (company_id::text = public.get_my_company_id());
+DROP POLICY IF EXISTS "security_ai_faqs_tenant" ON public.ai_faqs;
 CREATE POLICY "security_ai_faqs_tenant" ON public.ai_faqs FOR ALL TO authenticated
   USING (company_id::text = public.get_my_company_id())
   WITH CHECK (company_id::text = public.get_my_company_id());
+DROP POLICY IF EXISTS "security_whatsapp_messages_tenant" ON public.whatsapp_messages;
 CREATE POLICY "security_whatsapp_messages_tenant" ON public.whatsapp_messages FOR ALL TO authenticated
   USING (company_id::text = public.get_my_company_id())
   WITH CHECK (company_id::text = public.get_my_company_id());
@@ -131,9 +137,11 @@ CREATE POLICY "security_whatsapp_messages_tenant" ON public.whatsapp_messages FO
 -- Founder test configuration can contain vendor settings and must never be public.
 ALTER TABLE public.founder_tests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.founder_test_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "security_founder_tests_founder_only" ON public.founder_tests;
 CREATE POLICY "security_founder_tests_founder_only" ON public.founder_tests FOR ALL TO authenticated
   USING (public.get_my_role() IN ('founder', 'super_admin'))
   WITH CHECK (public.get_my_role() IN ('founder', 'super_admin'));
+DROP POLICY IF EXISTS "security_founder_test_logs_founder_only" ON public.founder_test_logs;
 CREATE POLICY "security_founder_test_logs_founder_only" ON public.founder_test_logs FOR ALL TO authenticated
   USING (public.get_my_role() IN ('founder', 'super_admin'))
   WITH CHECK (public.get_my_role() IN ('founder', 'super_admin'));
@@ -142,23 +150,31 @@ CREATE POLICY "security_founder_test_logs_founder_only" ON public.founder_test_l
 ALTER TABLE public.feature_roadmap ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feature_flags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.resources ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "security_feature_roadmap_read" ON public.feature_roadmap;
 CREATE POLICY "security_feature_roadmap_read" ON public.feature_roadmap FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "security_feature_roadmap_write" ON public.feature_roadmap;
 CREATE POLICY "security_feature_roadmap_write" ON public.feature_roadmap FOR ALL TO authenticated
   USING (public.get_my_role() IN ('founder', 'super_admin'))
   WITH CHECK (public.get_my_role() IN ('founder', 'super_admin'));
+DROP POLICY IF EXISTS "security_feature_flags_read" ON public.feature_flags;
 CREATE POLICY "security_feature_flags_read" ON public.feature_flags FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "security_feature_flags_write" ON public.feature_flags;
 CREATE POLICY "security_feature_flags_write" ON public.feature_flags FOR ALL TO authenticated
   USING (public.get_my_role() IN ('founder', 'super_admin'))
   WITH CHECK (public.get_my_role() IN ('founder', 'super_admin'));
+DROP POLICY IF EXISTS "security_resources_read" ON public.resources;
 CREATE POLICY "security_resources_read" ON public.resources FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "security_resources_write" ON public.resources;
 CREATE POLICY "security_resources_write" ON public.resources FOR ALL TO authenticated
   USING (public.get_my_role() IN ('founder', 'super_admin'))
   WITH CHECK (public.get_my_role() IN ('founder', 'super_admin'));
 
 -- Cofounder records are tenant-scoped, and only founders may administer them.
 ALTER TABLE public.cofounders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "security_cofounders_read" ON public.cofounders;
 CREATE POLICY "security_cofounders_read" ON public.cofounders FOR SELECT TO authenticated
   USING (company_id::text = public.get_my_company_id());
+DROP POLICY IF EXISTS "security_cofounders_write" ON public.cofounders;
 CREATE POLICY "security_cofounders_write" ON public.cofounders FOR ALL TO authenticated
   USING (
     company_id::text = public.get_my_company_id()

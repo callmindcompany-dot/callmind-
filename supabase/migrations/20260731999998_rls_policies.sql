@@ -135,19 +135,16 @@ CREATE POLICY "sequences_all_own_company"
   USING (company_id = auth_company_id());
 
 -- ============================================================
--- LEAD_SOURCES
+-- LEAD_SOURCES -- not here
 -- ============================================================
-ALTER TABLE lead_sources ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "lead_sources_select_own_company" ON lead_sources;
-CREATE POLICY "lead_sources_select_own_company"
-  ON lead_sources FOR SELECT
-  USING (company_id = auth_company_id());
-
-DROP POLICY IF EXISTS "lead_sources_all_own_company" ON lead_sources;
-CREATE POLICY "lead_sources_all_own_company"
-  ON lead_sources FOR ALL
-  USING (company_id = auth_company_id());
+-- This block referenced lead_sources, which is created by
+-- 20260813000000_lead_sources.sql -- eighty-two migrations later in sort order.
+-- So it raised 42P01 and stopped this file.
+--
+-- Removed rather than guarded: that migration already gives the table the four
+-- tenant_<action>_lead_sources policies it needs. A second pair here would only
+-- be OR'd alongside them, and one of them was FOR ALL, which would have widened
+-- what the scoped set allows.
 
 -- ============================================================
 -- AUDIT_LOGS

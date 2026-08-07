@@ -1,29 +1,37 @@
--- Migration: Add domain and health_score columns, and create organization_tenants_view
+-- Migration: add companies.domain.
+--
+-- This file used to be the third definition of organization_tenants_view in
+-- the repository, and it failed with 42703 on `c.member_limit` -- a column no
+-- migration ever created, and one that 20260802000000 drops if it is found.
+--
+-- The view definition is gone from here rather than repaired. Keeping three
+-- copies of it is how they drifted apart in the first place;
+-- 20260802000300_organization_tenants_mrr.sql is the one that survives, and it
+-- runs after plan_limits exists so it can derive revenue from real prices.
+--
+-- What this version contained is worth recording, because two of the three
+-- were being shown to the founder as fact:
+--
+--   COALESCE(c.domain, LOWER(REGEXP_REPLACE(c.name,'\s+','','g')) || '.com')
+--     Invented a domain by slugifying the company name. The founder hub
+--     displayed the guess with no indication it was one.
+--
+--   MRR fell back to a CASE returning 12000, 4500 or 1500 for plans called
+--     'Enterprise', 'Professional' and 'Basic'. Those plan names do not exist
+--     in this product -- the ids are trial, starter, growth and pro -- and
+--     prices belong in src/config/pricing.ts, which is what feeds plan_limits.
+--     So a company with no paid invoices reported a made-up revenue figure that
+--     matched no price the product has ever charged.
+--
+--   health_score was GREATEST(0, LEAST(100, COALESCE(c.health_score, 80))),
+--     over a column nothing writes -- so every tenant scored 80.
+--
+-- health_score is not created here for that reason. A real one needs inputs
+-- this product does not collect.
 
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS domain TEXT;
-ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS health_score INTEGER DEFAULT 80;
 
--- Create or replace view
-CREATE OR REPLACE VIEW public.organization_tenants_view AS
-SELECT
-  c.id,
-  c.name,
-  COALESCE(c.domain, LOWER(REGEXP_REPLACE(c.name, '\s+', '', 'g')) || '.com') AS domain,
-  COALESCE(c.plan, 'Trial') AS plan,
-  COALESCE(c.plan_status, 'Active') AS status,
-  COALESCE((SELECT COUNT(*)::int FROM public.users u WHERE u.company_id = c.id), 0) AS user_count,
-  COALESCE((SELECT COUNT(*)::int FROM public.leads l WHERE l.company_id = c.id AND l.is_deleted = false), 0) AS lead_count,
-  COALESCE((SELECT SUM(amount)::numeric FROM public.invoices i WHERE i.company_id = c.id AND i.status = 'paid'), 
-           (CASE 
-              WHEN c.plan = 'Enterprise' THEN 12000
-              WHEN c.plan = 'Professional' THEN 4500
-              WHEN c.plan = 'Basic' THEN 1500
-              ELSE 0
-            END))::numeric AS mrr,
-  GREATEST(0, LEAST(100, COALESCE(c.health_score, 80))) AS health_score,
-  COALESCE(c.seat_limit, c.member_limit, 10)::int AS seat_limit
-FROM public.companies c;
-
--- Grant select access to authenticated roles
-GRANT SELECT ON public.organization_tenants_view TO authenticated;
-GRANT SELECT ON public.organization_tenants_view TO anon;
+-- The GRANT ... TO anon that used to sit at the bottom of this file is gone
+-- too. organization_tenants_view lists every tenant on the platform; the only
+-- thing standing between that and an unauthenticated reader was the
+-- security_invoker setting applied twelve migrations later.

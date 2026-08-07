@@ -16,7 +16,9 @@ CREATE VIEW public.organization_tenants_view AS
 SELECT
     c.id,
     c.name,
-    NULL::text AS domain,
+    -- The real column, added by 20260718_tenants_view.sql. Null until someone
+    -- fills it in; the previous definition guessed one from the company name.
+    c.domain,
     c.plan,
     c.plan_status AS status,
     c.seat_limit,

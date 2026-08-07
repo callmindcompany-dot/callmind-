@@ -32,6 +32,23 @@ CREATE TABLE IF NOT EXISTS public.whatsapp_messages (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- whatsapp_messages already existed, created by 20260718_founders_lab.sql with
+-- a different and much smaller shape: id, company_id, lead_id, sender,
+-- message_text, direction, created_at. CREATE TABLE IF NOT EXISTS above is
+-- therefore a no-op and none of the columns in it were applied -- which is why
+-- the index on conversation_id failed with 42703. Same trap as
+-- companies.active_members_count.
+--
+-- The table holds no rows, so widening it is safe. conversation_id is added
+-- nullable rather than NOT NULL: the inbox writes it, but the older insert path
+-- in the founders lab does not, and failing that path is not worth it.
+ALTER TABLE public.whatsapp_messages ADD COLUMN IF NOT EXISTS conversation_id UUID
+  REFERENCES public.whatsapp_conversations(id) ON DELETE CASCADE;
+ALTER TABLE public.whatsapp_messages ADD COLUMN IF NOT EXISTS sender_phone     TEXT;
+ALTER TABLE public.whatsapp_messages ADD COLUMN IF NOT EXISTS template_name    TEXT;
+ALTER TABLE public.whatsapp_messages ADD COLUMN IF NOT EXISTS status           TEXT NOT NULL DEFAULT 'sent';
+ALTER TABLE public.whatsapp_messages ADD COLUMN IF NOT EXISTS idempotency_key  TEXT;
+
 -- RLS Policies
 ALTER TABLE public.whatsapp_conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whatsapp_messages ENABLE ROW LEVEL SECURITY;

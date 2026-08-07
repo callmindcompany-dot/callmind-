@@ -145,33 +145,17 @@ CREATE INDEX IF NOT EXISTS idx_companies_plan ON public.companies(plan);
 CREATE INDEX IF NOT EXISTS idx_companies_plan_status ON public.companies(plan_status);
 
 -- ---------------------------------------------------------------------------
--- 6. Rebuild organization_tenants_view
+-- 6. organization_tenants_view is not rebuilt here
 -- ---------------------------------------------------------------------------
--- Same shape as 20260718_tenants_view.sql minus member_limit, with two fixes:
+-- This was a fourth definition of the same view, and it carried two of the
+-- things the earlier ones were being corrected for: a domain guessed from the
+-- company name, and health_score over a column that does not exist -- which is
+-- what raised 42703 here, since 20260718_tenants_view.sql no longer creates it.
 --
---   * The MRR fallback matched plan names 'Enterprise'/'Professional'/'Basic'
---     which are not (and after step 3 cannot be) real plan values, so it only
---     ever produced invented revenue for rows that no longer exist. Dropped --
---     MRR is now the sum of paid invoices or zero, which is the truth.
---
---   * The view was granted to `anon`, meaning a logged-out visitor could list
---     every tenant, their user counts and their lead counts. Revoked.
-
-DROP VIEW IF EXISTS public.organization_tenants_view;
-
-CREATE VIEW public.organization_tenants_view AS
-SELECT
-  c.id,
-  c.name,
-  COALESCE(c.domain, LOWER(REGEXP_REPLACE(c.name, '\s+', '', 'g')) || '.com') AS domain,
-  c.plan,
-  c.plan_status AS status,
-  COALESCE((SELECT COUNT(*)::int FROM public.users u WHERE u.company_id = c.id), 0) AS user_count,
-  COALESCE((SELECT COUNT(*)::int FROM public.leads l WHERE l.company_id = c.id AND l.is_deleted = false), 0) AS lead_count,
-  COALESCE((SELECT SUM(amount)::numeric FROM public.invoices i WHERE i.company_id = c.id AND i.status = 'paid'), 0)::numeric AS mrr,
-  GREATEST(0, LEAST(100, COALESCE(c.health_score, 80))) AS health_score,
-  c.seat_limit::int AS seat_limit
-FROM public.companies c;
+-- 20260802000300_organization_tenants_mrr.sql is the single definition that
+-- survives. It runs after plan_limits is seeded, so it derives MRR from the
+-- prices in src/config/pricing.ts rather than summing paid invoices, sets
+-- security_invoker, and leaves domain as the real column rather than a guess.
 
 REVOKE ALL ON public.organization_tenants_view FROM anon;
 GRANT SELECT ON public.organization_tenants_view TO authenticated;
