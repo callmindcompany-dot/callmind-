@@ -55,11 +55,8 @@ export const ENTITY = {
    * TODO: the proprietor's full legal name, exactly as on PAN.
    */
   proprietor: 'Vrushabh Santosh Shinde',
-  /**
-   * TODO: add the PIN code. A legal notice has to be deliverable, and an
-   * address without one may not be.
-   */
-  address: 'At Post Koparde, Taluka Khandala, District Satara, Maharashtra, India',
+  /** Where notice is served under both the terms and the privacy policy. */
+  address: 'At Post Koparde, Taluka Khandala, District Satara, Maharashtra 415521, India',
   /** GSTIN once registered. Left empty until then; the line is omitted. */
   gstin: '',
   /**
