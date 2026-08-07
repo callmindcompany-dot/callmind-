@@ -22,7 +22,7 @@ import { readFileSync } from 'fs';
 
 // The config is TypeScript; rather than add a build step for one script, read
 // the compiled values through tsx. Run with: npx tsx scripts/sync-legal-pages.mjs
-const { LEGAL_DOCUMENTS, LEGAL_SLUGS, ENTITY, ENTITY_IS_COMPLETE, renderLegalText } =
+const { LEGAL_DOCUMENTS, LEGAL_SLUGS, ENTITY, ENTITY_IS_COMPLETE, REVIEWED_BY_LAWYER, renderLegalText } =
   await import('../src/config/legal.ts');
 
 const write = process.argv.includes('--write');

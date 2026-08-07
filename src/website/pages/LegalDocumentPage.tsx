@@ -16,6 +16,8 @@ import {
   LEGAL_DOCUMENTS,
   LEGAL_SLUGS,
   ENTITY,
+  READY_TO_PUBLISH,
+  REVIEWED_BY_LAWYER,
   ENTITY_IS_COMPLETE,
   type LegalSlug,
 } from '@/config/legal';
@@ -132,15 +134,18 @@ export const LegalDocumentPage = ({ slug }: { slug: LegalSlug }) => {
 
         {/* Visible only while the entity placeholders are unfilled, so an
             incomplete document cannot quietly go live naming nobody. */}
-        {!ENTITY_IS_COMPLETE && (
+        {!READY_TO_PUBLISH && (
           <div className="max-w-7xl mx-auto px-6 md:px-12 pt-8">
             <div className="flex items-start gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-900">
               <AlertTriangle size={18} className="shrink-0 mt-0.5" />
               <div className="text-sm">
                 <p className="font-bold">This document is not ready to publish.</p>
                 <p className="mt-1">
-                  The operating entity and address in <code>src/config/legal.ts</code> are still
-                  placeholders, and this text has not been reviewed by a lawyer.
+                  {!ENTITY_IS_COMPLETE
+                    ? 'The operating entity or address in src/config/legal.ts is still a placeholder.'
+                    : !REVIEWED_BY_LAWYER
+                      ? 'No lawyer has reviewed this text yet. Set REVIEWED_BY_LAWYER in src/config/legal.ts once one has.'
+                      : ''}
                 </p>
               </div>
             </div>

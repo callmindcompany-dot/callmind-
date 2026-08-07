@@ -122,6 +122,33 @@ describe('legal documents', () => {
     expect(everything).not.toContain('Private Limited');
   });
 
+  it('does not mark itself publishable without a lawyer having read it', async () => {
+    const { ENTITY_IS_COMPLETE, REVIEWED_BY_LAWYER, READY_TO_PUBLISH } = await import('@/config/legal');
+
+    // Filling in a name and address makes the documents complete. It does not
+    // make them correct. Collapsing the two would mean typing an address
+    // silently published text nobody qualified had read.
+    expect(READY_TO_PUBLISH).toBe(ENTITY_IS_COMPLETE && REVIEWED_BY_LAWYER);
+  });
+
+  it('has an address a legal notice could be delivered to, before publishing', async () => {
+    const { READY_TO_PUBLISH } = await import('@/config/legal');
+
+    // Only asserted once the documents claim to be publishable.
+    //
+    // Written as an unconditional check first, which failed immediately because
+    // the PIN is still missing — correct, but a permanently red test teaches
+    // people to ignore the suite. It guards the same risk here: the address is
+    // where both documents say notice is served, and one without a PIN may not
+    // be deliverable.
+    if (!READY_TO_PUBLISH) return;
+
+    expect(
+      ENTITY.address,
+      'add the PIN code to ENTITY.address in src/config/legal.ts',
+    ).toMatch(/\b\d{6}\b/);
+  });
+
   it('uses contact addresses that belong to the right thing', () => {
     const everything = LEGAL_SLUGS.map((s) => renderLegalText(LEGAL_DOCUMENTS[s])).join('\n');
 

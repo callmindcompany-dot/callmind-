@@ -54,13 +54,25 @@ export const ENTITY = {
    *
    * TODO: the proprietor's full legal name, exactly as on PAN.
    */
-  proprietor: '{{PROPRIETOR_LEGAL_NAME}}',
-  /** TODO: the full business address, including PIN code. */
-  address: '{{BUSINESS_ADDRESS}}',
+  proprietor: 'Vrushabh Santosh Shinde',
+  /**
+   * TODO: add the PIN code. A legal notice has to be deliverable, and an
+   * address without one may not be.
+   */
+  address: 'At Post Koparde, Taluka Khandala, District Satara, Maharashtra, India',
   /** GSTIN once registered. Left empty until then; the line is omitted. */
   gstin: '',
-  /** The city whose courts have jurisdiction. */
-  jurisdiction: 'Pune, Maharashtra',
+  /**
+   * The courts with jurisdiction.
+   *
+   * This said Pune, which the mobile app repeated while naming a company
+   * incorporated nowhere. For a sole proprietorship jurisdiction normally
+   * follows the principal place of business, which is Satara — so Pune was
+   * both unexplained and probably wrong. Worth confirming with the lawyer:
+   * naming the wrong forum does not void the clause, but it invites an
+   * argument you would rather not have.
+   */
+  jurisdiction: 'Satara, Maharashtra',
   /** Product support — where customers write about CallMind. */
   supportEmail: 'callmind.company@gmail.com',
   /** The business itself, for anything about Voolabs rather than the product. */
@@ -79,6 +91,23 @@ export const OPERATOR_NAME = `${ENTITY.proprietor}, trading as ${ENTITY.business
 /** True once the placeholders above have been filled in. */
 export const ENTITY_IS_COMPLETE =
   !ENTITY.proprietor.includes('{{') && !ENTITY.address.includes('{{');
+
+/**
+ * Set to true only after a lawyer has read these documents.
+ *
+ * Deliberately separate from ENTITY_IS_COMPLETE. Filling in a name and address
+ * makes the documents *complete*; it does not make them *correct*. Collapsing
+ * the two would mean that typing an address silently published text nobody
+ * qualified had looked at — and this text makes representations about data
+ * handling under the DPDP Act 2023, which is not a thing to get wrong by
+ * accident.
+ *
+ * Whoever flips this should be able to say who reviewed it and when.
+ */
+export const REVIEWED_BY_LAWYER = false;
+
+/** Both conditions. What the banner and the database sync actually check. */
+export const READY_TO_PUBLISH = ENTITY_IS_COMPLETE && REVIEWED_BY_LAWYER;
 
 export type LegalSlug = 'privacy' | 'terms' | 'refund';
 

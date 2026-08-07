@@ -10,7 +10,14 @@ import {
 } from 'react-native';
 import { ArrowLeft, ShieldCheck, ExternalLink, Check } from 'lucide-react-native';
 import { supabase } from '../services/supabase';
-import { LEGAL_DOCUMENTS, LEGAL_SLUGS, ENTITY, OPERATOR_NAME, type LegalSlug } from '../config/legal';
+import {
+  LEGAL_DOCUMENTS,
+  LEGAL_SLUGS,
+  ENTITY,
+  OPERATOR_NAME,
+  READY_TO_PUBLISH,
+  type LegalSlug,
+} from '../config/legal';
 
 /**
  * The legal documents, in the app.
@@ -131,6 +138,17 @@ export const PrivacyTermsWebView: React.FC<PrivacyTermsWebViewProps> = ({
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* The web pages carry the same notice. A document that has not been
+            reviewed should say so wherever it is shown, not only in one app. */}
+        {!READY_TO_PUBLISH && (
+          <View style={styles.draftBox}>
+            <Text style={styles.draftText}>
+              Draft — not yet reviewed. This text describes how the product works but has not
+              been checked by a lawyer.
+            </Text>
+          </View>
+        )}
+
         <View style={styles.card}>
           <Text style={styles.docTitle}>{doc.title}</Text>
           <Text style={styles.lastUpdated}>
@@ -234,6 +252,15 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 13, fontWeight: '600', color: '#64748b' },
   tabTextActive: { color: '#ffffff', fontWeight: '700' },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
+  draftBox: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#fde68a',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  draftText: { fontSize: 12, color: '#92400e', fontWeight: '600', lineHeight: 18 },
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 20,
