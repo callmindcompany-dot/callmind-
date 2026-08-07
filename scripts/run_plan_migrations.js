@@ -1,8 +1,13 @@
+import 'dotenv/config';
 import { Client } from 'pg';
 import fs from 'fs';
 import path from 'path';
 
-const connectionString = "postgresql://postgres:Vrushabh09%40@db.aojhpnrkmunstzjvvppb.supabase.co:5432/postgres";
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error("DATABASE_URL is not set. Add it to .env; there is no fallback.");
+  process.exit(1);
+}
 
 async function applyMigrations() {
   const client = new Client({ connectionString });

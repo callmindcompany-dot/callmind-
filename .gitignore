@@ -8,3 +8,13 @@ coverage/
 .env*
 !.env.example
 firebase-applet-config.json
+
+# One-off database probes written during the migration campaign. They take a
+# connection string and dump table contents; pre_migration_backup.json holds
+# real company rows. Neither belongs in the repository.
+scripts/check_*.ts
+scripts/debug_*.ts
+scripts/backup_tables.ts
+scripts/run_pre_migration_queries.ts
+scripts/execute_all_migrations.ts
+scripts/pre_migration_backup.json

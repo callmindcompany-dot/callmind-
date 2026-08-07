@@ -5,7 +5,12 @@ import path from 'path';
 
 dotenv.config();
 
-const connectionString = process.env.DATABASE_URL || "postgresql://postgres:Vrushabh09%40@db.aojhpnrkmunstzjvvppb.supabase.co:5432/postgres";
+if (!process.env.DATABASE_URL) {
+  console.error("DATABASE_URL is not set. Add it to .env; there is no fallback.");
+  process.exit(1);
+}
+
+const connectionString = process.env.DATABASE_URL;
 
 async function runPreCheck() {
   const client = new Client({ connectionString });
