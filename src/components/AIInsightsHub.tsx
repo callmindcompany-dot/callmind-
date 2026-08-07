@@ -96,17 +96,65 @@ const AIFeatureCard = ({ title, description, icon: Icon, color, stats, onClick, 
 };
 
 export const AIInsightsHub = () => {
-  const { featureFlags = {} as any, isGodMode, profile, isFounder, user } = useAuth();
+  const { isGodMode, profile, isFounder, user } = useAuth();
   const { companyId } = useCompany();
-  const updateFeatureFlags = (f: any) => {};
   const plan = usePlan();
   const aiPlanLimit = plan.limit('aiCredits');
-  const aiEnabled = featureFlags.AI_ENABLED;
-  const groqEnabled = featureFlags.GROQ_ENABLED;
   const currentPhase = 1;
-  const [whisperEnabled, setWhisperEnabled] = useState(true);
   const [isConfirmingKillSwitch, setIsConfirmingKillSwitch] = useState(false);
-  const [workerStatus] = useState('Connected');
+
+  // The kill switch, reading the column it actually writes to.
+  //
+  // This was `featureFlags.AI_ENABLED`, where featureFlags came from
+  // profile.featureFlags -- a column no migration creates -- and the setter was
+  // an empty function declared two lines above it. So the switch always
+  // rendered off, and flipping it changed nothing. companies.ai_enabled is now
+  // real (20260817000000) and src/routes/ai.ts refuses the request when it is
+  // false, which is the half that matters: the browser is not what spends the
+  // tokens.
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [savingKillSwitch, setSavingKillSwitch] = useState(false);
+
+  const canToggleAi =
+    isGodMode || ['admin', 'sub_admin', 'founder'].includes(String(profile?.role || '').toLowerCase());
+
+  useEffect(() => {
+    if (!companyId) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('ai_enabled')
+        .eq('id', companyId)
+        .maybeSingle();
+      if (error) {
+        console.error('Failed to read the company AI setting:', error);
+        return;
+      }
+      if (!cancelled && data) setAiEnabled(data.ai_enabled !== false);
+    })();
+    return () => { cancelled = true; };
+  }, [companyId]);
+
+  const setAiEnabledOnServer = async (next: boolean) => {
+    if (!companyId) return;
+    setSavingKillSwitch(true);
+    const previous = aiEnabled;
+    setAiEnabled(next);
+    const { error } = await supabase
+      .from('companies')
+      .update({ ai_enabled: next })
+      .eq('id', companyId);
+    setSavingKillSwitch(false);
+    if (error) {
+      // Put the switch back. Leaving it where the user dropped it would say the
+      // change had taken effect.
+      setAiEnabled(previous);
+      toast.error(error.message || 'Could not change the AI setting.');
+      return;
+    }
+    toast.success(next ? 'AI turned on for your company.' : 'AI turned off for your company.');
+  };
   const [activeFeature, setActiveFeature] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -252,20 +300,20 @@ export const AIInsightsHub = () => {
   };
 
   const handleKillSwitchToggle = () => {
+    if (!canToggleAi) {
+      toast.error('Only an administrator can turn AI on or off.');
+      return;
+    }
     if (aiEnabled) {
       setIsConfirmingKillSwitch(true);
     } else {
-      updateFeatureFlags({ AI_ENABLED: true });
+      void setAiEnabledOnServer(true);
     }
   };
 
   const confirmKillSwitch = () => {
-    updateFeatureFlags({ AI_ENABLED: false });
     setIsConfirmingKillSwitch(false);
-  };
-
-  const toggleGroq = () => {
-    updateFeatureFlags({ GROQ_ENABLED: !groqEnabled });
+    void setAiEnabledOnServer(false);
   };
 
   const renderFeatureDetail = () => {
@@ -510,7 +558,7 @@ export const AIInsightsHub = () => {
             />
             <AIFeatureCard 
               title="WhatsApp 24/7 Bot"
-              description="Qualify leads and answer queries automatically without human intervention using Groq AI."
+              description="Qualify leads and answer queries automatically without human intervention."
               icon={Bot}
               color="bg-green-600"
               stats="Coming Soon"
@@ -566,7 +614,7 @@ export const AIInsightsHub = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">AI Insights Hub</h1>
-          <p className="text-gray-500 mt-1">Leverage advanced LLaMA 70B & Whisper models to supercharge your sales.</p>
+          <p className="text-gray-500 mt-1">Drafting, summaries and lead scoring, powered by Google Gemini Flash.</p>
         </div>
         {!activeFeature && (
           <div className="flex items-center gap-4">
@@ -616,11 +664,6 @@ export const AIInsightsHub = () => {
               
               <div className="flex flex-wrap gap-4 pt-2">
                 <div className="flex items-center gap-2 px-4 py-2 glass rounded-xl border border-gray-50">
-                  <Activity size={14} className="text-brand-600" />
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Worker Status:</span>
-                  <span className="text-[10px] font-bold text-green-600 uppercase">{workerStatus}</span>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-2 glass rounded-xl border border-gray-50">
                   <div className={`w-1.5 h-1.5 rounded-full ${aiEnabled ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">AI Engine:</span>
                   <span className={`text-[10px] font-bold ${aiEnabled ? 'text-green-600' : 'text-red-600'} uppercase`}>{aiEnabled ? 'Active' : 'Disabled'}</span>
@@ -646,40 +689,27 @@ export const AIInsightsHub = () => {
             </div>
           </div>
 
-          {/* Engine Sub-Toggles */}
-          <div className="glass p-8 rounded-[40px] border border-gray-100 space-y-6">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Engine Controls</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center text-brand-600">
-                    <Zap size={16} />
-                  </div>
-                  <span className="text-sm font-bold text-gray-700">Groq LLaMA 70B</span>
+          {/* The "Engine Controls" panel stood here with two toggles: "Groq
+              LLaMA 70B" and "Whisper API". Neither provider is integrated --
+              there is no Groq SDK, no Whisper, no LLaMA anywhere in the
+              codebase, and AGENTS.md says plainly that the provider is Gemini
+              Flash and not to add a second. Both switches called the same empty
+              function as the kill switch, so they did nothing either.
+
+              Replaced with what is actually running. */}
+          <div className="glass p-8 rounded-[40px] border border-gray-100 space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Model</h3>
+            <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center text-brand-600">
+                  <Zap size={16} />
                 </div>
-                <button 
-                  onClick={toggleGroq}
-                  disabled={!aiEnabled}
-                  className={`w-12 h-6 rounded-full transition-all relative ${!aiEnabled ? 'opacity-30 cursor-not-allowed' : ''} ${groqEnabled ? 'bg-brand-600' : 'bg-gray-200'}`}
-                >
-                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${groqEnabled ? 'left-7' : 'left-1'}`} />
-                </button>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
-                    <Mic size={16} />
-                  </div>
-                  <span className="text-sm font-bold text-gray-700">Whisper API</span>
+                <div>
+                  <p className="text-sm font-bold text-gray-700">Google Gemini Flash</p>
+                  <p className="text-[11px] text-gray-400 font-medium">
+                    Every AI feature in CallMind runs on this one model.
+                  </p>
                 </div>
-                <button 
-                  onClick={() => setWhisperEnabled(!whisperEnabled)}
-                  disabled={!aiEnabled}
-                  className={`w-12 h-6 rounded-full transition-all relative ${!aiEnabled ? 'opacity-30 cursor-not-allowed' : ''} ${whisperEnabled ? 'bg-blue-600' : 'bg-gray-200'}`}
-                >
-                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${whisperEnabled ? 'left-7' : 'left-1'}`} />
-                </button>
               </div>
             </div>
           </div>

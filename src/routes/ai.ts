@@ -78,9 +78,36 @@ router.post('/generate', async (req, res) => {
     const isGodMode = staffEmails.includes(normalisedEmail) || userData.role === "tester";
     const isWhatsAppDraft = targetTask === 'draft';
 
-    // 2. Global kill-switch
+    // 2. Kill switches, platform then company.
+    //
+    // The platform one is ours. The company one is the toggle in the AI
+    // Insights Hub, which until now wrote to an empty function and a column
+    // that did not exist -- so an administrator could turn AI "off" and every
+    // request still went to Gemini. Checked here rather than in the browser,
+    // because the browser is not what spends the tokens.
     if (!isGodMode && process.env.AI_ENABLED === 'false') {
       return res.status(503).json({ error: "AI features are currently disabled by administrator." });
+    }
+
+    if (!isGodMode && companyId) {
+      const { data: companyRow, error: companyError } = await supabaseAdmin
+        .from('companies')
+        .select('ai_enabled')
+        .eq('id', companyId)
+        .maybeSingle();
+
+      if (companyError) {
+        logger.error('[AI] Could not read the company AI setting', companyError);
+        return res.status(503).json({ error: "Could not verify your AI settings. Please try again." });
+      }
+
+      // Absent means on. A missing row should not silently disable a paying
+      // customer's AI, and the column defaults to true.
+      if (companyRow && companyRow.ai_enabled === false) {
+        return res.status(503).json({
+          error: "AI is switched off for your company. An administrator can turn it back on in AI Insights.",
+        });
+      }
     }
 
     // 3. Meter the request against the company's plan.
