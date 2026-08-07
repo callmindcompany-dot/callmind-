@@ -25,7 +25,6 @@ export function WaitlistPanel({ companyId, serviceName, serviceIcon, serviceDesc
         category: 'integration',
         target: serviceName,
         details: `Waitlist signup email: ${email}`,
-        timestamp: new Date().toISOString(),
       });
       setSubmitted(true);
       toast.success(`🎉 Priority spot reserved for ${serviceName}!`);

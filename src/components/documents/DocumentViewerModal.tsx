@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, RotateCw, ZoomIn, ZoomOut, ChevronLeft, ChevronRight,
@@ -81,7 +82,10 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   const fetchSignedUrl = async (id: string) => {
     setLoadingUrl(true);
     try {
-      const token = localStorage.getItem('supabase_token') || '';
+      // Nothing in the codebase ever writes a 'supabase_token' key, so this
+      // read always returned '' and every request below went out with an
+      // empty bearer token.
+      const token = (await supabase.auth.getSession()).data.session?.access_token ?? '';
       const res = await fetch(`/v1/documents/${id}/url`, {
         headers: { Authorization: `Bearer ${token}` },
       });

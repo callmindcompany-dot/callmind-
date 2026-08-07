@@ -1467,7 +1467,7 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
     }
     setIsGeneratingDraft(true);
     try {
-      const idToken = await user?.getIdToken();
+      const idToken = (await supabase.auth.getSession()).data.session?.access_token ?? null;
       const targetName = lead.name || 'Valued Prospect';
       const response = await fetch('/api/ai/generate', {
         method: 'POST',

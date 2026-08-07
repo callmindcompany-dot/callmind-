@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/supabaseClient';
 import { useAuth } from '@/AuthContext';
 import { usePlan } from '@/hooks/usePlan';
 import { useCompany } from '@/CompanyContext';
@@ -1246,7 +1247,7 @@ export const TeamPage = ({ onTabChange }: { onTabChange?: (tab: string) => void 
     try {
       if (processAction === 'disable') {
         try {
-          const idToken = user && typeof user.getIdToken === 'function' ? await user.getIdToken() : null;
+          const idToken = (await supabase.auth.getSession()).data.session?.access_token ?? null;
           await fetch('/api/admin/remote-wipe', {
             method: 'POST',
             headers: {
@@ -1261,22 +1262,34 @@ export const TeamPage = ({ onTabChange }: { onTabChange?: (tab: string) => void 
           console.error("Failed to trigger remote wipe API:", err);
         }
       } else if (processAction === 'remove') {
-        try {
-          const idToken = user && typeof user.getIdToken === 'function' ? await user.getIdToken() : null;
-          await fetch('/api/admin/bulk-reassign', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': idToken ? `Bearer ${idToken}` : ''
-            },
-            body: JSON.stringify({
-              sourceUserId: memberToProcess.id,
-              targetUserId: transferTarget,
-              count: 'ALL'
-            })
-          });
-        } catch (err) {
-          console.error("Failed to trigger bulk lead reassignment API:", err);
+        // Reassign first, and stop if it fails.
+        //
+        // This used to fire the request and ignore everything about it: fetch
+        // resolves on a 401 or a 500 as happily as on a 200, and only a network
+        // error reached the catch. So the member was removed regardless, their
+        // leads stayed assigned to a removed user where nobody would see them,
+        // and the audit log recorded a transfer that had not occurred.
+        const idToken = (await supabase.auth.getSession()).data.session?.access_token ?? null;
+        const reassignRes = await fetch('/api/admin/bulk-reassign', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': idToken ? `Bearer ${idToken}` : ''
+          },
+          body: JSON.stringify({
+            sourceUserId: memberToProcess.id,
+            targetUserId: transferTarget,
+            count: 'ALL'
+          })
+        });
+
+        const reassignResult = await reassignRes.json().catch(() => ({}));
+        if (!reassignRes.ok || reassignResult.success === false) {
+          toast.error(
+            `Could not reassign this member's leads: ${reassignResult.error || reassignRes.status}. ` +
+            'They have not been removed.'
+          );
+          return;
         }
       }
 
@@ -1405,7 +1418,7 @@ export const TeamPage = ({ onTabChange }: { onTabChange?: (tab: string) => void 
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
         setIsWiping(targetUser.id);
         try {
-          const idToken = user && typeof user.getIdToken === 'function' ? await user.getIdToken() : null;
+          const idToken = (await supabase.auth.getSession()).data.session?.access_token ?? null;
           const response = await fetch('/api/admin/remote-wipe', {
             method: 'POST',
             headers: {
@@ -1442,7 +1455,7 @@ export const TeamPage = ({ onTabChange }: { onTabChange?: (tab: string) => void 
     
     setIsReassigning(true);
     try {
-      const idToken = user && typeof user.getIdToken === 'function' ? await user.getIdToken() : null;
+      const idToken = (await supabase.auth.getSession()).data.session?.access_token ?? null;
       const response = await fetch('/api/admin/bulk-reassign', {
         method: 'POST',
         headers: {

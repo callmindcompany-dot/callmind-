@@ -58,7 +58,6 @@ export function useWebhookConfig({ companyId, initialConfig, saveMutation }: Use
         category: 'config',
         target: 'Webhook Source Ingestion',
         details: 'Test webhook payload ingested. Mock lead created.',
-        timestamp: new Date().toISOString(),
       });
     },
     onSuccess: () => {

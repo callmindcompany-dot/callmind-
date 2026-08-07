@@ -115,7 +115,10 @@ export const LeadDocumentCard: React.FC<LeadDocumentCardProps> = ({
     const toastId = toast.loading(`Presigning ${file.name}...`);
 
     try {
-      const token = localStorage.getItem('supabase_token') || '';
+      // Nothing in the codebase ever writes a 'supabase_token' key, so this
+      // read always returned '' and every request below went out with an
+      // empty bearer token.
+      const token = (await supabase.auth.getSession()).data.session?.access_token ?? '';
 
       // 1. Presign Upload URL
       const presignRes = await fetch('/v1/documents/presign', {

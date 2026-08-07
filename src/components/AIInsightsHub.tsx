@@ -216,7 +216,7 @@ export const AIInsightsHub = () => {
     setAiResponse(null);
 
     try {
-      const idToken = user && typeof user.getIdToken === 'function' ? await user.getIdToken() : null;
+      const idToken = (await supabase.auth.getSession()).data.session?.access_token ?? null;
       const response = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

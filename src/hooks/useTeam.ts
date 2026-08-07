@@ -233,7 +233,21 @@ export function useApproveRequest(companyId: string | null) {
     mutationFn: async ({ request, inviteToUpdate }: { request: any; inviteToUpdate?: any }) => {
       if (!companyId) throw new Error('Missing companyId');
 
-      const userId = request.user_id || `user_${Date.now()}`;
+      // users.id has to be the auth uid: the users_self_read policy is
+      // `id = auth.uid()::text`, so a row keyed to anything else is one its
+      // owner can never read. This used to fall back to `user_${Date.now()}`,
+      // which would occupy a seat, appear in the team list, and belong to
+      // nobody who could sign in as them.
+      //
+      // The submit-join-request edge function rejects a request whose userId is
+      // not the caller's own, so a request without one should not exist. If it
+      // does, that is worth knowing about rather than papering over.
+      const userId = request.user_id;
+      if (!userId) {
+        throw new Error(
+          'This join request has no user account attached, so no seat can be created for it.'
+        );
+      }
 
       // 1. Create/Update user document in Supabase
       const { error: userErr } = await supabase
@@ -266,7 +280,10 @@ export function useApproveRequest(companyId: string | null) {
           })
           .eq('id', inviteToUpdate.id);
 
-        if (inviteErr) console.warn('Failed to update invite count:', inviteErr);
+        // Thrown, not warned. used_count is what enforces max_uses -- if the
+        // increment silently fails, a code with a limit of one keeps admitting
+        // people, and the approval that consumed it has already created a user.
+        if (inviteErr) throw inviteErr;
       }
 
       // 3. Mark request as approved
@@ -286,8 +303,7 @@ export function useApproveRequest(companyId: string | null) {
         action: 'MEMBER_APPROVED',
         category: 'system',
         target: request.name,
-        details: `Approved ${request.name} via onboarding request. Seat allocated.`,
-        timestamp: new Date().toISOString()
+        details: `Approved ${request.name} via onboarding request. Seat allocated.`
       });
     },
     onSuccess: () => {
@@ -328,8 +344,7 @@ export function useRejectRequest(companyId: string | null) {
         action: 'MEMBER_REJECTED',
         category: 'system',
         target: targetName,
-        details: `Rejected onboarding request from ${targetName}.`,
-        timestamp: new Date().toISOString()
+        details: `Rejected onboarding request from ${targetName}.`
       });
     },
     onSuccess: () => {
@@ -371,8 +386,7 @@ export function useCreateInvite(companyId: string | null) {
         action: 'INVITE_CODE_GENERATED',
         category: 'system',
         target: payload.joinCode || payload.email || 'Invite',
-        details: `Generated onboarding invite: ${payload.joinCode || payload.email}`,
-        timestamp: new Date().toISOString()
+        details: `Generated onboarding invite: ${payload.joinCode || payload.email}`
       });
 
       return data;
@@ -403,8 +417,7 @@ export function useRevokeInvite(companyId: string | null) {
         action: 'INVITE_REVOKED',
         category: 'system',
         target: inviteId,
-        details: `Revoked onboarding invite code.`,
-        timestamp: new Date().toISOString()
+        details: `Revoked onboarding invite code.`
       });
     },
     onSuccess: () => {
@@ -424,7 +437,11 @@ export function useProcessMember(companyId: string | null) {
 
       const statusVal = payload.action === 'disable' ? 'disabled' : 'removed';
 
-      // 1. Update user record
+      // 1. Update user record.
+      //
+      // Scoped by company as well as id. RLS should already stop a cross-tenant
+      // update, but a mutation that disables a member is not the place to lean
+      // on that alone -- and the filter costs nothing.
       const { error: userErr } = await supabase
         .from('users')
         .update({
@@ -432,18 +449,27 @@ export function useProcessMember(companyId: string | null) {
           seat_active: false,
           updated_at: new Date().toISOString()
         })
-        .eq('id', payload.memberId);
+        .eq('id', payload.memberId)
+        .eq('company_id', companyId);
 
       if (userErr) throw userErr;
 
-      // 2. Add audit log record
+      // 2. Add audit log record.
+      //
+      // The details line used to read "Leads reassigned to <target>" for both
+      // actions. Reassignment is a separate call to /api/admin/bulk-reassign
+      // that TeamPage makes only on 'remove', and whose response it did not
+      // check -- so the audit trail asserted a transfer that may not have
+      // happened, and never happened at all on 'disable'. State only what this
+      // mutation did.
       await supabase.from('audit_logs').insert({
         company_id: companyId,
         action: payload.action === 'disable' ? 'MEMBER_DISABLED' : 'MEMBER_REMOVED',
         category: 'system',
         target: payload.displayName,
-        details: `Member seat released. Leads reassigned to ${payload.transferTarget}.`,
-        timestamp: new Date().toISOString()
+        details: payload.action === 'disable'
+          ? 'Member disabled and seat released.'
+          : 'Member removed and seat released.'
       });
     },
     onSuccess: () => {
@@ -477,8 +503,7 @@ export function useUpdateTeamSettings(companyId: string | null) {
         action: 'SETTING_UPDATED',
         category: 'config',
         target: 'Team Policies',
-        details: `Settings updated: ${Object.keys(payload).join(', ')}`,
-        timestamp: new Date().toISOString()
+        details: `Settings updated: ${Object.keys(payload).join(', ')}`
       });
 
       return data;

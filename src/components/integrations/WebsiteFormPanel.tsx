@@ -81,7 +81,6 @@ export function WebsiteFormPanel({ companyId }: WebsiteFormPanelProps) {
         category: 'integration',
         target: 'Website Forms',
         details: `Form test: ${previewName} (${previewPhone})`,
-        timestamp: new Date().toISOString(),
       });
 
       toast.success('🎉 Test lead created from form simulator!');

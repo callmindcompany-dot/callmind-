@@ -44,8 +44,7 @@ export function useRoutingConfig({ companyId, initialConfig, saveMutation }: Use
               category: 'config',
               target: 'Lead Routing',
               details: `Routing: ${assignmentRule}. Exclude inactive: ${excludeInactive}. Overflow: ${overflowHours}h.`,
-              timestamp: new Date().toISOString(),
-            });
+                          });
           }
         },
       }
@@ -66,8 +65,7 @@ export function useRoutingConfig({ companyId, initialConfig, saveMutation }: Use
               category: 'config',
               target: 'Lead Routing',
               details: `Quick toggle to ${rule}`,
-              timestamp: new Date().toISOString(),
-            });
+                          });
           }
         },
       }

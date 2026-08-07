@@ -265,7 +265,7 @@ export const CallsPage = ({ onBack, onTabChange }: { onBack?: () => void, onTabC
     }
     setIsGeneratingDraft(true);
     try {
-      const idToken = user && typeof user.getIdToken === 'function' ? await user.getIdToken() : null;
+      const idToken = (await supabase.auth.getSession()).data.session?.access_token ?? null;
       const targetName = call.leadName || 'Customer';
       const summaryContext = call.aiSummary || 'recent outbound inquiry discussion';
       const response = await fetch('/api/ai/generate', {
@@ -337,7 +337,6 @@ export const CallsPage = ({ onBack, onTabChange }: { onBack?: () => void, onTabC
           target_id: payload.leadId,
           user_name: user?.displayName || user?.email || 'System',
           user_email: user?.email || '',
-          timestamp: new Date().toISOString(),
           details: `Manual follow-up callback scheduled for ${payload.leadName}`
         });
     },
