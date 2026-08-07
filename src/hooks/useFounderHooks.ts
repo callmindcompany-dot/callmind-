@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabaseClient';
+import { founderRequest } from './useOrganizationTenants';
 import { 
   CompanyStats, 
   PlatformStats, 
@@ -112,23 +113,22 @@ export function useFounderTickets(params: UseFounderTicketsParams = {}) {
   const ticketsQuery = useQuery<SupportTicket[]>({
     queryKey: ['founder_tickets', { search, status, priority }],
     queryFn: async () => {
-      let query = supabase
-        .from('support_tickets')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Through /api/founder, not Supabase directly.
+      //
+      // This selected every support_tickets row with no company filter, which
+      // only worked because the table had a FOR ALL USING (true) policy -- so
+      // any customer could read every other customer's tickets from devtools.
+      // 20260814000000 scopes the table, and the cross-tenant read now happens
+      // on the server behind the INTERNAL_TEAM_EMAILS allow-list.
+      const params = new URLSearchParams();
+      if (status && status !== 'All') params.set('status', status);
+      if (priority && priority !== 'All') params.set('priority', priority);
 
-      if (status && status !== 'All') {
-        query = query.eq('status', status.toLowerCase());
-      }
+      const data = await founderRequest<{ tickets: SupportTicket[] }>(
+        `/api/founder/support-tickets?${params.toString()}`
+      );
 
-      if (priority && priority !== 'All') {
-        query = query.eq('priority', priority.toLowerCase());
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      let filtered = (data || []) as SupportTicket[];
+      let filtered = (data.tickets || []) as SupportTicket[];
 
       if (search) {
         const lowerSearch = search.toLowerCase();
@@ -147,14 +147,10 @@ export function useFounderTickets(params: UseFounderTicketsParams = {}) {
   // Toggle ticket status mutation
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ ticketId, currentStatus }: { ticketId: string; currentStatus: 'open' | 'closed' }) => {
-      const nextStatus = currentStatus === 'open' ? 'closed' : 'open';
-      const { error } = await supabase
-        .from('support_tickets')
-        .update({ status: nextStatus, updated_at: new Date().toISOString() })
-        .eq('id', ticketId);
-
-      if (error) throw error;
-      return { ticketId, nextStatus };
+      return founderRequest<{ ticketId: string; nextStatus: 'open' | 'closed' }>(
+        `/api/founder/support-tickets/${encodeURIComponent(ticketId)}/status`,
+        { method: 'PATCH', body: JSON.stringify({ currentStatus }) }
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['founder_tickets'] });
@@ -164,13 +160,11 @@ export function useFounderTickets(params: UseFounderTicketsParams = {}) {
   // Delete ticket mutation
   const deleteMutation = useMutation({
     mutationFn: async (ticketId: string) => {
-      const { error, count } = await supabase
-        .from('support_tickets')
-        .delete({ count: 'exact' })
-        .eq('id', ticketId);
-
-      if (error) throw error;
-      if (!count) throw new Error('Nothing was deleted — the record may already be gone.');
+      const { deleted } = await founderRequest<{ deleted: number }>(
+        `/api/founder/support-tickets/${encodeURIComponent(ticketId)}`,
+        { method: 'DELETE' }
+      );
+      if (!deleted) throw new Error('Nothing was deleted — the record may already be gone.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['founder_tickets'] });
@@ -180,12 +174,10 @@ export function useFounderTickets(params: UseFounderTicketsParams = {}) {
   // Bulk update status mutation
   const bulkUpdateStatusMutation = useMutation({
     mutationFn: async ({ ticketIds, nextStatus }: { ticketIds: string[]; nextStatus: 'open' | 'closed' }) => {
-      const { error } = await supabase
-        .from('support_tickets')
-        .update({ status: nextStatus, updated_at: new Date().toISOString() })
-        .in('id', ticketIds);
-
-      if (error) throw error;
+      await founderRequest('/api/founder/support-tickets/bulk-status', {
+        method: 'PATCH',
+        body: JSON.stringify({ ticketIds, nextStatus })
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['founder_tickets'] });
@@ -196,13 +188,11 @@ export function useFounderTickets(params: UseFounderTicketsParams = {}) {
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ticketIds: string[]) => {
       if (ticketIds.length === 0) return;
-      const { error, count } = await supabase
-        .from('support_tickets')
-        .delete({ count: 'exact' })
-        .in('id', ticketIds);
-
-      if (error) throw error;
-      if (!count) throw new Error('Nothing was deleted — the records may already be gone.');
+      const { deleted } = await founderRequest<{ deleted: number }>(
+        '/api/founder/support-tickets/bulk-delete',
+        { method: 'POST', body: JSON.stringify({ ticketIds }) }
+      );
+      if (!deleted) throw new Error('Nothing was deleted — the records may already be gone.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['founder_tickets'] });
@@ -212,12 +202,10 @@ export function useFounderTickets(params: UseFounderTicketsParams = {}) {
   // Update internal notes mutation
   const updateNotesMutation = useMutation({
     mutationFn: async ({ ticketId, notes }: { ticketId: string; notes: string }) => {
-      const { error } = await supabase
-        .from('support_tickets')
-        .update({ internal_notes: notes, updated_at: new Date().toISOString() })
-        .eq('id', ticketId);
-
-      if (error) throw error;
+      await founderRequest(`/api/founder/support-tickets/${encodeURIComponent(ticketId)}/notes`, {
+        method: 'PATCH',
+        body: JSON.stringify({ notes })
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['founder_tickets'] });

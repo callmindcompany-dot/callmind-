@@ -13,7 +13,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { supabase } from '@/supabaseClient';
-import { useOrganizationTenants } from '@/hooks/useOrganizationTenants';
+import { useOrganizationTenants, founderFetch, tenantQueryParams } from '@/hooks/useOrganizationTenants';
 import { toast } from 'react-hot-toast';
 
 export const OrganizationTenants = ({ onBack }: { onBack: () => void }) => {
@@ -65,23 +65,19 @@ export const OrganizationTenants = ({ onBack }: { onBack: () => void }) => {
   // CSV Export utility
   const handleExportCSV = async () => {
     try {
-      let query = supabase
-        .from('organization_tenants_view')
-        .select('*');
+      // Through the server for the same reason the list is: the view is
+      // security_invoker now, so a direct read returns only this operator's own
+      // company. /api/founder checks INTERNAL_TEAM_EMAILS and reads as service
+      // role.
+      const params = tenantQueryParams(debouncedSearchQuery, filterPlan, filterStatus);
+      const res = await founderFetch(`/api/founder/tenants/export?${params.toString()}`);
 
-      if (debouncedSearchQuery.trim()) {
-        query = query.ilike('name', `%${debouncedSearchQuery.trim()}%`);
-      }
-      if (filterPlan && filterPlan !== 'all') {
-        query = query.eq('plan', filterPlan);
-      }
-      if (filterStatus && filterStatus !== 'all') {
-        query = query.eq('status', filterStatus);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Export failed (${res.status})`);
       }
 
-      const { data: allData, error: queryError } = await query.order('name', { ascending: true });
-      
-      if (queryError) throw queryError;
+      const allData = (await res.json()).tenants as any[] | undefined;
 
       if (!allData || allData.length === 0) {
         toast.error('No tenant data to export.');

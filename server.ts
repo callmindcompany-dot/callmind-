@@ -26,6 +26,7 @@ import documentsRouter from "./src/routes/documents";
 import slaRouter from "./src/routes/sla";
 import { integrationHealthRouter } from "./src/routes/integrationHealth";
 import { whatsappInboxRouter } from "./src/routes/whatsappInbox";
+import founderRouter from "./src/routes/founder";
 import { supabaseAdmin } from "./src/lib/dbAdapter";
 
 const __filename_resolved = typeof import.meta !== "undefined" && import.meta.url ? fileURLToPath(import.meta.url) : "";
@@ -169,6 +170,9 @@ async function startServer() {
   app.use('/api/sla', slaRouter);
   app.use('/api/integration-health', integrationHealthRouter);
   app.use('/api/whatsapp', whatsappInboxRouter);
+  // Cross-tenant reads for the Founder Hub. The router guards itself with the
+  // INTERNAL_TEAM_EMAILS allow-list — server.ts mounts no global auth.
+  app.use('/api/founder', founderRouter);
 
   // Health check endpoint
   app.get("/api/health", async (req, res) => {
