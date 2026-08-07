@@ -69,6 +69,7 @@ import { ConfirmDialog } from './src/screens/137_ConfirmDialogs';
 // Priority 3 & New Redesigned Screens
 import { ThemeToggleScreen } from './src/screens/81_ThemeToggleScreen';
 import { AboutAppScreen } from './src/screens/83_AboutAppScreen';
+import type { LegalSlug } from './src/config/legal';
 import { PrivacyTermsWebView } from './src/screens/84_PrivacyTermsWebView';
 import { DeviceVerificationModal } from './src/screens/90_DeviceVerificationModal';
 import { CompanyJoinedSuccess } from './src/screens/17_CompanyJoinedSuccess';
@@ -168,7 +169,7 @@ function MainAppContent() {
 
   // Priority 3 Overlays & States
   const [showDeviceVerification, setShowDeviceVerification] = useState(false);
-  const [legalDocType, setLegalDocType] = useState<'privacy' | 'terms'>('privacy');
+  const [legalDocType, setLegalDocType] = useState<LegalSlug>('privacy');
   const [checkingApproval, setCheckingApproval] = useState(false);
 
   // Real Database Leads State
@@ -573,6 +574,10 @@ function MainAppContent() {
             }}
             onOpenTerms={() => {
               setLegalDocType('terms');
+              setCurrentScreen('privacy_terms');
+            }}
+            onOpenRefund={() => {
+              setLegalDocType('refund');
               setCurrentScreen('privacy_terms');
             }}
           />

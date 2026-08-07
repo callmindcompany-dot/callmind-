@@ -201,8 +201,11 @@ export function useAgentCallsQuery(companyId: string | null, agentId: string | n
           startTime,
           outcome: c.outcome || 'No Answer',
           status: outcomeStatus as CallRecord['status'],
-          // The column exists and was being discarded, so no recording ever
-          // reached the UI even when one had been stored.
+          // The column was being discarded rather than passed through. Nothing
+          // currently writes it -- the product does not record audio -- so this
+          // reads as null today and the row shows "No recording". Wired anyway,
+          // because discarding a column the UI already had a control for is how
+          // the dead play button came about.
           recordingUrl: c.recording_url ?? undefined,
           timestamp: c.timestamp || ''
         };

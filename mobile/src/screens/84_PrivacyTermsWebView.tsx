@@ -1,174 +1,209 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { ArrowLeft, ShieldCheck } from 'lucide-react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Linking,
+  ActivityIndicator,
+} from 'react-native';
+import { ArrowLeft, ShieldCheck, ExternalLink, Check } from 'lucide-react-native';
+import { supabase } from '../services/supabase';
+import { LEGAL_DOCUMENTS, LEGAL_SLUGS, ENTITY, type LegalSlug } from '../config/legal';
+
+/**
+ * The legal documents, in the app.
+ *
+ * This screen used to carry its own copy of the text — a fourth version, which
+ * disagreed with the three on the web. It described call-log and contacts
+ * permissions the app does not request, said nothing about the location it does
+ * collect at attendance, named the operator as "CallMind Technologies Inc."
+ * while placing jurisdiction in Pune, and pointed at support@callmind.ai, which
+ * is not our address.
+ *
+ * It also had no refund policy tab, and its "I Accept" button called onBack and
+ * recorded nothing, while the web app has a user_acceptances table and a
+ * re-acceptance flow built on it.
+ *
+ * The words now come from src/config/legal.ts, generated into
+ * mobile/src/config/legal.ts. The full version is also linked on the web, which
+ * is what the Play Store listing points at.
+ */
 
 interface PrivacyTermsWebViewProps {
-  type?: 'privacy' | 'terms';
+  type?: LegalSlug;
   onBack: () => void;
+  /** Set when the screen is shown to obtain acceptance rather than to inform. */
+  requireAcceptance?: boolean;
+  onAccepted?: () => void;
 }
 
-export const PrivacyTermsWebView: React.FC<PrivacyTermsWebViewProps> = ({ type = 'privacy', onBack }) => {
-  const [activeTab, setActiveTab] = useState<'privacy' | 'terms'>(type);
+export const PrivacyTermsWebView: React.FC<PrivacyTermsWebViewProps> = ({
+  type = 'privacy',
+  onBack,
+  requireAcceptance = false,
+  onAccepted,
+}) => {
+  const [activeTab, setActiveTab] = useState<LegalSlug>(type);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState(false);
+
+  const doc = LEGAL_DOCUMENTS[activeTab];
+
+  const formattedDate = new Date(doc.effectiveDate).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  /**
+   * Records the acceptance against the version that was on screen.
+   *
+   * The button used to just close the screen. user_acceptances is what
+   * useLegalCompliance checks to decide whether a user must re-accept after a
+   * document changes, so an acceptance that writes nothing means the user is
+   * asked again on every sign-in — or, worse, is treated as having agreed to
+   * something no record exists of.
+   */
+  const handleAccept = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const user = data?.session?.user;
+      if (!user) throw new Error('You are signed out. Sign in and try again.');
+
+      const rows = LEGAL_SLUGS.map((slug) => ({
+        user_id: user.id,
+        company_id: (user.app_metadata as Record<string, unknown> | undefined)?.company_id ?? null,
+        page_slug: slug,
+        version: LEGAL_DOCUMENTS[slug].version,
+        accepted_at: new Date().toISOString(),
+      }));
+
+      const { error: insertError } = await supabase.from('user_acceptances').insert(rows);
+      if (insertError) throw insertError;
+
+      setAccepted(true);
+      onAccepted?.();
+      onBack();
+    } catch (e: unknown) {
+      // Shown, not swallowed. If the record did not save, the user should not
+      // be told it did.
+      setError(e instanceof Error ? e.message : 'Could not save your acceptance.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openOnWeb = () => {
+    Linking.openURL(`${ENTITY.website}/legal/${activeTab}`).catch(() =>
+      setError('Could not open the browser.'),
+    );
+  };
 
   return (
     <View style={styles.container}>
-      {/* Top Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
+        <TouchableOpacity style={styles.iconBtn} onPress={onBack} accessibilityLabel="Go back">
           <ArrowLeft size={20} color="#0f172a" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Privacy & Terms</Text>
-        <TouchableOpacity style={styles.iconBtn}>
-          <ShieldCheck size={20} color="#2563eb" />
+        <Text style={styles.headerTitle}>Legal</Text>
+        <TouchableOpacity style={styles.iconBtn} onPress={openOnWeb} accessibilityLabel="Open on the web">
+          <ExternalLink size={18} color="#2563eb" />
         </TouchableOpacity>
       </View>
 
-      {/* Filter Tabs */}
       <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tabChip, activeTab === 'privacy' && styles.tabChipActive]}
-          onPress={() => setActiveTab('privacy')}
-        >
-          <Text style={[styles.tabText, activeTab === 'privacy' && styles.tabTextActive]}>
-            Privacy Policy
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tabChip, activeTab === 'terms' && styles.tabChipActive]}
-          onPress={() => setActiveTab('terms')}
-        >
-          <Text style={[styles.tabText, activeTab === 'terms' && styles.tabTextActive]}>
-            Terms of Service
-          </Text>
-        </TouchableOpacity>
+        {LEGAL_SLUGS.map((slug) => (
+          <TouchableOpacity
+            key={slug}
+            style={[styles.tabChip, activeTab === slug && styles.tabChipActive]}
+            onPress={() => setActiveTab(slug)}
+          >
+            <Text style={[styles.tabText, activeTab === slug && styles.tabTextActive]}>
+              {slug === 'privacy' ? 'Privacy' : slug === 'terms' ? 'Terms' : 'Refunds'}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
-          <Text style={styles.lastUpdated}>Last Updated: 29 July 2026</Text>
+          <Text style={styles.docTitle}>{doc.title}</Text>
+          <Text style={styles.lastUpdated}>
+            Version {doc.version} · Last updated {formattedDate}
+          </Text>
+          <Text style={styles.summary}>{doc.summary}</Text>
 
-          {activeTab === 'privacy' ? (
-            <View style={styles.policyBlock}>
-              <Text style={styles.sectionHeading}>1. Information Collection & Usage</Text>
-              <Text style={styles.paragraph}>
-                CallMind collects telecalling logs (call duration, timestamp, recipient masked phone numbers) to allow business owners to monitor attendance and lead pipeline progress. We only collect data necessary to enable telecalling workflow management.
-              </Text>
-
-              <Text style={styles.sectionHeading}>2. Call Log & Contact Permissions</Text>
-              <Text style={styles.paragraph}>
-                Permissions are exclusively requested to detect call outcomes, auto-log durations, and allow instant dialing without leaving the CallMind interface. Contacts accessed on your device are never uploaded or shared with external parties.
-              </Text>
-
-              <Text style={styles.sectionHeading}>3. Data Security & Encryption</Text>
-              <Text style={styles.paragraph}>
-                All lead data and call metadata is encrypted in transit via TLS 1.3 / SSL and stored in enterprise PostgreSQL databases protected with Row Level Security (RLS) policies.
-              </Text>
-
-              <Text style={styles.sectionHeading}>4. Third-Party Data Sharing</Text>
-              <Text style={styles.paragraph}>
-                We do not sell, rent, or monetize your personal or workspace data. Data is only shared with authorized infrastructure providers (such as Supabase for database storage and Google OAuth for authentication) under strict confidentiality agreements.
-              </Text>
-
-              <Text style={styles.sectionHeading}>5. Data Retention & Deletion</Text>
-              <Text style={styles.paragraph}>
-                Call logs and profile data are retained for the duration of your workspace subscription. Upon workspace termination or explicit account deletion request, your data will be permanently purged within 30 days.
-              </Text>
-
-              <Text style={styles.sectionHeading}>6. User Rights (GDPR & Indian IT Act)</Text>
-              <Text style={styles.paragraph}>
-                Under the Information Technology Act 2000 (India) and applicable global privacy regulations, users retain the right to access, rectify, or request deletion of their personal data maintained in the CallMind platform.
-              </Text>
-
-              <Text style={styles.sectionHeading}>7. Cookies & Local Storage</Text>
-              <Text style={styles.paragraph}>
-                The CallMind mobile app uses secure local storage (AsyncStorage) solely to persist session authentication tokens and offline call queues.
-              </Text>
-
-              <Text style={styles.sectionHeading}>8. Protection of Children's Privacy</Text>
-              <Text style={styles.paragraph}>
-                CallMind is a B2B enterprise telecalling platform intended strictly for professional business use. We do not knowingly collect personal data from individuals under 18 years of age.
-              </Text>
-
-              <Text style={styles.sectionHeading}>9. Policy Amendments</Text>
-              <Text style={styles.paragraph}>
-                We may update this Privacy Policy from time to time. Any material changes will be communicated through in-app announcements or direct email notification to workspace administrators.
-              </Text>
-
-              <Text style={styles.sectionHeading}>10. Contact Information & Support</Text>
-              <Text style={styles.paragraph}>
-                If you have any privacy questions or requests regarding your data, please contact our Data Protection Office at support@callmind.ai.
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.policyBlock}>
-              <Text style={styles.sectionHeading}>1. User Authorization & Eligibility</Text>
-              <Text style={styles.paragraph}>
-                The CallMind mobile application is provided exclusively for authorized telecallers affiliated with an active business workspace subscription. Admin and founder accounts must access management functions via the web dashboard.
-              </Text>
-
-              <Text style={styles.sectionHeading}>2. Acceptable Use Policy</Text>
-              <Text style={styles.paragraph}>
-                You agree to use CallMind in compliance with all local laws and telecommunication regulations (NDNC / DND registries). Unsolicited spam, harassing calls, or inappropriate behavior towards lead contacts is strictly prohibited.
-              </Text>
-
-              <Text style={styles.sectionHeading}>3. Prohibited Activities</Text>
-              <Text style={styles.paragraph}>
-                Users are explicitly barred from attempting to reverse-engineer the mobile application, scraping lead datasets, bypassing role-based access controls, or sharing credentials with unauthorized third parties.
-              </Text>
-
-              <Text style={styles.sectionHeading}>4. Account Suspension & Termination</Text>
-              <Text style={styles.paragraph}>
-                CallMind reserves the right to immediately suspend or terminate accounts engaging in fraudulent activities, policy violations, or non-payment of workspace subscription fees.
-              </Text>
-
-              <Text style={styles.sectionHeading}>5. Intellectual Property Rights</Text>
-              <Text style={styles.paragraph}>
-                All brand marks, design assets, software algorithms, and UI interfaces of CallMind are the exclusive intellectual property of CallMind Technologies Inc.
-              </Text>
-
-              <Text style={styles.sectionHeading}>6. Limitation of Liability</Text>
-              <Text style={styles.paragraph}>
-                CallMind shall not be liable for indirect, incidental, or consequential damages arising out of telecommunication network disruptions, device hardware incompatibilities, or carrier signal failures.
-              </Text>
-
-              <Text style={styles.sectionHeading}>7. Disclaimer of Warranties</Text>
-              <Text style={styles.paragraph}>
-                The service is provided "AS IS" and "AS AVAILABLE" without warranties of any kind, express or implied, including merchantability or fitness for a specific telecalling outcome.
-              </Text>
-
-              <Text style={styles.sectionHeading}>8. Indemnification Clause</Text>
-              <Text style={styles.paragraph}>
-                You agree to indemnify and hold harmless CallMind, its officers, employees, and affiliates from any claims or legal expenses resulting from your violation of telecommunication rules or customer privacy regulations.
-              </Text>
-
-              <Text style={styles.sectionHeading}>9. Governing Law & Jurisdiction</Text>
-              <Text style={styles.paragraph}>
-                These Terms shall be governed by and construed in accordance with the laws of India. Courts in Pune, Maharashtra shall have exclusive jurisdiction over any legal proceedings.
-              </Text>
-
-              <Text style={styles.sectionHeading}>10. Dispute Resolution & Amendments</Text>
-              <Text style={styles.paragraph}>
-                Any disputes arising under these Terms shall first be attempted to be resolved through amicable negotiation. We reserve the right to amend these Terms at any time by posting updated terms in the app.
-              </Text>
-            </View>
-          )}
+          <View style={styles.policyBlock}>
+            {doc.sections.map((section, index) => (
+              <View key={section.id} style={styles.section}>
+                <Text style={styles.sectionHeading}>
+                  {index + 1}. {section.title}
+                </Text>
+                {section.body.map((paragraph, i) => (
+                  <Text key={i} style={styles.paragraph}>
+                    {paragraph}
+                  </Text>
+                ))}
+                {section.bullets?.map((bullet, i) => (
+                  <Text key={`b${i}`} style={styles.bullet}>
+                    {'•'}  {bullet}
+                  </Text>
+                ))}
+              </View>
+            ))}
+          </View>
         </View>
 
-        <TouchableOpacity style={styles.acceptBtn} onPress={onBack}>
-          <Text style={styles.acceptText}>I Accept Privacy Terms</Text>
+        <TouchableOpacity style={styles.webLink} onPress={openOnWeb}>
+          <ExternalLink size={14} color="#2563eb" />
+          <Text style={styles.webLinkText}>Read the full version on {ENTITY.website.replace('https://', '')}</Text>
         </TouchableOpacity>
+
+        {error && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {/* Only shown when the screen is asking for consent. Previously it was
+            always there, and always did nothing. */}
+        {requireAcceptance && (
+          <TouchableOpacity
+            style={[styles.acceptBtn, (saving || accepted) && styles.acceptBtnDisabled]}
+            onPress={handleAccept}
+            disabled={saving || accepted}
+          >
+            {saving ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <>
+                {accepted && <Check size={16} color="#ffffff" />}
+                <Text style={styles.acceptText}>
+                  {accepted ? 'Accepted' : 'I accept all three documents'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.footer}>
+          <ShieldCheck size={13} color="#94a3b8" />
+          <Text style={styles.footerText}>
+            {ENTITY.brand} is operated by {ENTITY.proprietor}.
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    paddingTop: 50,
-  },
+  container: { flex: 1, backgroundColor: '#ffffff', paddingTop: 50 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -176,11 +211,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
   iconBtn: {
     width: 40,
     height: 40,
@@ -191,12 +222,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f1f5f9',
   },
-  tabsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 8,
-    marginBottom: 16,
-  },
+  tabsContainer: { flexDirection: 'row', paddingHorizontal: 20, gap: 8, marginBottom: 16 },
   tabChip: {
     flex: 1,
     paddingVertical: 10,
@@ -204,65 +230,67 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
     alignItems: 'center',
   },
-  tabChipActive: {
-    backgroundColor: '#2563eb',
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#64748b',
-  },
-  tabTextActive: {
-    color: '#ffffff',
-    fontWeight: '700',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-  },
+  tabChipActive: { backgroundColor: '#2563eb' },
+  tabText: { fontSize: 13, fontWeight: '600', color: '#64748b' },
+  tabTextActive: { color: '#ffffff', fontWeight: '700' },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginBottom: 20,
-  },
-  lastUpdated: {
-    fontSize: 12,
-    color: '#94a3b8',
-    fontWeight: '600',
     marginBottom: 16,
   },
-  policyBlock: {
-    gap: 16,
-  },
-  sectionHeading: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0f172a',
-    marginTop: 4,
-  },
-  paragraph: {
+  docTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a', marginBottom: 4 },
+  lastUpdated: { fontSize: 12, color: '#94a3b8', fontWeight: '600', marginBottom: 10 },
+  summary: {
     fontSize: 13,
     color: '#475569',
     lineHeight: 20,
-    fontWeight: '500',
+    fontWeight: '600',
+    marginBottom: 18,
   },
+  policyBlock: { gap: 20 },
+  section: { gap: 8 },
+  sectionHeading: { fontSize: 15, fontWeight: '800', color: '#0f172a' },
+  paragraph: { fontSize: 13, color: '#475569', lineHeight: 20, fontWeight: '500' },
+  bullet: { fontSize: 13, color: '#475569', lineHeight: 20, fontWeight: '500', paddingLeft: 4 },
+  webLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    marginBottom: 12,
+  },
+  webLinkText: { fontSize: 13, fontWeight: '700', color: '#2563eb' },
+  errorBox: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: { fontSize: 12, color: '#b91c1c', fontWeight: '600' },
   acceptBtn: {
     backgroundColor: '#2563eb',
     paddingVertical: 18,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
-  acceptText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
+  acceptBtnDisabled: { opacity: 0.6 },
+  acceptText: { color: '#ffffff', fontSize: 16, fontWeight: '700' },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingTop: 18,
   },
+  footerText: { fontSize: 11, color: '#94a3b8', fontWeight: '600' },
 });

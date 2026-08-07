@@ -5,9 +5,15 @@ interface AboutAppScreenProps {
   onBack: () => void;
   onOpenPrivacy: () => void;
   onOpenTerms: () => void;
+  onOpenRefund: () => void;
 }
 
-export const AboutAppScreen: React.FC<AboutAppScreenProps> = ({ onBack, onOpenPrivacy, onOpenTerms }) => {
+export const AboutAppScreen: React.FC<AboutAppScreenProps> = ({
+  onBack,
+  onOpenPrivacy,
+  onOpenTerms,
+  onOpenRefund,
+}) => {
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -33,7 +39,7 @@ export const AboutAppScreen: React.FC<AboutAppScreenProps> = ({ onBack, onOpenPr
               <Text style={styles.statusText}>Android 14 Ready</Text>
             </View>
             <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>Zero Audio Policy</Text>
+              <Text style={styles.statusText}>No audio recorded by this app</Text>
             </View>
           </View>
         </View>
@@ -47,6 +53,12 @@ export const AboutAppScreen: React.FC<AboutAppScreenProps> = ({ onBack, onOpenPr
           </TouchableOpacity>
           <TouchableOpacity style={styles.row} onPress={onOpenTerms}>
             <Text style={styles.rowTitle}>Terms of Service</Text>
+            <Text style={styles.arrow}>→</Text>
+          </TouchableOpacity>
+          {/* Razorpay and the Play Store both expect a reachable refund policy,
+              and there was no link to one anywhere in the app. */}
+          <TouchableOpacity style={styles.row} onPress={onOpenRefund}>
+            <Text style={styles.rowTitle}>Refund & Cancellation Policy</Text>
             <Text style={styles.arrow}>→</Text>
           </TouchableOpacity>
         </View>

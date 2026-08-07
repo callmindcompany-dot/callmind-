@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { COMPANY_NAME } from '../siteConfig';
 import { Phone, Mail, ShieldCheck, Linkedin, Instagram, Github } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -205,7 +206,7 @@ export const Footer = () => {
             </Link>
           </div>
           <div className="flex flex-col md:flex-row items-center gap-2 text-center">
-            <span>© {new Date().getFullYear()} Voolabs Technologies. CallMind is a product of Voolabs. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} {COMPANY_NAME}. All rights reserved.</span>
             <span className="hidden md:inline text-slate-700">·</span>
             <span>Pune, Nashik, Satara, Maharashtra, India</span>
           </div>
