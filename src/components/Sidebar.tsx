@@ -151,7 +151,6 @@ export const Sidebar = ({
     isTester, 
     hasFounderHubAccess,
     isGodMode, 
-    featureFlags, 
     trialDaysRemaining,
     resetTrial,
     profile
@@ -431,16 +430,18 @@ export const Sidebar = ({
     return filteredMenuItems.map((item) => {
       let isLocked = false;
       
-      if (item.phase?.includes('P2') || item.phase?.includes('P3')) {
-        const flagEnabled = item.flag && featureFlags[item.flag as keyof typeof featureFlags];
-        
-        if (isGodMode) {
-          isLocked = false;
-        } else {
-          isLocked = true;
-        }
-
-        if (item.phase?.includes('P3')) isLocked = true;
+      // P3 is unbuilt and stays locked to CallMind staff. P2 does not: those
+      // features are finished and the customer is paying for them.
+      //
+      // This used to lock both, and computed `flagEnabled` from
+      // featureFlags[item.flag] without ever reading it -- featureFlags comes
+      // from profile.featureFlags, a column no migration creates, so the lookup
+      // was doubly dead. The visible effect was that Sequences and Scheduler
+      // appeared only to god-mode accounts. The Scheduler is the follow-up
+      // queue in a telecalling CRM; hiding it from the people who make the
+      // calls was never the intent.
+      if (item.phase?.includes('P3')) {
+        isLocked = !isGodMode;
       }
 
       const routeMap: Record<string, string> = {

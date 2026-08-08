@@ -1,3 +1,8 @@
+-- Renamed from 20260817000000, which collided with
+-- 20260817000000_company_ai_toggle.sql. Two files at the same timestamp sort
+-- by filename, so they happened to run in a workable order -- but only by
+-- accident, and a runner that sorts differently would not.
+
 -- Scope leads to the agent they are assigned to.
 --
 -- The product rule, from the founder's own specification: "टेलिकॉलरला फक्त तेच

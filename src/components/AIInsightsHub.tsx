@@ -109,7 +109,7 @@ export const AIInsightsHub = () => {
   // profile.featureFlags -- a column no migration creates -- and the setter was
   // an empty function declared two lines above it. So the switch always
   // rendered off, and flipping it changed nothing. companies.ai_enabled is now
-  // real (20260817000000) and src/routes/ai.ts refuses the request when it is
+  // real (20260817000000_company_ai_toggle.sql) and src/routes/ai.ts refuses the request when it is
   // false, which is the half that matters: the browser is not what spends the
   // tokens.
   const [aiEnabled, setAiEnabled] = useState(true);

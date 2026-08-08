@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/AuthContext';
 import { useCompany } from '@/CompanyContext';
+import { supabase } from '@/supabaseClient';
 import { useSequences, useCreateSequence, useUpdateSequenceNodes, useToggleSequenceStatus, useDeleteSequence } from '@/hooks/useSequences';
 import { Sequence, SequenceNode, SequenceNodeType } from '@/types/sequences';
 import { toast } from 'react-hot-toast';
@@ -59,7 +60,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 export const SequencesPage = () => {
-  const { featureFlags } = useAuth();
+  const { } = useAuth();
   const { companyId } = useCompany();
   
   const [activeSequence, setActiveSequence] = useState<Sequence | null>(null);
@@ -67,7 +68,34 @@ export const SequencesPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newSeqName, setNewSeqName] = useState('');
 
-  const aiEnabled = featureFlags.aiEnabled;
+  // companies.ai_enabled, the same column AIInsightsHub's kill switch writes
+  // and src/routes/ai.ts enforces.
+  //
+  // This was `featureFlags.aiEnabled`, where featureFlags comes from
+  // profile.featureFlags -- a column no migration creates, so it is permanently
+  // {} and the flag was permanently undefined. The AI parts of the workflow
+  // builder were therefore always shown as unavailable, and turning the kill
+  // switch off on the AI page changed nothing here.
+  //
+  // Defaults to true while loading, matching AIInsightsHub: the browser is not
+  // what spends the tokens, and the route refuses the request when the column
+  // says no.
+  const [aiEnabled, setAiEnabled] = useState(true);
+
+  useEffect(() => {
+    if (!companyId) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('ai_enabled')
+        .eq('id', companyId)
+        .maybeSingle();
+      if (cancelled || error || !data) return;
+      setAiEnabled(data.ai_enabled !== false);
+    })();
+    return () => { cancelled = true; };
+  }, [companyId]);
 
   // React Query Fetch
   const { data: sequences = [], isLoading, isError, refetch } = useSequences(companyId);

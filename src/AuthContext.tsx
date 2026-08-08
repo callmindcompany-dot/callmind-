@@ -39,7 +39,6 @@ export interface UserProfile {
   trialExtensionCount?: number;
   accountStatus?: "trial" | "active" | "paused" | "deleted";
   dataRetentionDate?: any;
-  featureFlags?: Record<string, boolean>;
   createdAt?: any;
   updatedAt?: any;
   [key: string]: any;
@@ -94,7 +93,6 @@ interface AuthContextType {
   accountStatus: string;
   hasExpiredTrial: boolean;
   trialDaysRemaining: number;
-  featureFlags: Record<string, boolean>;
   resetTrial: () => Promise<void>;
   refreshTrialStatus: () => Promise<void>;
 }
@@ -616,7 +614,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   }, [isGodMode, trialEndsAt, trialApiStatus]);
 
-  const featureFlags = profileWithOverrides?.featureFlags || {};
+  // featureFlags is gone. It read profile.featureFlags, and no migration
+  // creates that column -- so it was permanently {} and every flag read from it
+  // was permanently undefined. Three screens gated themselves on it: the
+  // Scheduler hid itself from every telecaller behind a message telling them to
+  // ask an admin to enable it, and Sequences and AI Insights showed their AI
+  // parts as unavailable regardless of the real setting. The kill switch that
+  // does work reads companies.ai_enabled.
   const isReady = initialized && (!user || (user && !profileLoading));
 
   const value = useMemo(
@@ -656,7 +660,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       accountStatus,
       hasExpiredTrial,
       trialDaysRemaining,
-      featureFlags,
       resetTrial,
       refreshTrialStatus,
       canAccessSequences,
