@@ -13,6 +13,7 @@ import { attendanceService, FormattedAttendanceDay } from './src/services/attend
 import { targetService, TelecallerStats } from './src/services/targetService';
 import { callLogService } from './src/services/callLogService';
 import { callbackService } from './src/services/callbackService';
+import { appLockService, IDLE_LOCK_MS } from './src/services/appLockService';
 import { LeadItem } from './src/screens/LeadListScreen';
 import { CallLogItem } from './src/screens/54_CallLogScreen';
 import { CallbackItem } from './src/screens/CallbacksScreen';
@@ -48,6 +49,7 @@ import { VoiceNotesModal } from './src/screens/68_VoiceNotesModal';
 import { AppPermissionsScreen } from './src/screens/11_AppPermissionsScreen';
 import { LanguageSelectionScreen } from './src/screens/10_LanguageSelectionScreen';
 import { BiometricLockScreen } from './src/screens/86_BiometricLockScreen';
+import { SetPinScreen } from './src/screens/87_SetPinScreen';
 import { OfflineSyncBanner } from './src/screens/91_OfflineSyncBanner';
 
 // Priority 1 Critical Screens
@@ -91,6 +93,7 @@ type AuthStep =
   | 'approval_pending';
 
 type AppScreen =
+  | 'set_pin'
   | 'home'
   | 'leads'
   | 'lead_detail'
@@ -140,6 +143,9 @@ function MainAppContent() {
   } = useMobileAuth();
 
   const [isAppLocked, setIsAppLocked] = useState(false);
+  // When the app was last backgrounded, so we can tell a glance at a
+  // notification from a phone left on a desk.
+  const backgroundedAtRef = useRef<number | null>(null);
   const [currentAuthStep, setCurrentAuthStep] = useState<AuthStep>('splash');
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('home');
   const [activeTab, setActiveTab] = useState<BottomTab>('home');
@@ -399,10 +405,34 @@ function MainAppContent() {
         setShowFeedback(true);
       }
 
+      // Idle lock.
+      //
+      // isAppLocked started false and nothing ever set it true, so the lock
+      // screen could not be reached in normal use — which is the only reason
+      // its hardcoded '1234' did no harm.
+      //
+      // Leaving for the dialer does not count. A telecaller is in and out of
+      // the phone app all day, and locking them out between calls would make
+      // the feature something they turn off.
+      if (nextState === 'background' || nextState === 'inactive') {
+        if (!awaitingDialerReturnRef.current) backgroundedAtRef.current = Date.now();
+      } else if (nextState === 'active' && backgroundedAtRef.current) {
+        const away = Date.now() - backgroundedAtRef.current;
+        backgroundedAtRef.current = null;
+        if (away >= IDLE_LOCK_MS) {
+          void appLockService.isLockEnabled().then((on) => { if (on) setIsAppLocked(true); });
+        }
+      }
+
       appStateRef.current = nextState;
     });
 
     return () => subscription.remove();
+  }, []);
+
+  // Lock on launch, if the agent turned it on. Checked once, on mount.
+  useEffect(() => {
+    void appLockService.isLockEnabled().then((on) => { if (on) setIsAppLocked(true); });
   }, []);
 
   // Has this user accepted the current version of each document?
@@ -619,6 +649,17 @@ function MainAppContent() {
           />
         );
 
+      case 'set_pin':
+        return (
+          <SetPinScreen
+            onBack={() => setCurrentScreen('settings')}
+            onDone={() => {
+              toastSuccess('App lock on', 'CallMind will lock after 30 minutes idle.');
+              setCurrentScreen('settings');
+            }}
+          />
+        );
+
       case 'about':
         return (
           <AboutAppScreen
@@ -781,6 +822,7 @@ function MainAppContent() {
           <SettingsScreen
             onBack={() => navigateToTab('home')}
             onNavigateToEditProfile={() => setCurrentScreen('profile_edit')}
+            onSetUpPin={() => setCurrentScreen('set_pin')}
             onLogout={() => {
               setConfirmDialog({
                 visible: true,

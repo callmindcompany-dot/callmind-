@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { appLockService } from '../services/appLockService';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { Edit2, RotateCcw, Moon, Globe, Fingerprint, Info, LogOut, Phone, Users, CheckCircle2, Clock, ChevronRight } from 'lucide-react-native';
 import { useMobileAuth } from '../services/AuthContext';
@@ -7,12 +8,42 @@ interface SettingsScreenProps {
   onBack: () => void;
   onLogout: () => void;
   onNavigateToEditProfile?: () => void;
+  /** Opens the PIN setup flow. Turning the lock on needs a PIN to turn it on with. */
+  onSetUpPin?: () => void;
 }
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onNavigateToEditProfile }) => {
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onNavigateToEditProfile, onSetUpPin }) => {
   const { user, profile } = useMobileAuth();
   const [darkMode, setDarkMode] = useState(false);
-  const [biometric, setBiometric] = useState(true);
+  // Read from SecureStore rather than assumed. This was `useState(true)`, so
+  // the switch showed "on" whether or not any lock existed — and toggling it
+  // changed a local variable and nothing else.
+  const [biometric, setBiometric] = useState(false);
+  const [lockBusy, setLockBusy] = useState(false);
+
+  useEffect(() => {
+    void appLockService.isLockEnabled().then(setBiometric);
+  }, []);
+
+  const handleToggleLock = async (next: boolean) => {
+    setLockBusy(true);
+    try {
+      if (!next) {
+        await appLockService.disableLock();
+        setBiometric(false);
+        return;
+      }
+      if (await appLockService.hasPin()) {
+        setBiometric(true);
+        return;
+      }
+      // No PIN yet. Biometrics alone is not enough — a device with no enrolled
+      // fingerprint would lock the agent out of their own app.
+      onSetUpPin?.();
+    } finally {
+      setLockBusy(false);
+    }
+  };
   const [isPunchedIn, setIsPunchedIn] = useState(true);
 
   const displayName = profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Telecaller';
@@ -164,11 +195,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onNavi
           <View style={styles.settingRow}>
             <View style={styles.settingRowLeft}>
               <Fingerprint size={18} color="#64748b" />
-              <Text style={styles.settingRowLabel}>Biometric Lock</Text>
+              <Text style={styles.settingRowLabel}>Lock app when idle</Text>
             </View>
             <Switch
               value={biometric}
-              onValueChange={setBiometric}
+              onValueChange={handleToggleLock}
+              disabled={lockBusy}
               trackColor={{ false: '#e2e8f0', true: '#86efac' }}
               thumbColor={biometric ? '#16a34a' : '#ffffff'}
             />

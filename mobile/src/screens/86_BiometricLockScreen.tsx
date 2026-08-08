@@ -1,30 +1,70 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Lock, Fingerprint } from 'lucide-react-native';
+import { appLockService } from '../services/appLockService';
 
 interface BiometricLockProps {
   onUnlock: () => void;
 }
 
+/**
+ * The PIN used to be the literal '1234', compared here in the component, and
+ * the alert on a wrong entry read "Please try again (Default PIN: 1234)" — it
+ * told whoever was holding the phone what to type. The biometric button called
+ * onUnlock directly without asking the OS anything.
+ *
+ * Verification now happens in appLockService against a salted hash in
+ * SecureStore, and the fingerprint button goes through expo-local-authentication.
+ */
 export const BiometricLockScreen: React.FC<BiometricLockProps> = ({ onUnlock }) => {
   const [pin, setPin] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [biometricsReady, setBiometricsReady] = useState(false);
 
-  const handleKeyPress = (num: string) => {
-    if (pin.length < 4) {
-      const nextPin = [...pin, num];
-      setPin(nextPin);
-      if (nextPin.length === 4) {
-        if (nextPin.join('') === '1234') {
-          onUnlock();
-        } else {
-          Alert.alert('Incorrect PIN', 'Please try again (Default PIN: 1234)');
-          setPin([]);
-        }
+  const tryBiometrics = useCallback(async () => {
+    if (!(await appLockService.biometricsAvailable())) return;
+    if (await appLockService.authenticateWithBiometrics()) onUnlock();
+  }, [onUnlock]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const available = await appLockService.biometricsAvailable();
+      if (cancelled) return;
+      setBiometricsReady(available);
+      // Offer the fingerprint straight away — an agent between calls should not
+      // have to reach for a button first.
+      if (available) void tryBiometrics();
+    })();
+    return () => { cancelled = true; };
+  }, [tryBiometrics]);
+
+  const handleKeyPress = async (num: string) => {
+    if (checking || pin.length >= 6) return;
+    const nextPin = [...pin, num];
+    setPin(nextPin);
+    setError(null);
+
+    // 4 is the common case; 5 and 6 are allowed, so only verify once it could
+    // be complete and let a longer PIN keep going.
+    if (nextPin.length < 4) return;
+
+    setChecking(true);
+    try {
+      if (await appLockService.verifyPin(nextPin.join(''))) {
+        onUnlock();
+      } else if (nextPin.length >= 6) {
+        setError('Incorrect PIN.');
+        setPin([]);
       }
+    } finally {
+      setChecking(false);
     }
   };
 
   const handleDelete = () => {
+    setError(null);
     setPin(pin.slice(0, -1));
   };
 
@@ -37,23 +77,23 @@ export const BiometricLockScreen: React.FC<BiometricLockProps> = ({ onUnlock }) 
         </View>
 
         <Text style={styles.heading}>CallMind Locked</Text>
-        <Text style={styles.subheading}>Enter your 4-digit security PIN or use Biometrics</Text>
+        <Text style={styles.subheading}>Enter your PIN{biometricsReady ? ' or use biometrics' : ''}</Text>
 
-        {/* PIN Dots */}
+        {/* PIN Dots — six, because the PIN may be 4 to 6 digits. */}
         <View style={styles.dotsRow}>
-          {[0, 1, 2, 3].map((i) => (
-            <View
-              key={i}
-              style={[styles.dot, pin.length > i && styles.dotFilled]}
-            />
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <View key={i} style={[styles.dot, pin.length > i && styles.dotFilled]} />
           ))}
         </View>
 
-        {/* Biometric Button */}
-        <TouchableOpacity style={styles.bioBtn} onPress={onUnlock}>
-          <Fingerprint size={18} color="#2563eb" />
-          <Text style={styles.bioText}>Use Fingerprint / Face ID</Text>
-        </TouchableOpacity>
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
+        {biometricsReady && (
+          <TouchableOpacity style={styles.bioBtn} onPress={tryBiometrics}>
+            <Fingerprint size={18} color="#2563eb" />
+            <Text style={styles.bioText}>Use fingerprint / Face ID</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Keypad */}
@@ -86,6 +126,7 @@ export const BiometricLockScreen: React.FC<BiometricLockProps> = ({ onUnlock }) 
 };
 
 const styles = StyleSheet.create({
+  errorText: { color: '#dc2626', fontSize: 13, fontWeight: '700', marginBottom: 12 },
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
