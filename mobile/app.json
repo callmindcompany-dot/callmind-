@@ -48,7 +48,8 @@
           "isAndroidForegroundServiceEnabled": false,
           "locationWhenInUsePermission": "CallMind uses your location only when you mark attendance, to record where you punched in."
         }
-      ]
+      ],
+      "expo-notifications"
     ]
   }
 }

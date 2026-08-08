@@ -14,6 +14,8 @@ import { targetService, TelecallerStats } from './src/services/targetService';
 import { callLogService } from './src/services/callLogService';
 import { callbackService } from './src/services/callbackService';
 import { appLockService, IDLE_LOCK_MS } from './src/services/appLockService';
+import { reminderService } from './src/services/reminderService';
+import * as Notifications from 'expo-notifications';
 import { LeadItem } from './src/screens/LeadListScreen';
 import { CallLogItem } from './src/screens/54_CallLogScreen';
 import { CallbackItem } from './src/screens/CallbacksScreen';
@@ -247,6 +249,13 @@ function MainAppContent() {
       toastError('Could not refresh everything', `${failed.join(', ')} did not load. Pull to retry.`);
     }
 
+    // Match the device's scheduled reminders to the follow-ups we just read.
+    // Only when the fetch succeeded -- syncing against an empty list because a
+    // query failed would cancel every reminder the agent has.
+    if (cbsR.status === 'fulfilled') {
+      void reminderService.sync(cbsR.value);
+    }
+
     setRefreshingSecondary(false);
   }, [profile?.companyId, profile?.uid]);
 
@@ -429,6 +438,25 @@ function MainAppContent() {
     });
 
     return () => subscription.remove();
+  }, []);
+
+  // Reminder permission, once the agent is actually using the app rather than
+  // at the splash screen — a permission prompt before anything is on screen is
+  // the one people refuse.
+  useEffect(() => {
+    if (isAuthenticated && isApproved) void reminderService.setUp();
+  }, [isAuthenticated, isApproved]);
+
+  // Tapping a reminder opens the follow-up list.
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as { screen?: string };
+      if (data?.screen === 'callbacks') {
+        setActiveTab('callbacks' as BottomTab);
+        setCurrentScreen('callbacks');
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   // Lock on launch, if the agent turned it on. Checked once, on mount.
@@ -973,6 +1001,10 @@ function MainAppContent() {
           confirmText="Sign Out"
           onConfirm={async () => {
             setConfirmDialog(null);
+            // Reminders are scheduled on the device, not the account. Without
+            // this the next person to sign in on the same phone gets alerts to
+            // call the previous agent's leads.
+            await reminderService.clearAll();
             await signOut();
             setCurrentAuthStep('google_auth');
           }}
