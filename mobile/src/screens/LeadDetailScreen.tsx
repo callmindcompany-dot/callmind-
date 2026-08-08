@@ -14,7 +14,8 @@ interface LeadDetailScreenProps {
 export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ leadId, lead: passedLead, onBack, onCall }) => {
   const lead = {
     name: passedLead?.name || 'Rahul Sharma',
-    phone: passedLead?.phone || '+91 98765 43210',
+    // A lead with no number shows that it has no number.
+    phone: passedLead?.phone || '',
     email: passedLead?.email || 'rahul.sharma@email.com',
     city: passedLead?.city || 'Pune, Maharashtra',
     source: passedLead?.comment || 'Facebook Ads',

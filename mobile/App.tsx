@@ -39,7 +39,6 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SubscriptionLockScreen } from './src/screens/SubscriptionLockScreen';
 
 // Phase 3 Screens & Overlays
-import { IncomingAssignedCallScreen } from './src/screens/37_IncomingAssignedCallScreen';
 import { AITalkScriptScreen } from './src/screens/67_AITalkScriptScreen';
 import { InboxScreen, Announcement } from './src/screens/59_InboxScreen';
 import { AnnouncementDetailScreen } from './src/screens/AnnouncementDetailScreen';
@@ -153,7 +152,6 @@ function MainAppContent() {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
   // Overlays & Offline
-  const [showIncomingCall, setShowIncomingCall] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showVoiceNote, setShowVoiceNote] = useState(false);
   const [isSubscriptionLocked, setIsSubscriptionLocked] = useState(false);
@@ -351,7 +349,10 @@ function MainAppContent() {
       agentId: profile.uid,
       leadId: activeCallingLead?.id,
       leadName: activeCallingLead?.name || callingLeadName || 'Lead',
-      phone: activeCallingLead?.phone || '+91 98765 43210',
+      // No placeholder. This wrote '+91 98765 43210' into calls.phone whenever
+      // the lead had no number, producing a call record to a number nobody had
+      // dialled -- the same invented number schedulerService used on the web.
+      phone: activeCallingLead?.phone ?? '',
       duration: callDuration,
       outcome: feedback.outcome,
       interest: feedback.interest,
@@ -917,25 +918,17 @@ function MainAppContent() {
       </View>
 
       {/* Overlays */}
-      {showIncomingCall && (
-        <IncomingAssignedCallScreen
-          leadName="New Lead Assigned"
-          leadPhone="+91 98765 43210"
-          leadSource="Meta Ads"
-          aiScore={92}
-          onAccept={() => {
-            setShowIncomingCall(false);
-            setCallingLeadName('New Lead');
-            setShowActiveCall(true);
-          }}
-          onDecline={() => setShowIncomingCall(false)}
-        />
-      )}
+      {/* IncomingAssignedCallScreen was rendered here with every value invented:
+          leadName "New Lead Assigned", phone "+91 98765 43210", source
+          "Meta Ads", aiScore 92. It was also unreachable -- showIncomingCall
+          started false and nothing ever set it true. It belongs to the push
+          notification path, which does not exist yet, so it renders nothing
+          rather than a demo. */}
 
       {showCallingScreen && (
         <CallingScreen
           leadName={callingLeadName || activeCallingLead?.name || 'Lead'}
-          leadPhone={activeCallingLead?.phone || '+91 98765 43210'}
+          leadPhone={activeCallingLead?.phone || 'No number on file'}
           sim="SIM 1"
           onCallConnected={() => {
             setShowCallingScreen(false);
@@ -952,7 +945,7 @@ function MainAppContent() {
       {showActiveCall && (
         <ActiveCallOverlay
           leadName={callingLeadName || activeCallingLead?.name || 'Lead'}
-          leadPhone={activeCallingLead?.phone || '+91 98765 43210'}
+          leadPhone={activeCallingLead?.phone || 'No number on file'}
           sim="SIM 1"
           onEndCall={() => {
             setShowActiveCall(false);

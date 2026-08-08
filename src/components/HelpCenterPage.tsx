@@ -91,7 +91,10 @@ export const HelpCenterPage = () => {
   }, [faqs, searchQuery, selectedCategory]);
 
   const supportEmail = settings?.support_email || 'support@callmind.company';
-  const supportWhatsapp = settings?.support_whatsapp || '919999999999';
+  // No fallback number. This defaulted to '919999999999', so a customer who
+  // tapped "WhatsApp support" before the setting was configured opened a chat
+  // with a stranger. The button is hidden instead.
+  const supportWhatsapp = settings?.support_whatsapp || null;
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,16 +232,21 @@ export const HelpCenterPage = () => {
             </button>
           </div>
 
-          {/* Direct Contact */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => window.open(`https://wa.me/${supportWhatsapp}?text=Hello%20CallMind%20Support`, '_blank')}
-              className="flex flex-col items-center justify-center p-5 bg-green-50/50 border border-green-100 hover:border-green-300 rounded-2xl transition-all group btn-tactile"
-            >
-              <Smartphone size={20} className="text-green-600 mb-2 group-hover:scale-110 transition-transform" />
-              <span className="text-xs font-black text-green-900">WhatsApp</span>
-              <span className="text-[9px] text-green-700 font-bold uppercase mt-0.5">Priority</span>
-            </button>
+          {/* Direct Contact.
+              The WhatsApp button is rendered only when a number is configured.
+              It used to fall back to '919999999999', so before anyone set one
+              it opened a chat with a stranger. */}
+          <div className={`grid gap-3 ${supportWhatsapp ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {supportWhatsapp && (
+              <button
+                onClick={() => window.open(`https://wa.me/${supportWhatsapp}?text=Hello%20CallMind%20Support`, '_blank')}
+                className="flex flex-col items-center justify-center p-5 bg-green-50/50 border border-green-100 hover:border-green-300 rounded-2xl transition-all group btn-tactile"
+              >
+                <Smartphone size={20} className="text-green-600 mb-2 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-black text-green-900">WhatsApp</span>
+                <span className="text-[9px] text-green-700 font-bold uppercase mt-0.5">Priority</span>
+              </button>
+            )}
             <button
               onClick={() => (window.location.href = `mailto:${supportEmail}?subject=Support%20Request`)}
               className="flex flex-col items-center justify-center p-5 bg-blue-50/50 border border-blue-100 hover:border-blue-300 rounded-2xl transition-all group btn-tactile"

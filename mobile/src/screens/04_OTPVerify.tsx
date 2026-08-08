@@ -32,7 +32,7 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({ phoneNumber, onVerify, onB
         <Text style={styles.heading}>Enter OTP</Text>
         <Text style={styles.subheading}>
           We have sent a 6-digit code to{'\n'}
-          <Text style={styles.phoneHighlight}>+91 {phoneNumber || '98765 43210'}</Text>
+          <Text style={styles.phoneHighlight}>{phoneNumber ? `+91 ${phoneNumber}` : 'your number'}</Text>
         </Text>
 
         {/* 6 OTP Input Boxes matching Reference UI Image 1 Screen 4 */}

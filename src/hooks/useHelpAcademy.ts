@@ -176,7 +176,9 @@ export function useCompanySupportSettings(companyId: string | null) {
         const defaultSettings = {
           company_id: companyId,
           support_email: 'support@callmind.company',
-          support_whatsapp: '919999999999'
+          // Left empty until the operator sets a real one; the UI hides the
+          // button rather than pointing it at an invented number.
+          support_whatsapp: null as string | null
         };
 
         const { data: inserted, error: insertError } = await supabase

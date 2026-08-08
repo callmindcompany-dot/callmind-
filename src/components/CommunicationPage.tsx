@@ -632,23 +632,25 @@ export const CommunicationPage: React.FC = () => {
       if (error) throw error;
 
       if (data?.success) {
-        setWaConnectionStatus('Connected! Phone: ' + (data.phone || '+919999999999'));
+        // No invented number. If the API connected but told us no number, say
+        // that rather than showing one nobody owns.
+        setWaConnectionStatus(data.phone ? `Connected — ${data.phone}` : 'Connected');
         toast.success('WhatsApp API connected successfully!');
       } else {
         setWaConnectionStatus('Invalid Token');
         toast.error('Connection failed: ' + (data?.message || 'Invalid Token'));
       }
     } catch (err: any) {
-      console.warn('Sandbox Edge Function fallback:', err);
-      setTimeout(() => {
-        if (metaToken.toLowerCase().includes('invalid') || metaToken.length < 15) {
-          setWaConnectionStatus('Invalid Token');
-          toast.error('Verification failed: Invalid Token');
-        } else {
-          setWaConnectionStatus('Connected! Phone: +919999999999');
-          toast.success('Demonstration API connected (Sandbox Simulation Mode).');
-        }
-      }, 1000);
+      // A failed verification used to report success.
+      //
+      // If the edge function threw, this branch guessed from the token's length
+      // whether to show "Invalid Token" or "Connected! Phone: +919999999999"
+      // with a success toast — so an outage, a network drop or a deploy error
+      // all told the customer their WhatsApp was connected, to a number nobody
+      // owns. Nothing had been verified.
+      console.error('[WhatsApp] Verification failed:', err);
+      setWaConnectionStatus('Could not verify');
+      toast.error(`Could not verify the token: ${err?.message || 'the connection check did not complete'}`);
     }
   };
 

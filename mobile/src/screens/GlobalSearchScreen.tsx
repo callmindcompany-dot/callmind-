@@ -28,7 +28,7 @@ export const GlobalSearchScreen: React.FC<GlobalSearchScreenProps> = ({
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [recentSearches, setRecentSearches] = useState<string[]>([
     'Rahul Sharma',
-    '9876543210',
+    '',  // was a hardcoded number in a demo result list
     'INV-101',
     'Follow up callback'
   ]);
