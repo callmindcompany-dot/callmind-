@@ -1,111 +1,151 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { Bell, MapPin, Fingerprint, Check, ShieldCheck } from 'lucide-react-native';
+import * as Location from 'expo-location';
+import { reminderService } from '../services/reminderService';
+import { appLockService } from '../services/appLockService';
 
 interface AppPermissionsProps {
   onContinue: () => void;
 }
 
-export const AppPermissionsScreen: React.FC<AppPermissionsProps> = ({ onContinue }) => {
-  const [permissions, setPermissions] = useState({
-    phone: true,
-    contacts: true,
-    notifications: true,
-    microphone: false,
-    camera: false,
-  });
+/**
+ * What the app asks for, and why.
+ *
+ * The previous version listed phone, contacts, notifications, microphone and
+ * camera, with phone and contacts switched on by default, under the heading
+ * "CallMind requires permissions to log call durations". The app requests none
+ * of phone, contacts, microphone or camera — they are not in app.json and no
+ * code touches them — so the screen described a different product, and one that
+ * contradicted the privacy policy, which says plainly that the app does not read
+ * your call log or your contacts.
+ *
+ * The toggles were also decorative: they flipped local state and never asked the
+ * operating system for anything.
+ *
+ * This lists the three permissions the app really uses, and asking is what the
+ * buttons do.
+ */
 
-  const togglePermission = (key: keyof typeof permissions) => {
-    setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
+type PermState = 'unknown' | 'granted' | 'denied' | 'unavailable';
+
+export const AppPermissionsScreen: React.FC<AppPermissionsProps> = ({ onContinue }) => {
+  const [notifications, setNotifications] = useState<PermState>('unknown');
+  const [location, setLocation] = useState<PermState>('unknown');
+  const [biometrics, setBiometrics] = useState<PermState>('unknown');
+  const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const available = await appLockService.biometricsAvailable();
+      if (!cancelled) setBiometrics(available ? 'granted' : 'unavailable');
+
+      const loc = await Location.getForegroundPermissionsAsync().catch(() => null);
+      if (!cancelled && loc) setLocation(loc.granted ? 'granted' : 'unknown');
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const askNotifications = async () => {
+    setBusy('notifications');
+    setNotifications((await reminderService.setUp()) ? 'granted' : 'denied');
+    setBusy(null);
   };
+
+  const askLocation = async () => {
+    setBusy('location');
+    try {
+      const { granted } = await Location.requestForegroundPermissionsAsync();
+      setLocation(granted ? 'granted' : 'denied');
+    } catch {
+      setLocation('denied');
+    }
+    setBusy(null);
+  };
+
+  const rows: {
+    key: string;
+    icon: React.ElementType;
+    title: string;
+    body: string;
+    state: PermState;
+    onPress?: () => void;
+  }[] = [
+    {
+      key: 'notifications',
+      icon: Bell,
+      title: 'Notifications',
+      body: 'So the phone tells you when a follow-up is due. Without this, you have to remember to open the app and check.',
+      state: notifications,
+      onPress: askNotifications,
+    },
+    {
+      key: 'location',
+      icon: MapPin,
+      title: 'Location — only at attendance',
+      body: 'Read once when you punch in or out, and not in between. If you refuse, everything except attendance still works.',
+      state: location,
+      onPress: askLocation,
+    },
+    {
+      key: 'biometrics',
+      icon: Fingerprint,
+      title: 'Fingerprint or Face unlock',
+      body: 'Optional. Turn the app lock on in Settings and this unlocks it; otherwise you use a PIN.',
+      state: biometrics,
+    },
+  ];
+
+  const label = (s: PermState) =>
+    s === 'granted' ? 'Allowed' : s === 'denied' ? 'Not allowed' : s === 'unavailable' ? 'Not on this device' : 'Ask';
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.iconBg}>
-          <Text style={styles.shieldIcon}>🛡️</Text>
+          <ShieldCheck size={30} color="#2563eb" />
         </View>
-        <Text style={styles.heading}>App Permissions</Text>
+        <Text style={styles.heading}>What CallMind asks for</Text>
         <Text style={styles.subheading}>
-          CallMind requires permissions to log call durations and alert you about hot leads.
+          Three things, and only these. The app does not read your call log or your contacts,
+          and it does not record audio.
         </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Phone / Call Log */}
-        <TouchableOpacity style={styles.permCard} onPress={() => togglePermission('phone')}>
-          <Text style={styles.permIcon}>📞</Text>
-          <View style={styles.permInfo}>
-            <Text style={styles.permTitle}>Phone & Call Logs (Required)</Text>
-            <Text style={styles.permSub}>To capture call duration without recording audio</Text>
-          </View>
-          <View style={[styles.statusBadge, permissions.phone ? styles.grantedBadge : styles.deniedBadge]}>
-            <Text style={[styles.statusText, permissions.phone ? styles.grantedText : styles.deniedText]}>
-              {permissions.phone ? 'Granted' : 'Allow'}
-            </Text>
-          </View>
-        </TouchableOpacity>
+        {rows.map(({ key, icon: Icon, title, body, state, onPress }) => (
+          <TouchableOpacity
+            key={key}
+            style={styles.permCard}
+            disabled={!onPress || state === 'granted' || busy !== null}
+            onPress={onPress}
+          >
+            <View style={styles.permIcon}>
+              <Icon size={20} color="#2563eb" />
+            </View>
+            <View style={styles.permMain}>
+              <Text style={styles.permTitle}>{title}</Text>
+              <Text style={styles.permBody}>{body}</Text>
+            </View>
+            {busy === key ? (
+              <ActivityIndicator color="#2563eb" />
+            ) : state === 'granted' ? (
+              <Check size={18} color="#16a34a" />
+            ) : (
+              <Text style={styles.permAction}>{label(state)}</Text>
+            )}
+          </TouchableOpacity>
+        ))}
 
-        {/* Notifications */}
-        <TouchableOpacity style={styles.permCard} onPress={() => togglePermission('notifications')}>
-          <Text style={styles.permIcon}>🔔</Text>
-          <View style={styles.permInfo}>
-            <Text style={styles.permTitle}>Push Notifications</Text>
-            <Text style={styles.permSub}>Receive instant alerts when admin assigns hot leads</Text>
-          </View>
-          <View style={[styles.statusBadge, permissions.notifications ? styles.grantedBadge : styles.deniedBadge]}>
-            <Text style={[styles.statusText, permissions.notifications ? styles.grantedText : styles.deniedText]}>
-              {permissions.notifications ? 'Granted' : 'Allow'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Contacts */}
-        <TouchableOpacity style={styles.permCard} onPress={() => togglePermission('contacts')}>
-          <Text style={styles.permIcon}>👥</Text>
-          <View style={styles.permInfo}>
-            <Text style={styles.permTitle}>Contacts Access</Text>
-            <Text style={styles.permSub}>Identify existing client caller IDs automatically</Text>
-          </View>
-          <View style={[styles.statusBadge, permissions.contacts ? styles.grantedBadge : styles.deniedBadge]}>
-            <Text style={[styles.statusText, permissions.contacts ? styles.grantedText : styles.deniedText]}>
-              {permissions.contacts ? 'Granted' : 'Allow'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Camera */}
-        <TouchableOpacity style={styles.permCard} onPress={() => togglePermission('camera')}>
-          <Text style={styles.permIcon}>📷</Text>
-          <View style={styles.permInfo}>
-            <Text style={styles.permTitle}>Camera Access</Text>
-            <Text style={styles.permSub}>Scan company admin QR code to join workspace</Text>
-          </View>
-          <View style={[styles.statusBadge, permissions.camera ? styles.grantedBadge : styles.deniedBadge]}>
-            <Text style={[styles.statusText, permissions.camera ? styles.grantedText : styles.deniedText]}>
-              {permissions.camera ? 'Granted' : 'Allow'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Microphone */}
-        <TouchableOpacity style={styles.permCard} onPress={() => togglePermission('microphone')}>
-          <Text style={styles.permIcon}>🎙️</Text>
-          <View style={styles.permInfo}>
-            <Text style={styles.permTitle}>Microphone (Voice Notes)</Text>
-            <Text style={styles.permSub}>Record voice notes for lead post-call feedback</Text>
-          </View>
-          <View style={[styles.statusBadge, permissions.microphone ? styles.grantedBadge : styles.deniedBadge]}>
-            <Text style={[styles.statusText, permissions.microphone ? styles.grantedText : styles.deniedText]}>
-              {permissions.microphone ? 'Granted' : 'Allow'}
-            </Text>
-          </View>
-        </TouchableOpacity>
+        <Text style={styles.footnote}>
+          You can change any of these later, from your phone's settings.
+        </Text>
       </ScrollView>
 
-      {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity style={styles.continueBtn} onPress={onContinue}>
-          <Text style={styles.continueText}>Grant Permissions & Continue</Text>
+          <Text style={styles.continueText}>Continue</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -113,110 +153,33 @@ export const AppPermissionsScreen: React.FC<AppPermissionsProps> = ({ onContinue
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    paddingTop: 60,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-    justifyContent: 'space-between',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
+  container: { flex: 1, backgroundColor: '#ffffff', paddingTop: 60 },
+  header: { paddingHorizontal: 28, alignItems: 'center' },
   iconBg: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+    width: 68, height: 68, borderRadius: 22, backgroundColor: '#eff6ff',
+    justifyContent: 'center', alignItems: 'center', marginBottom: 18,
   },
-  shieldIcon: {
-    fontSize: 32,
-  },
-  heading: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#0f172a',
-    marginBottom: 6,
-  },
+  heading: { fontSize: 23, fontWeight: '800', color: '#0f172a', marginBottom: 8, textAlign: 'center' },
   subheading: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
-    lineHeight: 20,
-    fontWeight: '500',
+    fontSize: 13, color: '#64748b', textAlign: 'center', lineHeight: 20, marginBottom: 24,
   },
-  scrollContent: {
-    gap: 12,
-  },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 24 },
   permCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    gap: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    padding: 16, borderRadius: 18, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 12,
   },
   permIcon: {
-    fontSize: 22,
+    width: 42, height: 42, borderRadius: 14, backgroundColor: '#f8fafc',
+    justifyContent: 'center', alignItems: 'center',
   },
-  permInfo: {
-    flex: 1,
-  },
-  permTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  permSub: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  grantedBadge: {
-    backgroundColor: '#dcfce7',
-  },
-  deniedBadge: {
-    backgroundColor: '#eff6ff',
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  grantedText: {
-    color: '#15803d',
-  },
-  deniedText: {
-    color: '#2563eb',
-  },
-  footer: {
-    paddingTop: 16,
-  },
+  permMain: { flex: 1 },
+  permTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a', marginBottom: 3 },
+  permBody: { fontSize: 12, color: '#64748b', lineHeight: 17 },
+  permAction: { fontSize: 12, fontWeight: '700', color: '#2563eb' },
+  footnote: { fontSize: 11, color: '#94a3b8', textAlign: 'center', marginTop: 8 },
+  footer: { paddingHorizontal: 20, paddingBottom: 32 },
   continueBtn: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: 'center',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
+    backgroundColor: '#2563eb', paddingVertical: 16, borderRadius: 16, alignItems: 'center',
   },
-  continueText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  continueText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
 });

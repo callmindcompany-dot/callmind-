@@ -30,11 +30,20 @@ interface LeadListScreenProps {
   leads?: LeadItem[];
   refreshing?: boolean;
   onRefresh?: () => void;
+  /** Opens the filter sheet. Four controls in this header had no handler. */
+  onOpenFilters?: () => void;
+  /** Opens search. */
+  onOpenSearch?: () => void;
+  /** How the list is currently ordered, for the label. */
+  sortLabel?: string;
 }
 
 export const LeadListScreen: React.FC<LeadListScreenProps> = ({
   onSelectLead,
   onCallLead,
+  onOpenFilters,
+  onOpenSearch,
+  sortLabel = 'Call order',
   onBack,
   leads = [],
   refreshing = false,
@@ -70,10 +79,10 @@ export const LeadListScreen: React.FC<LeadListScreenProps> = ({
       <View style={styles.header}>
         <Text style={styles.title}>Leads</Text>
         <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={onOpenSearch} accessibilityLabel="Search leads">
             <Search size={20} color="#0f172a" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
+          <TouchableOpacity style={styles.iconBtn} onPress={onOpenFilters} accessibilityLabel="Filter leads">
             <SlidersHorizontal size={20} color="#0f172a" />
           </TouchableOpacity>
         </View>
@@ -108,11 +117,14 @@ export const LeadListScreen: React.FC<LeadListScreenProps> = ({
 
       {/* Sort Row */}
       <View style={styles.sortRow}>
-        <TouchableOpacity style={styles.sortDropdown}>
-          <Text style={styles.sortText}>Sort by: <Text style={styles.sortBold}>Latest</Text></Text>
+        {/* The label said "Sort by: Latest" and could not be changed, over a
+            list that was ordered by created_at. It is ordered by call priority
+            now, so it says so. */}
+        <TouchableOpacity style={styles.sortDropdown} onPress={onOpenFilters}>
+          <Text style={styles.sortText}>Sorted by: <Text style={styles.sortBold}>{sortLabel}</Text></Text>
           <ChevronDown size={14} color="#0f172a" style={{ marginLeft: 4 }} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.sortIconBtn}>
+        <TouchableOpacity style={styles.sortIconBtn} onPress={onOpenFilters} accessibilityLabel="Filter leads">
           <SlidersHorizontal size={14} color="#64748b" />
         </TouchableOpacity>
       </View>

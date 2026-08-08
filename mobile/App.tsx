@@ -16,6 +16,10 @@ import { callbackService } from './src/services/callbackService';
 import { appLockService, IDLE_LOCK_MS } from './src/services/appLockService';
 import { reminderService } from './src/services/reminderService';
 import { orderQueue } from './src/services/priorityQueue';
+import { planStatusService, type PlanStatus } from './src/services/planStatusService';
+import { GlobalSearchScreen } from './src/screens/GlobalSearchScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { FilterState } from './src/screens/128_LeadFilterSheet';
 import * as Notifications from 'expo-notifications';
 import { LeadItem } from './src/screens/LeadListScreen';
 import { CallLogItem } from './src/screens/54_CallLogScreen';
@@ -45,7 +49,6 @@ import { SubscriptionLockScreen } from './src/screens/SubscriptionLockScreen';
 import { AITalkScriptScreen } from './src/screens/67_AITalkScriptScreen';
 import { InboxScreen, Announcement } from './src/screens/59_InboxScreen';
 import { AnnouncementDetailScreen } from './src/screens/AnnouncementDetailScreen';
-import { VoiceNotesModal } from './src/screens/68_VoiceNotesModal';
 
 // Phase 4 Screens
 import { AppPermissionsScreen } from './src/screens/11_AppPermissionsScreen';
@@ -96,6 +99,7 @@ type AuthStep =
 
 type AppScreen =
   | 'set_pin'
+  | 'lead_search'
   | 'home'
   | 'leads'
   | 'lead_detail'
@@ -157,7 +161,14 @@ function MainAppContent() {
   // Overlays & Offline
   const [showFeedback, setShowFeedback] = useState(false);
   const [showVoiceNote, setShowVoiceNote] = useState(false);
-  const [isSubscriptionLocked, setIsSubscriptionLocked] = useState(false);
+  // The database enforces the plan; this is how the agent finds out why.
+  // Previously `isSubscriptionLocked` was declared here and never read, and
+  // SubscriptionLockScreen was imported and never rendered -- so a telecaller
+  // in a lapsed company would have watched writes fail with a Postgres error
+  // and no explanation.
+  const [planStatus, setPlanStatus] = useState<PlanStatus>({
+    locked: false, companyName: '', expiryDate: null,
+  });
   const [isOffline, setIsOffline] = useState(false);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
 
@@ -183,6 +194,11 @@ function MainAppContent() {
 
   // Real Database Leads State
   const [leads, setLeads] = useState<LeadItem[]>([]);
+  const [showLeadFilters, setShowLeadFilters] = useState(false);
+  // Shown once, after approval. AsyncStorage rather than state so it does not
+  // reappear on every launch.
+  const [permissionsSeen, setPermissionsSeen] = useState<boolean | null>(null);
+  const [leadFilters, setLeadFilters] = useState<FilterState | null>(null);
 
   // Call order, not import order.
   //
@@ -194,7 +210,18 @@ function MainAppContent() {
     () => new Set(callbacks.filter((c) => c.isOverdue && c.leadId).map((c) => c.leadId as string)),
     [callbacks],
   );
-  const queuedLeads = useMemo(() => orderQueue(leads, { dueLeadIds }), [leads, dueLeadIds]);
+  const queuedLeads = useMemo(() => {
+    const f = leadFilters;
+    const filtered = !f
+      ? leads
+      : leads.filter((l) => {
+          if (f.status.length && !f.status.includes(l.status ?? '')) return false;
+          if (f.source.length && !f.source.includes(l.city ?? '')) return false;
+          if (f.tag.length && !f.tag.includes(l.tag ?? '')) return false;
+          return true;
+        });
+    return orderQueue(filtered, { dueLeadIds });
+  }, [leads, leadFilters, dueLeadIds]);
   const [refreshingLeads, setRefreshingLeads] = useState(false);
   const [activeCallingLead, setActiveCallingLead] = useState<LeadItem | null>(null);
 
@@ -218,9 +245,18 @@ function MainAppContent() {
   const loadLeads = useCallback(async () => {
     if (!profile?.companyId || !profile?.uid) return;
     setRefreshingLeads(true);
-    const fetched = await leadService.fetchAssignedLeads(profile.companyId, profile.uid);
-    setLeads(fetched);
-    setRefreshingLeads(false);
+    try {
+      const fetched = await leadService.fetchAssignedLeads(profile.companyId, profile.uid);
+      setLeads(fetched);
+    } catch (e) {
+      // fetchAssignedLeads throws now rather than returning [] -- an empty list
+      // reads as "no leads today". Keep whatever is already on screen and say
+      // the refresh failed, instead of blanking it.
+      toastError('Could not load leads', e instanceof Error ? e.message : 'Pull down to retry.');
+    } finally {
+      // In a finally, or a thrown error leaves the spinner turning for ever.
+      setRefreshingLeads(false);
+    }
   }, [profile?.companyId, profile?.uid]);
 
   // Function to load secondary data (Call Logs, Callbacks, Attendance, Targets)
@@ -453,6 +489,15 @@ function MainAppContent() {
     return () => subscription.remove();
   }, []);
 
+  useEffect(() => {
+    if (!isAuthenticated || !isApproved) return;
+    void planStatusService.check(profile?.companyId).then(setPlanStatus);
+  }, [isAuthenticated, isApproved, profile?.companyId]);
+
+  useEffect(() => {
+    void AsyncStorage.getItem('callmind.permissionsSeen').then((v) => setPermissionsSeen(v === 'true'));
+  }, []);
+
   // Reminder permission, once the agent is actually using the app rather than
   // at the splash screen — a permission prompt before anything is on screen is
   // the one people refuse.
@@ -501,6 +546,42 @@ function MainAppContent() {
   // ─── BIOMETRIC LOCK OVERLAY ────────────────────────
   if (isAppLocked) {
     return <BiometricLockScreen onUnlock={() => setIsAppLocked(false)} />;
+  }
+
+  // ─── PERMISSIONS ──────────────────────────────────
+  // Once, after approval, before the app. AppPermissionsScreen was imported and
+  // never rendered, so the agent met the location prompt for the first time at
+  // the moment they tried to punch in.
+  if (isAuthenticated && isOnboarded && isApproved && permissionsSeen === false) {
+    return (
+      <View style={styles.container}>
+        <StatusBar style="auto" />
+        <AppPermissionsScreen
+          onContinue={async () => {
+            await AsyncStorage.setItem('callmind.permissionsSeen', 'true');
+            setPermissionsSeen(true);
+          }}
+        />
+      </View>
+    );
+  }
+
+  // ─── SUBSCRIPTION ─────────────────────────────────
+  // A hard stop, unlike the legal notice: the company has stopped paying, and
+  // there is nothing useful the agent can do until an admin fixes it.
+  if (isAuthenticated && isOnboarded && isApproved && planStatus.locked) {
+    return (
+      <View style={styles.container}>
+        <StatusBar style="auto" />
+        <SubscriptionLockScreen
+          companyName={planStatus.companyName}
+          expiryDate={planStatus.expiryDate ?? 'Not recorded'}
+          onContactAdmin={() => {
+            toastInfo('Contact your admin', 'They can renew the subscription from the web dashboard.');
+          }}
+        />
+      </View>
+    );
   }
 
   // Legal acceptance is prompted, not enforced.
@@ -606,6 +687,9 @@ function MainAppContent() {
             onCallLead={handleCallLead}
             onBack={() => navigateToTab('home')}
             leads={queuedLeads}
+            onOpenSearch={() => setCurrentScreen('lead_search')}
+            onOpenFilters={() => setShowLeadFilters(true)}
+            sortLabel={leadFilters ? 'Call order · filtered' : 'Call order'}
             refreshing={refreshingLeads}
             onRefresh={loadLeads}
           />
@@ -688,6 +772,31 @@ function MainAppContent() {
         return (
           <ThemeToggleScreen
             onBack={() => setCurrentScreen('settings')}
+          />
+        );
+
+      case 'lead_search':
+        return (
+          <GlobalSearchScreen
+            onBack={() => setCurrentScreen('leads')}
+            onSelectResult={(item) => {
+              setSelectedLeadId(item.id);
+              setCurrentScreen('lead_detail');
+            }}
+            onSearch={async (term) => {
+              // Searches the leads this agent can see. Row-level security scopes
+              // it to their own assignments, so there is nothing to filter here
+              // that the database has not already filtered.
+              const found = await leadService.searchLeads(profile!.companyId!, term);
+              return found.map((l) => ({
+                id: l.id,
+                module: 'leads' as const,
+                title: l.name,
+                subtitle: l.phone || l.city || 'Lead',
+                badge: l.status ?? undefined,
+                actionUrl: `/leads/${l.id}`,
+              }));
+            }}
           />
         );
 
@@ -959,12 +1068,19 @@ function MainAppContent() {
       </View>
 
       {/* Overlays */}
-      {/* IncomingAssignedCallScreen was rendered here with every value invented:
-          leadName "New Lead Assigned", phone "+91 98765 43210", source
-          "Meta Ads", aiScore 92. It was also unreachable -- showIncomingCall
-          started false and nothing ever set it true. It belongs to the push
-          notification path, which does not exist yet, so it renders nothing
-          rather than a demo. */}
+      {showLeadFilters && (
+        <LeadFilterSheet
+          onApply={(f) => {
+            setLeadFilters(f);
+            setShowLeadFilters(false);
+          }}
+          onReset={() => {
+            setLeadFilters(null);
+            setShowLeadFilters(false);
+          }}
+          onDismiss={() => setShowLeadFilters(false)}
+        />
+      )}
 
       {showCallingScreen && (
         <CallingScreen

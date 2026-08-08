@@ -69,6 +69,29 @@ export interface RawDbLead {
   updated_at?: string;
 }
 
+
+/** One shape for a lead row, wherever it was read from. */
+function toLeadItem(row: RawDbLead): LeadItem {
+  const badge = getStatusBadgeStyle(row.status);
+  return {
+    id: row.id,
+    name: row.name || 'Unnamed Lead',
+    phone: row.phone || '',
+    city: row.address || row.source || 'General',
+    tag: badge.tag,
+    time: formatTime(row.created_at),
+    createdAt: row.created_at,
+    color: badge.color,
+    bgColor: badge.bgColor,
+    initials: getInitials(row.name),
+    status: row.status,
+    email: row.email,
+    priority: row.priority,
+    address: row.address,
+    comment: row.comment,
+  };
+}
+
 export const leadService = {
   /**
    * Fetch leads assigned to current telecaller user in company
@@ -76,46 +99,23 @@ export const leadService = {
   async fetchAssignedLeads(companyId: string, userId: string): Promise<LeadItem[]> {
     if (!companyId || !userId) return [];
 
-    try {
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('assigned_to', userId)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false });
+    // Throws. The try/catch here returned [] on any failure, which renders as
+    // "you have no leads today" -- an agent would take that at face value and
+    // stop working.
+    //
+    // No ordering clause: the list is ordered by call priority in
+    // src/services/priorityQueue.ts. It used to be created_at descending, which
+    // is import order.
+    const { data, error } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('assigned_to', userId)
+      .eq('is_deleted', false);
 
-      if (error) {
-        console.error('[leadService] Error fetching leads:', error);
-        return [];
-      }
+    if (error) throw error;
 
-      if (!data) return [];
-
-      return (data as RawDbLead[]).map((row) => {
-        const badge = getStatusBadgeStyle(row.status);
-        return {
-          id: row.id,
-          name: row.name || 'Unnamed Lead',
-          phone: row.phone || '',
-          city: row.address || row.source || 'General',
-          tag: badge.tag,
-          time: formatTime(row.created_at),
-          createdAt: row.created_at,
-          color: badge.color,
-          bgColor: badge.bgColor,
-          initials: getInitials(row.name),
-          status: row.status,
-          email: row.email,
-          priority: row.priority,
-          address: row.address,
-          comment: row.comment,
-        };
-      });
-    } catch (err) {
-      console.error('[leadService] Exception in fetchAssignedLeads:', err);
-      return [];
-    }
+    return ((data ?? []) as RawDbLead[]).map(toLeadItem);
   },
 
   /**
@@ -166,5 +166,40 @@ export const leadService = {
       console.error('[leadService] Exception in updateLeadStatus:', err);
       return false;
     }
+  },
+
+  /**
+   * Search this agent's leads by name, phone or email.
+   *
+   * A digits-only term is treated as a phone fragment and matched with a
+   * left-anchored LIKE, which the (company_id, phone) index can serve. Anything
+   * else goes to ilike on name and email. Row-level security scopes the result
+   * to what this agent may see, so there is nothing to filter afterwards.
+   *
+   * Throws. An empty list from a failed query reads as "no such lead", and the
+   * agent concludes the record is not in the CRM.
+   */
+  async searchLeads(companyId: string, term: string, limit = 25): Promise<LeadItem[]> {
+    if (!companyId || term.trim().length < 2) return [];
+
+    const raw = term.trim();
+    const digits = raw.replace(/\D/g, '');
+    const isPhone = digits.length >= 4 && digits.length === raw.replace(/[\s+\-()]/g, '').length;
+
+    let query = supabase
+      .from('leads')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('is_deleted', false)
+      .limit(limit);
+
+    query = isPhone
+      ? query.ilike('phone', `%${digits}%`)
+      : query.or(`name.ilike.%${raw}%,email.ilike.%${raw}%`);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return (data ?? []).map(toLeadItem);
   },
 };

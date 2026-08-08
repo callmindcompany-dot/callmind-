@@ -14,24 +14,56 @@ export interface MobileSearchResultItem {
 interface GlobalSearchScreenProps {
   onBack: () => void;
   onSelectResult: (item: MobileSearchResultItem) => void;
-  results?: MobileSearchResultItem[];
-  isLoading?: boolean;
+  /** Runs the search. The screen owns the query, the caller owns the data. */
+  onSearch?: (query: string) => Promise<MobileSearchResultItem[]>;
 }
 
 export const GlobalSearchScreen: React.FC<GlobalSearchScreenProps> = ({
   onBack,
   onSelectResult,
-  results = [],
-  isLoading = false,
+  onSearch,
 }) => {
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [recentSearches, setRecentSearches] = useState<string[]>([
-    'Rahul Sharma',
-    '',  // was a hardcoded number in a demo result list
-    'INV-101',
-    'Follow up callback'
-  ]);
+  const [results, setResults] = useState<MobileSearchResultItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // The screen took a `results` prop that nothing ever passed, so it always
+  // showed nothing, and listed four invented "recent searches" -- a name, a
+  // phone number, an invoice id -- as though the agent had typed them.
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  // Debounced, so typing a ten-digit phone number is one query rather than ten.
+  useEffect(() => {
+    const term = query.trim();
+    if (!onSearch || term.length < 2) {
+      setResults([]);
+      setError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const found = await onSearch(term);
+        if (cancelled) return;
+        setResults(found);
+        setError(null);
+        setRecentSearches((prev) => [term, ...prev.filter((t) => t !== term)].slice(0, 5));
+      } catch (e) {
+        if (!cancelled) {
+          setResults([]);
+          setError(e instanceof Error ? e.message : 'Search failed.');
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }, 300);
+
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query, onSearch]);
 
   const filteredResults = results.filter((r) => {
     if (activeCategory === 'all') return true;
@@ -107,7 +139,13 @@ export const GlobalSearchScreen: React.FC<GlobalSearchScreenProps> = ({
 
       {/* Results or Recent Searches Body */}
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {isLoading ? (
+        {error ? (
+          <View style={{ padding: 24, alignItems: 'center' }}>
+            <Text style={{ color: '#dc2626', fontSize: 13, fontWeight: '700', textAlign: 'center' }}>
+              {error}
+            </Text>
+          </View>
+        ) : isLoading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color="#2563eb" />
             <Text style={styles.loadingText}>Searching CRM records...</Text>
