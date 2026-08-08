@@ -18,7 +18,6 @@
     },
     "android": {
       "package": "com.callmind.telecaller",
-      "versionCode": 108,
       "adaptiveIcon": {
         "backgroundColor": "#0f172a",
         "foregroundImage": "./assets/android-icon-foreground.png",
