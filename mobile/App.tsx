@@ -12,6 +12,7 @@ import { syncService } from './src/services/sync';
 import { attendanceService, FormattedAttendanceDay } from './src/services/attendanceService';
 import { targetService, TelecallerStats } from './src/services/targetService';
 import { callLogService } from './src/services/callLogService';
+import { callbackService } from './src/services/callbackService';
 import { LeadItem } from './src/screens/LeadListScreen';
 import { CallLogItem } from './src/screens/54_CallLogScreen';
 import { CallbackItem } from './src/screens/CallbacksScreen';
@@ -28,7 +29,7 @@ import { ApprovalPending } from './src/screens/06_ApprovalPending';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { LeadListScreen } from './src/screens/LeadListScreen';
 import { LeadDetailScreen } from './src/screens/LeadDetailScreen';
-import { PostCallFeedbackSheet } from './src/screens/PostCallFeedbackSheet';
+import { PostCallFeedbackSheet, type PostCallFeedback } from './src/screens/PostCallFeedbackSheet';
 import { CallbacksScreen } from './src/screens/CallbacksScreen';
 import { PerformanceScreen } from './src/screens/PerformanceScreen';
 import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
@@ -208,22 +209,40 @@ function MainAppContent() {
     if (!profile?.companyId || !profile?.uid) return;
     setRefreshingSecondary(true);
 
-    const [logs, cbs, attHist, punchStatus, stats] = await Promise.all([
+    // allSettled, not all. These five are independent, and one failing should
+    // not blank the other four -- but a failure must be visible rather than
+    // showing as an empty list, which is how "no callbacks today" used to mean
+    // "the query broke".
+    const [logsR, cbsR, attHistR, punchR, statsR] = await Promise.allSettled([
       callLogService.fetchCallLogs(profile.companyId, profile.uid),
-      callLogService.fetchCallbacks(profile.companyId, profile.uid),
+      callbackService.fetchCallbacks(profile.companyId, profile.email ?? ''),
       attendanceService.fetchAttendanceHistory(profile.companyId, profile.uid),
       attendanceService.getLatestPunchStatus(profile.companyId, profile.uid),
       targetService.fetchTelecallerStats(profile.companyId, profile.uid),
     ]);
 
-    setCallLogs(logs);
-    setCallbacks(cbs);
-    setAttendanceHistory(attHist);
+    const failed: string[] = [];
+    const take = <T,>(r: PromiseSettledResult<T>, label: string, fallback: T): T => {
+      if (r.status === 'fulfilled') return r.value;
+      console.error(`[loadSecondaryData] ${label}:`, r.reason);
+      failed.push(label);
+      return fallback;
+    };
+
+    setCallLogs(take(logsR, 'call log', []));
+    setCallbacks(take(cbsR, 'follow-ups', []));
+    setAttendanceHistory(take(attHistR, 'attendance', []));
+    const punchStatus = take(punchR, 'punch status', { isPunchedIn: false, lastPunchTime: null } as any);
     setIsPunchedIn(punchStatus.isPunchedIn);
     if (punchStatus.lastPunchTime) {
       setLastPunchTime(punchStatus.lastPunchTime);
     }
-    setTelecallerStats(stats);
+    setTelecallerStats(take(statsR, 'performance', null as any));
+
+    if (failed.length) {
+      toastError('Could not refresh everything', `${failed.join(', ')} did not load. Pull to retry.`);
+    }
+
     setRefreshingSecondary(false);
   }, [profile?.companyId, profile?.uid]);
 
@@ -314,7 +333,7 @@ function MainAppContent() {
   };
 
   // Handle post-call feedback submit
-  const handleFeedbackSubmit = async (feedback: { outcome: string; interest: string; notes: string }) => {
+  const handleFeedbackSubmit = async (feedback: PostCallFeedback) => {
     setShowFeedback(false);
     if (!profile?.companyId || !profile?.uid) {
       toastError('Error', 'Missing user profile or company session.');
@@ -332,6 +351,25 @@ function MainAppContent() {
       interest: feedback.interest,
       notes: feedback.notes,
     });
+
+    // Schedule the follow-up, if the agent chose one. Written to `callbacks`
+    // so it shows on the web too, and so the reminder has something to fire on.
+    if (feedback.followUpAt && activeCallingLead?.id) {
+      try {
+        await callbackService.scheduleCallback({
+          companyId: profile.companyId,
+          leadId: activeCallingLead.id,
+          agentEmail: profile.email ?? '',
+          reminderDate: feedback.followUpAt,
+          notes: feedback.notes || null,
+        });
+        toastSuccess('Follow-up set', new Date(feedback.followUpAt).toLocaleString('en-IN'));
+      } catch (e) {
+        // Told, not swallowed. An agent who thinks a follow-up is booked and
+        // finds nothing there has lost the lead, not just the reminder.
+        toastError('Follow-up not saved', e instanceof Error ? e.message : 'Please set it again from Callbacks.');
+      }
+    }
 
     const pending = await syncService.getPendingCount();
     setPendingSyncCount(pending);
@@ -632,6 +670,29 @@ function MainAppContent() {
               setShowCallingScreen(true);
             }}
             callbacks={callbacks}
+            onReschedule={async (cb) => {
+              // Tomorrow at 10, the same default the post-call form offers and
+              // the same one schedulerService uses for "Switched Off".
+              const until = new Date();
+              until.setDate(until.getDate() + 1);
+              until.setHours(10, 0, 0, 0);
+              try {
+                await callbackService.snoozeCallback(cb.id, profile!.companyId!, until);
+                toastSuccess('Moved', `Follow-up moved to ${until.toLocaleString('en-IN')}`);
+                loadSecondaryData();
+              } catch (e) {
+                toastError('Could not move it', e instanceof Error ? e.message : 'Please try again.');
+              }
+            }}
+            onComplete={async (cb) => {
+              try {
+                await callbackService.completeCallback(cb.id, profile!.companyId!);
+                toastSuccess('Done', 'Follow-up marked complete.');
+                loadSecondaryData();
+              } catch (e) {
+                toastError('Could not update it', e instanceof Error ? e.message : 'Please try again.');
+              }
+            }}
             refreshing={refreshingSecondary}
             onRefresh={loadSecondaryData}
           />

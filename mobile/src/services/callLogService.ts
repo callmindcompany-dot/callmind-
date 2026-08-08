@@ -51,22 +51,18 @@ export const callLogService = {
   async fetchCallLogs(companyId: string, userId: string): Promise<CallLogItem[]> {
     if (!companyId || !userId) return [];
 
-    try {
-      const { data, error } = await supabase
-        .from('calls')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('agent_id', userId)
-        .order('created_at', { ascending: false });
+    // Throws. Returning [] on failure renders as "no calls yet", and an agent
+    // who has been calling all morning would take that at face value.
+    const { data, error } = await supabase
+      .from('calls')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('agent_id', userId)
+      .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('[callLogService] Error fetching calls:', error);
-        return [];
-      }
+    if (error) throw error;
 
-      if (!data) return [];
-
-      return data.map((row: any) => {
+    return (data ?? []).map((row: any) => {
         const isConnected = row.outcome === 'Connected' || row.status === 'completed';
         const tag = row.outcome || row.interest || 'Completed';
         const tagColor = isConnected ? '#16a34a' : '#d97706';
@@ -85,52 +81,13 @@ export const callLogService = {
           initials: getInitials(row.lead_name || 'Call Log'),
           avatarBg: '#eff6ff',
           avatarColor: '#2563eb',
-        };
-      });
-    } catch (err) {
-      console.error('[callLogService] Exception in fetchCallLogs:', err);
-      return [];
-    }
+      };
+    });
   },
 
-  /**
-   * Fetch scheduled callbacks from `calls` and `scheduled_messages`
-   */
-  async fetchCallbacks(companyId: string, userId: string): Promise<CallbackItem[]> {
-    if (!companyId || !userId) return [];
-
-    try {
-      const { data, error } = await supabase
-        .from('calls')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('agent_id', userId)
-        .or('interest.eq.Call Back Later,outcome.eq.Call Back')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('[callLogService] Error fetching callbacks:', error);
-        return [];
-      }
-
-      if (!data) return [];
-
-      return data.map((row: any) => {
-        return {
-          id: row.id,
-          name: row.lead_name || 'Callback Lead',
-          phone: row.phone || '',
-          time: `${formatDate(row.created_at)}, ${formatTime(row.created_at)}`,
-          note: row.notes || 'Requested follow-up callback.',
-          initials: getInitials(row.lead_name || 'Callback Lead'),
-          avatarBg: '#fef3c7',
-          avatarColor: '#d97706',
-          isToday: formatDate(row.created_at) === 'Today',
-        };
-      });
-    } catch (err) {
-      console.error('[callLogService] Exception in fetchCallbacks:', err);
-      return [];
-    }
-  },
+  // fetchCallbacks lived here and derived "callbacks" from the `calls` table --
+  // rows whose outcome happened to be 'Call Back'. It never read
+  // public.callbacks, so a follow-up scheduled on the web never reached the
+  // telecaller who had to make it, and what the phone did show carried no
+  // scheduled time at all. See src/services/callbackService.ts.
 };

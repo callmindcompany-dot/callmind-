@@ -2,12 +2,44 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native';
 import { ArrowLeft, CheckCircle2, Calendar, ChevronDown, Clock } from 'lucide-react-native';
 
+export interface PostCallFeedback {
+  outcome: string;
+  interest: string;
+  notes: string;
+  /** ISO timestamp for the follow-up, or null when none was scheduled. */
+  followUpAt: string | null;
+}
+
 interface PostCallFeedbackSheetProps {
   leadName?: string;
   callDuration?: string;
-  onSubmit: (feedback: any) => void;
+  onSubmit: (feedback: PostCallFeedback) => void;
   onDismiss: () => void;
 }
+
+/**
+ * Follow-up choices, as offsets from now.
+ *
+ * A picker would be better, but @react-native-community/datetimepicker is not
+ * installed and adding a native module to make a follow-up time is out of
+ * proportion to the job. These four cover what a telecaller actually chooses
+ * between calls, and the agent has five seconds to fill this form.
+ */
+const FOLLOW_UP_CHOICES: { label: string; at: () => Date }[] = [
+  { label: 'In 2 hours', at: () => new Date(Date.now() + 2 * 60 * 60 * 1000) },
+  {
+    label: 'Tomorrow 10am',
+    at: () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(10, 0, 0, 0); return d; },
+  },
+  {
+    label: 'In 3 days',
+    at: () => { const d = new Date(); d.setDate(d.getDate() + 3); d.setHours(10, 0, 0, 0); return d; },
+  },
+  {
+    label: 'Next week',
+    at: () => { const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(10, 0, 0, 0); return d; },
+  },
+];
 
 export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
   leadName = 'Lead',
@@ -21,6 +53,7 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
   const [selectedOutcome, setSelectedOutcome] = useState('Connected');
   const [selectedInterest, setSelectedInterest] = useState('Interested');
   const [notes, setNotes] = useState('');
+  const [followUp, setFollowUp] = useState<string | null>(null);
 
   const outcomes = ['Connected', 'No Answer', 'Busy', 'Invalid Number', 'Wrong Number'];
   const interestLevels = ['Interested', 'Not Interested', 'Call Back Later'];
@@ -91,21 +124,42 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
             })}
           </View>
 
-          {/* Schedule Callback (Optional) */}
-          <Text style={styles.sectionTitle}>Schedule Callback <Text style={styles.optionalText}>(Optional)</Text></Text>
-          <View style={styles.scheduleRow}>
-            <TouchableOpacity style={styles.pickerBox}>
-              <Calendar size={16} color="#64748b" />
-              <Text style={styles.pickerText}>Tomorrow</Text>
-              <ChevronDown size={14} color="#64748b" />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.pickerBox}>
-              <Clock size={16} color="#64748b" />
-              <Text style={styles.pickerText}>11:00 AM</Text>
-              <ChevronDown size={14} color="#64748b" />
-            </TouchableOpacity>
+          {/* Schedule Callback.
+              Two pickers used to sit here reading "Tomorrow" and "11:00 AM".
+              Neither had an onPress, and neither value was ever sent — the
+              form looked like it scheduled a follow-up and scheduled nothing. */}
+          <Text style={styles.sectionTitle}>
+            Schedule Callback <Text style={styles.optionalText}>(Optional)</Text>
+          </Text>
+          <View style={styles.chipGroup}>
+            {FOLLOW_UP_CHOICES.map(({ label, at }) => {
+              const iso = at().toISOString();
+              const isSelected = followUp === iso;
+              return (
+                <TouchableOpacity
+                  key={label}
+                  style={[styles.chip, isSelected && styles.chipActiveAmber]}
+                  onPress={() => setFollowUp(isSelected ? null : iso)}
+                >
+                  <Calendar size={13} color={isSelected ? '#b45309' : '#64748b'} />
+                  <Text style={[styles.chipText, isSelected && styles.chipTextActiveAmber, { marginLeft: 6 }]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
+          {followUp && (
+            <View style={styles.followUpNote}>
+              <Clock size={13} color="#b45309" />
+              <Text style={styles.followUpNoteText}>
+                {new Date(followUp).toLocaleString('en-IN', {
+                  weekday: 'short', day: 'numeric', month: 'short',
+                  hour: '2-digit', minute: '2-digit',
+                })}
+              </Text>
+            </View>
+          )}
 
           {/* Notes Textarea */}
           <Text style={styles.sectionTitle}>Notes</Text>
@@ -125,7 +179,7 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
 
         {/* Save Feedback CTA Button */}
         <View style={styles.bottomFooter}>
-          <TouchableOpacity style={styles.saveBtn} onPress={() => onSubmit({ outcome: selectedOutcome, interest: selectedInterest, notes })}>
+          <TouchableOpacity style={styles.saveBtn} onPress={() => onSubmit({ outcome: selectedOutcome, interest: selectedInterest, notes, followUpAt: followUp })}>
             <Text style={styles.saveBtnText}>Save Feedback</Text>
           </TouchableOpacity>
         </View>
@@ -135,6 +189,19 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
 };
 
 const styles = StyleSheet.create({
+  followUpNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fffbeb',
+    borderColor: '#fde68a',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 8,
+  },
+  followUpNoteText: { fontSize: 12, fontWeight: '700', color: '#b45309' },
   overlay: {
     position: 'absolute',
     top: 0,

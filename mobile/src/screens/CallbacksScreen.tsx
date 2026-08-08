@@ -5,15 +5,82 @@ import { EmptyStateComponent } from '../components/EmptyStateComponent';
 
 export interface CallbackItem {
   id: string;
+  /** The lead to open when the row is tapped. */
+  leadId?: string;
   name: string;
   phone: string;
+  /** Human label for reminder_date — "Today, 11:00", "Overdue — 3/8 16:00". */
   time: string;
   note: string;
   initials: string;
   avatarBg: string;
   avatarColor: string;
   isToday?: boolean;
+  /** Past its reminder time. Shown red, and sorted to the top. */
+  isOverdue?: boolean;
+  /** ISO, for sorting and for the reminder notification. */
+  reminderDate?: string;
 }
+
+
+/**
+ * One follow-up.
+ *
+ * Extracted because the screen had this markup twice, and both copies passed
+ * the callback's own id to onSelectLead instead of the lead's — so "Call Now"
+ * opened nothing. The Reschedule button had no onPress at all.
+ */
+const CallbackCard = ({
+  cb,
+  onSelectLead,
+  onCallLead,
+  onReschedule,
+  onComplete,
+}: {
+  cb: CallbackItem;
+  onSelectLead: (leadId: string) => void;
+  onCallLead?: (phone: string, name: string) => void;
+  onReschedule?: (cb: CallbackItem) => void;
+  onComplete?: (cb: CallbackItem) => void;
+}) => (
+  <View style={[styles.card, cb.isOverdue && styles.cardOverdue]}>
+    <TouchableOpacity
+      style={styles.cardTop}
+      disabled={!cb.leadId}
+      onPress={() => cb.leadId && onSelectLead(cb.leadId)}
+    >
+      <View style={[styles.avatarCircle, { backgroundColor: cb.avatarBg }]}>
+        <Text style={[styles.avatarText, { color: cb.avatarColor }]}>{cb.initials}</Text>
+      </View>
+      <View style={styles.cardMain}>
+        <Text style={styles.leadName}>{cb.name}</Text>
+        <Text style={styles.phoneText}>{cb.phone}</Text>
+        <Text style={styles.noteSubText}>{cb.note}</Text>
+      </View>
+      <Text style={[styles.timeBadgeText, cb.isOverdue && styles.timeOverdue]}>{cb.time}</Text>
+    </TouchableOpacity>
+
+    <View style={styles.actionRow}>
+      <TouchableOpacity
+        style={styles.callNowBtn}
+        disabled={!cb.phone}
+        onPress={() => (onCallLead && cb.phone ? onCallLead(cb.phone, cb.name) : cb.leadId && onSelectLead(cb.leadId))}
+      >
+        <Phone size={14} color="#16a34a" />
+        <Text style={styles.callNowText}>Call Now</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.rescheduleBtn} onPress={() => onReschedule?.(cb)}>
+        <RotateCcw size={14} color="#2563eb" />
+        <Text style={styles.rescheduleText}>Reschedule</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.doneBtn} onPress={() => onComplete?.(cb)}>
+        <Text style={styles.doneText}>Done</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+);
 
 interface CallbacksScreenProps {
   onBack: () => void;
@@ -22,6 +89,10 @@ interface CallbacksScreenProps {
   callbacks?: CallbackItem[];
   refreshing?: boolean;
   onRefresh?: () => void;
+  /** Push a follow-up to a later time. */
+  onReschedule?: (callback: CallbackItem) => void;
+  /** Mark it done without calling from here. */
+  onComplete?: (callback: CallbackItem) => void;
 }
 
 export const CallbacksScreen: React.FC<CallbacksScreenProps> = ({
@@ -31,11 +102,17 @@ export const CallbacksScreen: React.FC<CallbacksScreenProps> = ({
   callbacks = [],
   refreshing = false,
   onRefresh,
+  onReschedule,
+  onComplete,
 }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'today' | 'upcoming'>('all');
 
-  const todayCallbacks = callbacks.filter(c => c.isToday !== false);
-  const tomorrowCallbacks = callbacks.filter(c => c.isToday === false);
+  // Overdue first, and separately. Previously a follow-up whose time had passed
+  // sat in the "Today" list looking no different from one due at 5pm, so the
+  // one the agent was already late for was the hardest to spot.
+  const overdueCallbacks = callbacks.filter(c => c.isOverdue);
+  const todayCallbacks = callbacks.filter(c => !c.isOverdue && c.isToday !== false);
+  const upcomingCallbacks = callbacks.filter(c => !c.isOverdue && c.isToday === false);
 
   return (
     <View style={styles.container}>
@@ -78,74 +155,30 @@ export const CallbacksScreen: React.FC<CallbacksScreenProps> = ({
           <EmptyStateComponent type="no_callbacks" />
         ) : (
           <>
-            {todayCallbacks.length > 0 && (
-              <>
-                <Text style={styles.sectionHeaderLabel}>Today</Text>
-                <View style={styles.listGroup}>
-                  {todayCallbacks.map((cb) => (
-                    <View key={cb.id} style={styles.card}>
-                      <View style={styles.cardTop}>
-                        <View style={[styles.avatarCircle, { backgroundColor: cb.avatarBg }]}>
-                          <Text style={[styles.avatarText, { color: cb.avatarColor }]}>{cb.initials}</Text>
-                        </View>
-                        <View style={styles.cardMain}>
-                          <Text style={styles.leadName}>{cb.name}</Text>
-                          <Text style={styles.phoneText}>{cb.phone}</Text>
-                          <Text style={styles.noteSubText}>{cb.note}</Text>
-                        </View>
-                        <Text style={styles.timeBadgeText}>{cb.time}</Text>
-                      </View>
-
-                      <View style={styles.actionRow}>
-                        <TouchableOpacity style={styles.callNowBtn} onPress={() => onSelectLead(cb.id)}>
-                          <Phone size={14} color="#16a34a" />
-                          <Text style={styles.callNowText}>Call Now</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.rescheduleBtn}>
-                          <RotateCcw size={14} color="#2563eb" />
-                          <Text style={styles.rescheduleText}>Reschedule</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
+            {[
+              { label: 'Overdue', items: overdueCallbacks },
+              { label: 'Today', items: todayCallbacks },
+              { label: 'Upcoming', items: upcomingCallbacks },
+            ].map(({ label, items }, i) =>
+              items.length === 0 ? null : (
+                <View key={label}>
+                  <Text style={[styles.sectionHeaderLabel, i > 0 && { marginTop: 24 }]}>
+                    {label} ({items.length})
+                  </Text>
+                  <View style={styles.listGroup}>
+                    {items.map((cb) => (
+                      <CallbackCard
+                        key={cb.id}
+                        cb={cb}
+                        onSelectLead={onSelectLead}
+                        onCallLead={onCallLead}
+                        onReschedule={onReschedule}
+                        onComplete={onComplete}
+                      />
+                    ))}
+                  </View>
                 </View>
-              </>
-            )}
-
-            {tomorrowCallbacks.length > 0 && (
-              <>
-                <Text style={[styles.sectionHeaderLabel, { marginTop: 24 }]}>Upcoming</Text>
-                <View style={styles.listGroup}>
-                  {tomorrowCallbacks.map((cb) => (
-                    <View key={cb.id} style={styles.card}>
-                      <View style={styles.cardTop}>
-                        <View style={[styles.avatarCircle, { backgroundColor: cb.avatarBg }]}>
-                          <Text style={[styles.avatarText, { color: cb.avatarColor }]}>{cb.initials}</Text>
-                        </View>
-                        <View style={styles.cardMain}>
-                          <Text style={styles.leadName}>{cb.name}</Text>
-                          <Text style={styles.phoneText}>{cb.phone}</Text>
-                          <Text style={styles.noteSubText}>{cb.note}</Text>
-                        </View>
-                        <Text style={styles.timeBadgeText}>{cb.time}</Text>
-                      </View>
-
-                      <View style={styles.actionRow}>
-                        <TouchableOpacity style={styles.callNowBtn} onPress={() => onSelectLead(cb.id)}>
-                          <Phone size={14} color="#16a34a" />
-                          <Text style={styles.callNowText}>Call Now</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.rescheduleBtn}>
-                          <RotateCcw size={14} color="#2563eb" />
-                          <Text style={styles.rescheduleText}>Reschedule</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </>
+              ),
             )}
           </>
         )}
@@ -155,6 +188,17 @@ export const CallbacksScreen: React.FC<CallbacksScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
+  cardOverdue: { borderColor: '#fecaca', borderWidth: 1 },
+  timeOverdue: { color: '#dc2626', fontWeight: '700' },
+  doneBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doneText: { fontSize: 12, fontWeight: '700', color: '#475569' },
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
