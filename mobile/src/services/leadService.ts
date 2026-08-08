@@ -101,6 +101,7 @@ export const leadService = {
           city: row.address || row.source || 'General',
           tag: badge.tag,
           time: formatTime(row.created_at),
+          createdAt: row.created_at,
           color: badge.color,
           bgColor: badge.bgColor,
           initials: getInitials(row.name),

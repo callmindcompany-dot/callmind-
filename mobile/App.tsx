@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { AppState, Linking, StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 import { Home, Users, PhoneCall, Inbox, BarChart3, Settings, Grid } from 'lucide-react-native';
@@ -15,6 +15,7 @@ import { callLogService } from './src/services/callLogService';
 import { callbackService } from './src/services/callbackService';
 import { appLockService, IDLE_LOCK_MS } from './src/services/appLockService';
 import { reminderService } from './src/services/reminderService';
+import { orderQueue } from './src/services/priorityQueue';
 import * as Notifications from 'expo-notifications';
 import { LeadItem } from './src/screens/LeadListScreen';
 import { CallLogItem } from './src/screens/54_CallLogScreen';
@@ -182,6 +183,18 @@ function MainAppContent() {
 
   // Real Database Leads State
   const [leads, setLeads] = useState<LeadItem[]>([]);
+
+  // Call order, not import order.
+  //
+  // The list came back ordered by created_at descending, so the newest lead
+  // sat at the top and the priority the agent had set was shown as a chip and
+  // otherwise ignored. A lead whose follow-up is already due comes first;
+  // after that it is the agent's own priority, oldest first within each band.
+  const dueLeadIds = useMemo(
+    () => new Set(callbacks.filter((c) => c.isOverdue && c.leadId).map((c) => c.leadId as string)),
+    [callbacks],
+  );
+  const queuedLeads = useMemo(() => orderQueue(leads, { dueLeadIds }), [leads, dueLeadIds]);
   const [refreshingLeads, setRefreshingLeads] = useState(false);
   const [activeCallingLead, setActiveCallingLead] = useState<LeadItem | null>(null);
 
@@ -592,7 +605,7 @@ function MainAppContent() {
             }}
             onCallLead={handleCallLead}
             onBack={() => navigateToTab('home')}
-            leads={leads}
+            leads={queuedLeads}
             refreshing={refreshingLeads}
             onRefresh={loadLeads}
           />

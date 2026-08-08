@@ -19,6 +19,8 @@ export interface LeadItem {
   priority?: string;
   address?: string;
   comment?: string;
+  /** ISO created_at. `time` is a display label and does not parse. */
+  createdAt?: string;
 }
 
 interface LeadListScreenProps {
