@@ -1,232 +1,185 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { ArrowLeft, Search, FileText, Download, Eye } from 'lucide-react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  ActivityIndicator, RefreshControl,
+} from 'react-native';
+import { ArrowLeft, FileText, CheckCircle2, Clock, XCircle } from 'lucide-react-native';
+import { workspaceService, formatBytes, type DocumentRow } from '../services/workspaceService';
+
+/**
+ * The documents this agent has uploaded, and what happened to them.
+ *
+ * This screen used to be "Documents & Scripts", with tabs for Pitch Scripts,
+ * Brochures and FAQs over four files written into the file itself -- a Hindi
+ * home-loan pitch script, a rate card dated May 2024, an objection-handling
+ * guide and an objection matrix, with sizes to match. None existed. The tabs
+ * filtered nothing: all four rendered whichever was selected. The eye and
+ * download buttons beside each had no handlers, which was just as well, because
+ * there was nothing to open.
+ *
+ * The `documents` table is not a script library. It holds files an agent
+ * uploads -- identity documents and the like -- with a review status an admin
+ * sets, and that is what this shows now. A script library would need its own
+ * table, and inventing one on screen did not create it.
+ *
+ * Viewing and downloading are not offered. Files live in Cloudflare R2 and
+ * reaching one needs a presigned GET from the server, which the mobile app has
+ * no route to -- it talks only to Supabase. Offering a button that cannot work
+ * is what this screen was already doing.
+ */
 
 interface DocumentsScreenProps {
   onBack: () => void;
+  companyId?: string | null;
+  userId?: string | null;
 }
 
-export const DocumentsScreen: React.FC<DocumentsScreenProps> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'scripts' | 'brochures' | 'faqs'>('scripts');
-  const [searchQuery, setSearchQuery] = useState('');
+const STATUS_LOOK: Record<string, { label: string; color: string; bg: string; Icon: React.ElementType }> = {
+  approved: { label: 'Approved', color: '#16a34a', bg: '#f0fdf4', Icon: CheckCircle2 },
+  rejected: { label: 'Rejected', color: '#dc2626', bg: '#fef2f2', Icon: XCircle },
+  pending:  { label: 'Awaiting review', color: '#b45309', bg: '#fffbeb', Icon: Clock },
+};
 
-  const docs = [
-    { id: '1', title: 'Home Loan Pitch Script (Hindi)', type: 'PDF', size: '1.2 MB', category: 'scripts', bgColor: '#FEE2E2', iconColor: '#EF4444' },
-    { id: '2', title: 'Product Rate Card May 2024', type: 'PDF', size: '850 KB', category: 'brochures', bgColor: '#DBEAFE', iconColor: '#2563eb' },
-    { id: '3', title: 'Objection Handling FAQ Guide', type: 'DOCX', size: '2.1 MB', category: 'faqs', bgColor: '#FEF3C7', iconColor: '#D97706' },
-    { id: '4', title: 'Customer Objection Matrix', type: 'DOCX', size: '1.5 MB', category: 'scripts', bgColor: '#DCFCE7', iconColor: '#16A34A' },
-  ];
+export const DocumentsScreen: React.FC<DocumentsScreenProps> = ({ onBack, companyId, userId }) => {
+  const [docs, setDocs] = useState<DocumentRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!companyId || !userId) { setDocs([]); return; }
+    setError(null);
+    try {
+      setDocs(await workspaceService.documents(companyId, userId));
+    } catch (e) {
+      setDocs(null);
+      setError(e instanceof Error ? e.message : 'Could not load your documents.');
+    }
+  }, [companyId, userId]);
+
+  useEffect(() => { void load(); }, [load]);
 
   return (
     <View style={styles.container}>
-      {/* Top Header matching Reference UI Image 5 Screen 18 */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
           <ArrowLeft size={20} color="#0f172a" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Documents & Scripts</Text>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Search size={20} color="#0f172a" />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My documents</Text>
+        <View style={styles.iconBtn} />
       </View>
 
-      {/* Search Input */}
-      <View style={styles.searchContainer}>
-        <Search size={18} color="#94a3b8" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search sales scripts, PDFs, brochures..."
-          placeholderTextColor="#94a3b8"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }}
+          />
+        }
+      >
+        {error && (
+          <View style={styles.stateCard}>
+            <Text style={styles.stateTitle}>Could not load your documents</Text>
+            <Text style={styles.stateBody}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => void load()}>
+              <Text style={styles.retryText}>Try again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-      {/* Filter Tabs */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tabChip, activeTab === 'scripts' && styles.tabChipActive]}
-          onPress={() => setActiveTab('scripts')}
-        >
-          <Text style={[styles.tabText, activeTab === 'scripts' && styles.tabTextActive]}>
-            Pitch Scripts
-          </Text>
-        </TouchableOpacity>
+        {!error && docs === null && (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator color="#2563eb" />
+          </View>
+        )}
 
-        <TouchableOpacity
-          style={[styles.tabChip, activeTab === 'brochures' && styles.tabChipActive]}
-          onPress={() => setActiveTab('brochures')}
-        >
-          <Text style={[styles.tabText, activeTab === 'brochures' && styles.tabTextActive]}>
-            Brochures
-          </Text>
-        </TouchableOpacity>
+        {!error && docs !== null && docs.length === 0 && (
+          <View style={styles.stateCard}>
+            <Text style={styles.stateTitle}>Nothing uploaded yet</Text>
+            <Text style={styles.stateBody}>
+              Documents your admin asks you for are uploaded from the web app, and their
+              review status shows up here.
+            </Text>
+          </View>
+        )}
 
-        <TouchableOpacity
-          style={[styles.tabChip, activeTab === 'faqs' && styles.tabChipActive]}
-          onPress={() => setActiveTab('faqs')}
-        >
-          <Text style={[styles.tabText, activeTab === 'faqs' && styles.tabTextActive]}>
-            FAQs
-          </Text>
-        </TouchableOpacity>
-      </View>
+        {docs !== null && docs.length > 0 && (
+          <View style={styles.docList}>
+            {docs.map((doc) => {
+              const look = STATUS_LOOK[String(doc.status).toLowerCase()] ?? STATUS_LOOK.pending;
+              const { Icon } = look;
+              return (
+                <View key={doc.id} style={styles.card}>
+                  <View style={styles.iconSquare}>
+                    <FileText size={22} color="#64748b" />
+                  </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.docList}>
-          {docs.map((doc) => (
-            <View key={doc.id} style={styles.card}>
-              <View style={[styles.iconSquare, { backgroundColor: doc.bgColor }]}>
-                <FileText size={22} color={doc.iconColor} />
-              </View>
+                  <View style={styles.cardMain}>
+                    <Text style={styles.docTitle} numberOfLines={1}>{doc.fileName}</Text>
+                    <Text style={styles.docMeta}>
+                      {doc.category} • {formatBytes(doc.sizeBytes)}
+                      {doc.uploadedAt
+                        ? ` • ${new Date(doc.uploadedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
+                        : ''}
+                    </Text>
+                  </View>
 
-              <View style={styles.cardMain}>
-                <Text style={styles.docTitle}>{doc.title}</Text>
-                <Text style={styles.docMeta}>{doc.type} • {doc.size}</Text>
-              </View>
-
-              <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.actionBtn}>
-                  <Eye size={16} color="#2563eb" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtn}>
-                  <Download size={16} color="#16a34a" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
+                  <View style={[styles.statusPill, { backgroundColor: look.bg }]}>
+                    <Icon size={13} color={look.color} />
+                    <Text style={[styles.statusText, { color: look.color }]}>{look.label}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    paddingTop: 50,
-  },
+  container: { flex: 1, backgroundColor: '#ffffff', paddingTop: 50 },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, marginBottom: 8,
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#f8fafc',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 48,
-    marginHorizontal: 20,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginBottom: 16,
-    gap: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#0f172a',
-    fontWeight: '500',
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 8,
-    marginBottom: 16,
-  },
-  tabChip: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#f1f5f9',
-    alignItems: 'center',
-  },
-  tabChipActive: {
-    backgroundColor: '#2563eb',
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#64748b',
-  },
-  tabTextActive: {
-    color: '#ffffff',
-    fontWeight: '700',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-  },
-  docList: {
-    gap: 12,
-  },
+  iconBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: '#0f172a' },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
+
+  docList: { gap: 12, marginTop: 8 },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    gap: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 18, padding: 14,
   },
   iconSquare: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 44, height: 44, borderRadius: 14, backgroundColor: '#f8fafc',
+    justifyContent: 'center', alignItems: 'center',
   },
-  cardMain: {
-    flex: 1,
+  cardMain: { flex: 1 },
+  docTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  docMeta: { fontSize: 11.5, color: '#64748b', marginTop: 3 },
+  statusPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 9, paddingVertical: 5, borderRadius: 9,
   },
-  docTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0f172a',
+  statusText: { fontSize: 10.5, fontWeight: '800' },
+
+  loadingBox: { paddingVertical: 48, alignItems: 'center' },
+  stateCard: {
+    borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 18,
+    padding: 24, alignItems: 'center', marginTop: 12,
   },
-  docMeta: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
+  stateTitle: {
+    fontSize: 15, fontWeight: '800', color: '#0f172a',
+    marginBottom: 6, textAlign: 'center',
   },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 6,
+  stateBody: { fontSize: 13, color: '#64748b', lineHeight: 19, textAlign: 'center' },
+  retryBtn: {
+    marginTop: 14, paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 12, backgroundColor: '#eff6ff',
   },
-  actionBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: '#f8fafc',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-  },
+  retryText: { fontSize: 13, fontWeight: '700', color: '#2563eb' },
 });

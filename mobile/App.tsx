@@ -39,6 +39,7 @@ import { ApprovalPending } from './src/screens/06_ApprovalPending';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { LeadListScreen } from './src/screens/LeadListScreen';
 import { LeadDetailScreen } from './src/screens/LeadDetailScreen';
+import { LeadFormScreen } from './src/screens/LeadFormScreen';
 import { PostCallFeedbackSheet, type PostCallFeedback } from './src/screens/PostCallFeedbackSheet';
 import { CallbacksScreen } from './src/screens/CallbacksScreen';
 import { PerformanceScreen } from './src/screens/PerformanceScreen';
@@ -79,7 +80,6 @@ import { PrivacyTermsWebView } from './src/screens/84_PrivacyTermsWebView';
 import { TargetScreen } from './src/screens/TargetScreen';
 import { DocumentsScreen } from './src/screens/DocumentsScreen';
 import { HelpCenterScreen } from './src/screens/HelpCenterScreen';
-import { QualityAnalyticsScreen } from './src/screens/QualityAnalyticsScreen';
 
 type AuthStep =
   | 'splash'
@@ -96,6 +96,7 @@ type AppScreen =
   | 'home'
   | 'leads'
   | 'lead_detail'
+  | 'lead_form'
   | 'callbacks'
   | 'performance'
   | 'leaderboard'
@@ -112,7 +113,6 @@ type AppScreen =
   | 'target'
   | 'documents'
   | 'help'
-  | 'quality'
   | 'delete_account';
 
 type BottomTab = 'home' | 'leads' | 'callbacks' | 'performance' | 'inbox' | 'settings';
@@ -145,6 +145,8 @@ function MainAppContent() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('home');
   const [activeTab, setActiveTab] = useState<BottomTab>('home');
   const [selectedLeadId, setSelectedLeadId] = useState('');
+  /** The lead LeadFormScreen is editing. Null means it is adding a new one. */
+  const [editingLead, setEditingLead] = useState<LeadItem | null>(null);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
   // Overlays & Offline
@@ -792,6 +794,10 @@ function MainAppContent() {
             leads={queuedLeads}
             onOpenSearch={() => setCurrentScreen('lead_search')}
             onOpenFilters={() => setShowLeadFilters(true)}
+            onAddLead={() => {
+              setEditingLead(null);
+              setCurrentScreen('lead_form');
+            }}
             sortLabel={leadFilters ? 'Call order · filtered' : 'Call order'}
             refreshing={refreshingLeads}
             onRefresh={loadLeads}
@@ -805,6 +811,14 @@ function MainAppContent() {
             lead={selectedLead}
             companyId={profile?.companyId}
             onBack={() => setCurrentScreen('leads')}
+            onEdit={() => {
+              if (!selectedLead) {
+                toastError('Cannot edit', 'This lead is not loaded yet.');
+                return;
+              }
+              setEditingLead(selectedLead);
+              setCurrentScreen('lead_form');
+            }}
             onCall={(phone) => {
               // The fallback used to open the fake calling screen, so opening a
               // lead the list had not loaded gave a call that never happened.
@@ -853,7 +867,28 @@ function MainAppContent() {
       case 'notifications':
         return (
           <NotificationCenterScreen
-            onBack={() => navigateToTab('home')}
+            onBack={() => setCurrentScreen('settings')}
+            companyId={profile?.companyId}
+            userId={profile?.uid}
+          />
+        );
+
+      case 'lead_form':
+        return (
+          <LeadFormScreen
+            companyId={profile?.companyId}
+            userId={profile?.uid}
+            // Present means edit, absent means add. editingLead is cleared by
+            // the Add button and set by the Edit one.
+            lead={editingLead}
+            onBack={() => setCurrentScreen(editingLead ? 'lead_detail' : 'leads')}
+            onSaved={(id) => {
+              setSelectedLeadId(id);
+              setEditingLead(null);
+              loadLeads();
+              setCurrentScreen('lead_detail');
+              toastSuccess('Saved', 'The lead is on your list.');
+            }}
           />
         );
 
@@ -993,7 +1028,6 @@ function MainAppContent() {
             refreshing={refreshingSecondary}
             onRefresh={loadSecondaryData}
             onOpenLeaderboard={() => setCurrentScreen('leaderboard')}
-            onOpenQuality={() => setCurrentScreen('quality')}
           />
         );
 
@@ -1023,6 +1057,7 @@ function MainAppContent() {
       case 'target':
         return (
           <TargetScreen
+            companyId={profile?.companyId}
             onBack={() => navigateToTab('home')}
             stats={telecallerStats}
             refreshing={refreshingSecondary}
@@ -1032,17 +1067,19 @@ function MainAppContent() {
 
       case 'documents':
         return (
-          <DocumentsScreen onBack={() => navigateToTab('home')} />
+          <DocumentsScreen
+            onBack={() => setCurrentScreen('settings')}
+            companyId={profile?.companyId}
+            userId={profile?.uid}
+          />
         );
 
       case 'help':
         return (
-          <HelpCenterScreen onBack={() => navigateToTab('home')} />
-        );
-
-      case 'quality':
-        return (
-          <QualityAnalyticsScreen onBack={() => navigateToTab('home')} />
+          <HelpCenterScreen
+            onBack={() => setCurrentScreen('settings')}
+            companyId={profile?.companyId}
+          />
         );
 
       case 'settings':

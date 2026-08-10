@@ -97,6 +97,16 @@ describe('mobile screens invent nothing', () => {
       'SettingsScreen.tsx': ['142', '9:02 AM', 'Pune, Maharashtra'],
       'LeadDetailScreen.tsx': ['5,000,000', 'Hindi, English', 'Assigned Telecaller', 'Honda City'],
       'LeaderboardScreen.tsx': ['168 Calls', '142 Calls', '24 Conv.'],
+      // ₹ 2,500 for 600 calls and ₹ 5,000 for 720, on a "Bonus Payout Slabs"
+      // card. There is no incentive system in this product at all, so the app
+      // was telling every telecaller they had money coming.
+      'TargetScreen.tsx': ['2,500', '5,000', 'Bonus Payout'],
+      // Four files that never existed, with sizes to match, under tabs that
+      // filtered nothing.
+      'DocumentsScreen.tsx': ['Home Loan Pitch Script', 'Rate Card', '1.2 MB', '850 KB'],
+      // Four answers describing controls that were never built, one of them
+      // promising incentive payouts every Sunday.
+      'HelpCenterScreen.tsx': ['SIM 1 connection', 'incentive payouts', 'Request Lead Transfer'],
     };
 
     const offenders: string[] = [];
@@ -118,6 +128,25 @@ describe('mobile screens invent nothing', () => {
     expect(code('LeaderboardScreen.tsx')).toContain('leaderboardService');
     expect(code('59_InboxScreen.tsx')).toContain('inboxService');
     expect(code('LeadDetailScreen.tsx')).toContain('activityService');
+    expect(code('TargetScreen.tsx')).toContain('workspaceService');
+    expect(code('DocumentsScreen.tsx')).toContain('workspaceService');
+    expect(code('HelpCenterScreen.tsx')).toContain('workspaceService');
+    expect(code('62_NotificationCenterScreen.tsx')).toContain('inboxService');
+  });
+
+  it('lets an agent add and correct a lead', () => {
+    // Neither was possible from the phone. Leads arrived by webhook or by an
+    // admin importing a file, so a referral went on paper; and every Edit
+    // control on LeadDetail had no handler, so a wrong number stayed wrong.
+    expect(files, 'the lead form is the only way to add a lead').toContain('LeadFormScreen.tsx');
+    expect(code('LeadFormScreen.tsx')).toContain('leadService.createLead');
+    expect(code('LeadFormScreen.tsx')).toContain('leadService.updateLeadDetails');
+    // The plan's lead limit raises P0001, and the agent needs to be told which
+    // limit they hit rather than shown a Postgres string.
+    expect(code('LeadFormScreen.tsx')).toContain('PLAN_LIMIT');
+
+    expect(code('LeadListScreen.tsx'), 'no way to open the add form').toContain('onAddLead');
+    expect(code('LeadDetailScreen.tsx'), 'no way to open the edit form').toContain('onEdit');
   });
 
   it('does not ship screens whose only content was invented', () => {
@@ -133,6 +162,11 @@ describe('mobile screens invent nothing', () => {
       'LeadImportScreen.tsx',
       '81_ThemeToggleScreen.tsx',
       '10_LanguageSelectionScreen.tsx',
+      // Gave every agent 4.8 out of 5 and a "Top 5% Telecaller Quality Rating",
+      // with Script Compliance at 95%. Scoring a call needs a recording, a
+      // transcript or a person listening; this product does none of the three,
+      // and the privacy policy says plainly that it does not record audio.
+      'QualityAnalyticsScreen.tsx',
     ]) {
       expect(files, `${gone} should not be back without something behind it`).not.toContain(gone);
     }

@@ -204,17 +204,20 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
         </View>
 
         {/*
-          LeaderboardScreen and QualityAnalyticsScreen were written, wired into
-          the router, and reachable from nothing at all.
+          LeaderboardScreen was written, wired into the router, and reachable
+          from nothing at all.
+
+          A "Call quality" row sat beside this one, opening a screen that gave
+          every agent 4.8 out of 5, a "Top 5% Telecaller Quality Rating" and
+          scores of 95% and 98% against dimensions like Script Compliance.
+          Scoring a call needs a recording, a transcript or a human listening to
+          it, and this product does none of the three -- the privacy policy says
+          plainly that the app does not record audio. The screen is gone rather
+          than rebuilt, because there is nothing to rebuild it from.
         */}
         <View style={styles.linkGroup}>
           <TouchableOpacity style={styles.linkRow} onPress={onOpenLeaderboard}>
             <Text style={styles.linkLabel}>Team leaderboard</Text>
-            <ChevronRight size={16} color="#94a3b8" />
-          </TouchableOpacity>
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.linkRow} onPress={onOpenQuality}>
-            <Text style={styles.linkLabel}>Call quality</Text>
             <ChevronRight size={16} color="#94a3b8" />
           </TouchableOpacity>
         </View>

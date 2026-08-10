@@ -1,7 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { ArrowLeft, CheckCircle2, Users, Clock, Target, Award, AlertTriangle, PhoneCall, CreditCard, Zap, Info, Pin } from 'lucide-react-native';
 import { EmptyStateComponent } from '../components/EmptyStateComponent';
+import { inboxService } from '../services/inboxService';
+
+/**
+ * This agent's notifications.
+ *
+ * The screen itself was fine -- tabs, an empty state, a loading state, priority
+ * badges. What it never had was data: App.tsx rendered it with no
+ * `notifications` prop at all, so the default `[]` won and it showed "nothing
+ * to catch up on" no matter how many rows sat in the table.
+ */
 
 export interface MobileNotificationItem {
   id: string;
@@ -22,7 +32,9 @@ interface NotificationCenterScreenProps {
   onBack: () => void;
   onSelectNotification?: (id: string, actionUrl?: string) => void;
   onMarkAllRead?: () => void;
-  notifications?: MobileNotificationItem[];
+  /** Supply these and the screen loads its own rows. */
+  companyId?: string | null;
+  userId?: string | null;
   isLoading?: boolean;
 }
 
@@ -30,10 +42,41 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
   onBack,
   onSelectNotification,
   onMarkAllRead,
-  notifications = [],
+  companyId,
+  userId,
   isLoading = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'urgent' | 'system'>('all');
+  const [notifications, setNotifications] = useState<MobileNotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!companyId || !userId) { setLoading(false); return; }
+    setError(null);
+    try {
+      const rows = await inboxService.notifications(companyId, userId);
+      setNotifications(rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        desc: r.body,
+        time: new Date(r.at).toLocaleString('en-IN', {
+          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+        }),
+        isUnread: !r.isRead,
+        isPinned: r.isPinned,
+        type: r.category,
+      })));
+    } catch (e) {
+      // Told, not swallowed. An empty list after a failed query says the agent
+      // has nothing waiting, which is the one thing this screen must not do.
+      setError(e instanceof Error ? e.message : 'Could not load your notifications.');
+    } finally {
+      setLoading(false);
+    }
+  }, [companyId, userId]);
+
+  useEffect(() => { void load(); }, [load]);
 
   const filteredNotifications = notifications.filter((item) => {
     if (activeTab === 'unread') return item.isUnread;
@@ -72,9 +115,14 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
           <ArrowLeft size={20} color="#0f172a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        <TouchableOpacity style={styles.iconBtn} onPress={onMarkAllRead}>
-          <CheckCircle2 size={20} color="#2563eb" />
-        </TouchableOpacity>
+        {/* Only offered when the caller supplied a handler for it. */}
+        {onMarkAllRead ? (
+          <TouchableOpacity style={styles.iconBtn} onPress={onMarkAllRead}>
+            <CheckCircle2 size={20} color="#2563eb" />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.iconBtn} />
+        )}
       </View>
 
       {/* Filter Tabs */}
@@ -94,7 +142,14 @@ export const NotificationCenterScreen: React.FC<NotificationCenterScreenProps> =
 
       {/* Main List */}
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {isLoading ? (
+        {error ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); void load(); }}>
+              <Text style={styles.retryText}>Try again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : isLoading || loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2563eb" />
             <Text style={styles.loadingText}>Loading notifications...</Text>
@@ -209,7 +264,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 18,
   },
+  retryBtn: {
+    marginTop: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#eff6ff',
+  },
+  retryText: { fontSize: 13, fontWeight: '700', color: '#2563eb' },
   listGroup: {
     gap: 12,
   },

@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
-import { ArrowLeft, Target, ChevronLeft, ChevronRight, Award, TrendingUp, CheckCircle2 } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { ArrowLeft, Target, Award, TrendingUp, CheckCircle2 } from 'lucide-react-native';
 import { TelecallerStats } from '../services/targetService';
+import { workspaceService, type TargetRow } from '../services/workspaceService';
 
 interface TargetScreenProps {
   onBack: () => void;
   stats?: TelecallerStats;
+  companyId?: string | null;
   refreshing?: boolean;
   onRefresh?: () => void;
 }
@@ -20,10 +22,29 @@ export const TargetScreen: React.FC<TargetScreenProps> = ({
     callTarget: 100,
     callTargetProgress: 0,
   },
+  companyId,
   refreshing = false,
   onRefresh,
 }) => {
-  const [selectedMonth, setSelectedMonth] = useState('Current Period');
+  const [companyTargets, setCompanyTargets] = useState<TargetRow[] | null>(null);
+  const [targetsError, setTargetsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!companyId) { setCompanyTargets([]); return; }
+    (async () => {
+      try {
+        const rows = await workspaceService.targets(companyId);
+        if (!cancelled) setCompanyTargets(rows);
+      } catch (e) {
+        if (!cancelled) {
+          setCompanyTargets(null);
+          setTargetsError(e instanceof Error ? e.message : 'Could not load your targets.');
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [companyId]);
 
   const callsPct = Math.min(100, Math.round((stats.totalCalls / Math.max(1, stats.callTarget)) * 100));
   const connectedPct = Math.min(100, Math.round((stats.connectedCalls / Math.max(1, stats.totalCalls || 1)) * 100));
@@ -36,9 +57,9 @@ export const TargetScreen: React.FC<TargetScreenProps> = ({
           <ArrowLeft size={20} color="#0f172a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Targets</Text>
-        <TouchableOpacity style={styles.iconBtn}>
+        <View style={styles.iconBtn}>
           <Target size={20} color="#2563eb" />
-        </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -50,16 +71,12 @@ export const TargetScreen: React.FC<TargetScreenProps> = ({
           ) : undefined
         }
       >
-        {/* Month Selector Banner */}
-        <View style={styles.monthSelectorRow}>
-          <TouchableOpacity style={styles.arrowBtn}>
-            <ChevronLeft size={18} color="#0f172a" />
-          </TouchableOpacity>
-          <Text style={styles.monthSelectorText}>{selectedMonth}</Text>
-          <TouchableOpacity style={styles.arrowBtn}>
-            <ChevronRight size={18} color="#0f172a" />
-          </TouchableOpacity>
-        </View>
+        {/*
+          The month selector here had two arrows with no handlers, so it looked
+          like history was browsable and it was not. `targets` holds one figure
+          per label with no period column, so there is no earlier month to move
+          to.
+        */}
 
         {/* Overall Target Status Card */}
         <View style={styles.card}>
@@ -124,36 +141,61 @@ export const TargetScreen: React.FC<TargetScreenProps> = ({
           </View>
         </View>
 
-        {/* Bonus Payout Slabs Card */}
+        {/*
+          The company's own targets.
+
+          A "Bonus Payout Slabs" card used to sit here promising ₹ 2,500 for
+          600 calls and ₹ 5,000 for 720. There is no incentive system in this
+          product -- no table, no column, nothing that would ever pay it -- so
+          the app was telling every telecaller they had money coming.
+        */}
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>Bonus Payout Slabs</Text>
+            <Text style={styles.cardTitle}>Set by your company</Text>
             <Award size={18} color="#f59e0b" />
           </View>
 
-          <View style={styles.slabList}>
-            <View style={styles.slabCardActive}>
-              <View style={styles.slabLeft}>
-                <CheckCircle2 size={16} color="#16a34a" />
-                <View>
-                  <Text style={styles.slabTitle}>Tier 1 (100% Target)</Text>
-                  <Text style={styles.slabDesc}>Complete 600 calls this month</Text>
-                </View>
-              </View>
-              <Text style={styles.slabAmountAchieved}>₹ 2,500</Text>
-            </View>
+          {targetsError && <Text style={styles.stateBody}>{targetsError}</Text>}
 
-            <View style={styles.slabCardNext}>
-              <View style={styles.slabLeft}>
-                <TrendingUp size={16} color="#2563eb" />
-                <View>
-                  <Text style={styles.slabTitleNext}>Tier 2 (120% Target)</Text>
-                  <Text style={styles.slabDesc}>Complete 720 calls this month</Text>
-                </View>
-              </View>
-              <Text style={styles.slabAmountNext}>₹ 5,000</Text>
+          {!targetsError && companyTargets === null && (
+            <View style={styles.loadingBox}>
+              <ActivityIndicator color="#2563eb" />
             </View>
-          </View>
+          )}
+
+          {!targetsError && companyTargets !== null && companyTargets.length === 0 && (
+            <Text style={styles.stateBody}>
+              Your admin has not set a target yet. The figures above are your own count
+              against the default.
+            </Text>
+          )}
+
+          {companyTargets !== null && companyTargets.length > 0 && (
+            <View style={styles.slabList}>
+              {companyTargets.map((t) => {
+                const pct = t.targetValue > 0
+                  ? Math.min(100, Math.round((t.currentValue / t.targetValue) * 100))
+                  : 0;
+                const done = pct >= 100;
+                return (
+                  <View key={t.id} style={done ? styles.slabCardActive : styles.slabCardNext}>
+                    <View style={styles.slabLeft}>
+                      {done
+                        ? <CheckCircle2 size={16} color="#16a34a" />
+                        : <TrendingUp size={16} color="#2563eb" />}
+                      <View>
+                        <Text style={done ? styles.slabTitle : styles.slabTitleNext}>{t.label}</Text>
+                        <Text style={styles.slabDesc}>
+                          {t.currentValue} of {t.targetValue} {t.type}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={done ? styles.slabAmountAchieved : styles.slabAmountNext}>{pct}%</Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -192,24 +234,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 100,
   },
-  monthSelectorRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  stateBody: {
+    fontSize: 13,
+    color: '#64748b',
+    lineHeight: 19,
+    paddingVertical: 6,
+  },
+  loadingBox: {
+    paddingVertical: 20,
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 16,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    marginBottom: 16,
-  },
-  arrowBtn: {
-    padding: 4,
-  },
-  monthSelectorText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0f172a',
   },
   card: {
     backgroundColor: '#ffffff',

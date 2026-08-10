@@ -29,6 +29,14 @@ interface LeadDetailScreenProps {
   companyId?: string | null;
   onBack: () => void;
   onCall: (phone: string) => void;
+  /**
+   * Opens the lead form to correct these details.
+   *
+   * Both Edit controls on this screen had no handler, so an agent who learned
+   * the right spelling of a name or a working email on a call could not record
+   * it, and the next person to ring dialled the same wrong number.
+   */
+  onEdit?: () => void;
 }
 
 /** A field with nothing in it says so, rather than borrowing someone else's. */
@@ -40,6 +48,7 @@ export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({
   companyId,
   onBack,
   onCall,
+  onEdit,
 }) => {
   const lead = {
     name: passedLead?.name || 'Unnamed lead',
@@ -132,9 +141,11 @@ export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({
 
         {/* Lead Information Card */}
         <View style={styles.card}>
-          {/* The Edit link had no handler. */}
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardTitle}>Lead information</Text>
+            <TouchableOpacity onPress={onEdit}>
+              <Text style={styles.editLink}>Edit</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.infoRow}>

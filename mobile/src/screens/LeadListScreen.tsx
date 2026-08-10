@@ -44,6 +44,14 @@ interface LeadListScreenProps {
   onOpenSearch?: () => void;
   /** How the list is currently ordered, for the label. */
   sortLabel?: string;
+  /**
+   * Opens the add-a-lead form.
+   *
+   * There was no way to add a lead from the phone at all. Leads arrived by
+   * webhook or by the admin importing a file, so a referral or a walk-in number
+   * went on paper and never reached the CRM.
+   */
+  onAddLead?: () => void;
 }
 
 export const LeadListScreen: React.FC<LeadListScreenProps> = ({
@@ -56,6 +64,7 @@ export const LeadListScreen: React.FC<LeadListScreenProps> = ({
   leads = [],
   refreshing = false,
   onRefresh,
+  onAddLead,
 }) => {
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,6 +101,14 @@ export const LeadListScreen: React.FC<LeadListScreenProps> = ({
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={onOpenFilters} accessibilityLabel="Filter leads">
             <SlidersHorizontal size={20} color="#0f172a" />
+          </TouchableOpacity>
+          {/* Adding a lead was impossible from the phone until this. */}
+          <TouchableOpacity
+            style={[styles.iconBtn, styles.iconBtnPrimary]}
+            onPress={onAddLead}
+            accessibilityLabel="Add a lead"
+          >
+            <Plus size={20} color="#ffffff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -219,6 +236,10 @@ const styles = StyleSheet.create({
   headerIcons: {
     flexDirection: 'row',
     gap: 10,
+  },
+  iconBtnPrimary: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
   },
   iconBtn: {
     width: 40,

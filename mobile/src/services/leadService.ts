@@ -172,6 +172,105 @@ export const leadService = {
   },
 
   /**
+   * Adds a lead this agent found themselves.
+   *
+   * There was no way to do this from the phone. Leads arrived by webhook or by
+   * the admin importing a file, so a telecaller given a number by a customer,
+   * a colleague or a walk-in had nowhere to put it -- they wrote it on paper,
+   * and the CRM never learned about the call they made from it.
+   *
+   * leads.id is TEXT, not a uuid with a default, so the id is generated here.
+   * The prefix marks where the lead came from, which the admin can see.
+   *
+   * Assigned to the agent who added it. They are the one who is going to call
+   * it, and an unassigned lead sitting in the company pool is how a referral
+   * gets forgotten.
+   *
+   * Throws. trg_enforce_lead_limit raises P0001 when the plan's lead limit is
+   * reached, and the caller needs the message rather than a silent failure.
+   */
+  async createLead(input: {
+    companyId: string;
+    userId: string;
+    name: string;
+    phone: string;
+    email?: string;
+    city?: string;
+    comment?: string;
+    priority?: string;
+  }): Promise<string> {
+    const name = input.name.trim();
+    const phone = input.phone.replace(/[^\d+]/g, '');
+    if (!name) throw new Error('A name is needed.');
+    if (phone.replace(/\D/g, '').length < 10) throw new Error('That does not look like a phone number.');
+
+    const id = `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const { error } = await supabase.from('leads').insert({
+      id,
+      company_id: input.companyId,
+      name,
+      phone,
+      email: input.email?.trim() || null,
+      address: input.city?.trim() || null,
+      comment: input.comment?.trim() || null,
+      status: 'New',
+      priority: input.priority || 'Medium',
+      source: 'added_by_agent',
+      assigned_to: input.userId,
+      is_deleted: false,
+      is_unseen: false,
+    });
+
+    if (error) throw error;
+    return id;
+  },
+
+  /**
+   * Corrects a lead's details.
+   *
+   * Every Edit control on LeadDetailScreen had no handler, so an agent who
+   * learned the correct spelling of a name or a working email address on a call
+   * had no way to record it, and the next person to ring dialled the same wrong
+   * number.
+   *
+   * Only the fields a telecaller can genuinely know are writable. Status is not
+   * among them: it is set by the post-call form, beside the call that justifies
+   * it.
+   */
+  async updateLeadDetails(
+    companyId: string,
+    leadId: string,
+    fields: { name?: string; phone?: string; email?: string; city?: string; comment?: string; priority?: string },
+  ): Promise<void> {
+    if (!companyId || !leadId) throw new Error('Missing company or lead id.');
+
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (fields.name !== undefined) {
+      const n = fields.name.trim();
+      if (!n) throw new Error('A name is needed.');
+      patch.name = n;
+    }
+    if (fields.phone !== undefined) {
+      const p = fields.phone.replace(/[^\d+]/g, '');
+      if (p.replace(/\D/g, '').length < 10) throw new Error('That does not look like a phone number.');
+      patch.phone = p;
+    }
+    if (fields.email !== undefined) patch.email = fields.email.trim() || null;
+    if (fields.city !== undefined) patch.address = fields.city.trim() || null;
+    if (fields.comment !== undefined) patch.comment = fields.comment.trim() || null;
+    if (fields.priority !== undefined) patch.priority = fields.priority;
+
+    const { error } = await supabase
+      .from('leads')
+      .update(patch)
+      .eq('id', leadId)
+      .eq('company_id', companyId);
+
+    if (error) throw error;
+  },
+
+  /**
    * Records the result of a call against the lead itself.
    *
    * This is what the post-call sheet was missing. It wrote to `calls` and
