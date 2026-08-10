@@ -146,17 +146,21 @@ router.post('/routing/force/:companyId/:leadId', async (req, res) => {
       updatedAt: FieldValue.serverTimestamp()
     });
 
-    const importLogQuery = await db.collection("import_logs")
-      .where("companyId", "==", companyId)
-      .where("leadId", "==", leadId)
-      .get();
+    // import_logs is the CSV importer's table -- (company_id, filename,
+    // row_count, status). It has no lead_id, so this query filtered on a column
+    // that does not exist and threw; and the update named assigned_to and
+    // routing_reason, which it does not have either. The routing trail belongs
+    // in lead_activity_log, beside the rest of a lead's history.
+    const { error: trailError } = await supabaseAdmin.from('lead_activity_log').insert({
+      company_id: companyId,
+      lead_id: leadId,
+      activity_type: 'assignment',
+      description: `Force-assigned to ${assignedAgentName}`,
+      created_by: assignedAgentId,
+    });
 
-    if (!importLogQuery.empty) {
-      await importLogQuery.docs[0].ref.update({
-        status: 'success',
-        assignedTo: assignedAgentId,
-        routingReason: `Manual Force Route -> Assigned to ${assignedAgentName} (Round Robin)`
-      });
+    if (trailError) {
+      logger.error('[Routing Force] activity trail not written:', trailError.message);
     }
 
     res.json({ success: true, assignedTo: assignedAgentId, assignedToName: assignedAgentName });
@@ -319,19 +323,23 @@ export function startLeadsBackgroundCrons() {
         if (!heldLeads.empty) {
           logger.info(`[Night Hold Queue Release] Found ${heldLeads.size} leads to release. Triggering welcome sequences...`);
           for (const leadDoc of heldLeads.docs) {
+            // holdUntil is gone. There is no hold_until column, so this update
+            // raised 42703 and no held lead was ever released -- the error was
+            // then swallowed by the branch below.
             await db.collection("leads").doc(leadDoc.ref.id).update({
-              holdOutboundTrigger: false,
-              holdUntil: 'Released'
+              holdOutboundTrigger: false
             });
           }
         }
       }
     } catch (err: any) {
-      if (err.message?.includes('schema cache') || err.message?.includes('does not exist')) {
-        logger.debug("[Night Hold Release Notice]: Leads hold schema pending.");
-      } else {
-        logger.error("[Night Hold Release Error]:", err.message);
-      }
+      // Every error is reported now.
+      //
+      // This used to demote "does not exist" to debug with the note "Leads hold
+      // schema pending", which is how a write against a column that had never
+      // been created ran quietly for as long as it did. A missing column is the
+      // loudest thing this job can find, not the quietest.
+      logger.error("[Night Hold Release Error]:", err.message);
     }
   }, POLL_INTERVAL_MS);
 }

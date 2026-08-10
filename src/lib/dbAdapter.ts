@@ -400,13 +400,26 @@ export async function processInboundLead(companyId: string, source: string, payl
   const teamSettingsSnap = await db.collection("team_settings").doc(companyId).get();
   const teamSettings = teamSettingsSnap.exists ? teamSettingsSnap.data() : {};
 
-  const assignmentMode = teamSettings.assignmentRule || 'Manual';
-  const activeIds = teamSettings.activeAgentIds || [];
-  const smartDedupe = teamSettings.smartDeduplication ?? true;
-  const dedupeWindow = teamSettings.dedupeWindowDays !== undefined ? teamSettings.dedupeWindowDays : 7;
-  const holdNight = teamSettings.holdNightLeads ?? false;
-  const nightStart = teamSettings.nightHours?.start || '22:00';
-  const nightEnd = teamSettings.nightHours?.end || '08:00';
+  // team_settings holds company_id, require_approval, assignment_mode,
+  // rotting_threshold, hide_phone_numbers, device_limit, leads_statuses and
+  // default_stage -- queried, not assumed.
+  //
+  // This block used to read assignmentRule, activeAgentIds, smartDeduplication,
+  // dedupeWindowDays, holdNightLeads, nightHours and categoryAgentMap. Only one
+  // of those has a column, and it is spelled assignment_mode. So `assignmentMode`
+  // resolved to 'Manual' on every company no matter what they had chosen, and
+  // the `assignmentMode === 'RoundRobin'` branch below could never be reached --
+  // inbound leads were never auto-assigned to anybody.
+  //
+  // The rest are constants until there is a column to put them in. Reading a
+  // field that is always undefined is not a setting; it is a default wearing a
+  // setting's name.
+  const assignmentMode = teamSettings.assignmentMode || 'Manual';
+  const activeIds: string[] = [];
+  const smartDedupe = true;
+  const dedupeWindow = 7;
+  const holdNight = false;
+  const nightEnd = '08:00';
 
   const dupCheck = await db.collection("leads")
     .where("phone", "==", phone)
@@ -444,21 +457,21 @@ export async function processInboundLead(companyId: string, source: string, payl
     }
   }
 
+  // holdUntil is gone with the column that never existed. hold_outbound_trigger
+  // is the whole state: the release cron in src/routes/leads.ts clears it.
   let holdOutboundTrigger = false;
-  let holdUntil = '';
-  
+
   if (holdNight) {
     const currentHour = new Date().getHours();
-    const startH = parseInt(nightStart.split(':')[0]);
+    const startH = 22;
     const endH = parseInt(nightEnd.split(':')[0]);
-    
+
     const inNightWindow = startH > endH
       ? (currentHour >= startH || currentHour < endH)
       : (currentHour >= startH && currentHour < endH);
 
     if (inNightWindow) {
       holdOutboundTrigger = true;
-      holdUntil = nightEnd;
       console.log(`[Night Hold Queue] Lead held. Scheduled release at ${nightEnd}.`);
     }
   }
@@ -502,10 +515,10 @@ export async function processInboundLead(companyId: string, source: string, payl
       routedAgents = routedAgents.filter((a: any) => activeIds.includes(a.uid));
     }
 
-    const categoryAgents = teamSettings.categoryAgentMap?.[categoryName] || [];
-    if (categoryAgents.length > 0) {
-      routedAgents = routedAgents.filter((a: any) => categoryAgents.includes(a.uid));
-    }
+    // categoryAgentMap has no column on team_settings, so this filter was
+    // always a no-op. categoryName is still computed above and is worth keeping
+    // for the day there is somewhere to store the mapping.
+    void categoryName;
 
     if (assignmentMode === 'RoundRobin' && routedAgents.length > 0) {
       let nextIndex = 0;
@@ -545,6 +558,10 @@ export async function processInboundLead(companyId: string, source: string, payl
       assignedAgentId = routedAgents[nextIndex].uid;
     }
 
+    // isNew and holdUntil are gone. mapKeys snake_cases every key, and neither
+    // is_new nor hold_until exists on leads -- so this insert raised 42703 and
+    // every inbound lead from Meta Ads, IndiaMART or a plain webhook was lost
+    // at the first write. is_unseen already carries what is_new was for.
     const newLead = {
       companyId,
       name: leadData.name || 'Unknown Lead',
@@ -556,9 +573,7 @@ export async function processInboundLead(companyId: string, source: string, payl
       status: 'New',
       assignedTo: assignedAgentId,
       isUnseen: true,
-      isNew: true,
       holdOutboundTrigger,
-      holdUntil,
       createdAt: FieldValue.serverTimestamp()
     };
 
@@ -566,24 +581,36 @@ export async function processInboundLead(companyId: string, source: string, payl
     leadId = added.id;
   }
 
-  await db.collection("import_logs").add({
-    companyId,
-    source,
-    leadId,
-    status: isDuplicate ? 'duplicate_updated' : 'success',
-    assignedTo: assignedAgentId,
-    createdAt: FieldValue.serverTimestamp(),
-    routingReason: isDuplicate
-      ? `Smart De-duplication Merged (Cooldown check)`
-      : (assignedAgentId ? `Auto-assigned via Round-Robin Rotation` : `Pooled in Unassigned Inbox`)
-  });
-
-  if (!holdOutboundTrigger && teamSettings.welcomeTemplate) {
-    const vars = teamSettings.welcomeTemplateVariables || { '{{1}}': 'name', '{{2}}': 'comment' };
-    const mappedVal1 = leadData[vars['{{1}}']] || '';
-    const mappedVal2 = leadData[vars['{{2}}']] || '';
-    console.log(`[WhatsApp Welcome Template Dispatch] Template sent: {{1}}="${mappedVal1}", {{2}}="${mappedVal2}"`);
+  // The ingestion trail goes to lead_activity_log, not import_logs.
+  //
+  // import_logs is the CSV importer's table -- (company_id, filename, row_count,
+  // status), with filename NOT NULL. The four extra columns this used to write
+  // (source, lead_id, assigned_to, routing_reason) do not exist on it, so the
+  // insert failed even when the lead itself had gone in, and the trail was
+  // empty for every webhook lead ever received.
+  if (leadId) {
+    const { error: trailError } = await supabaseAdmin.from('lead_activity_log').insert({
+      company_id: companyId,
+      lead_id: leadId,
+      activity_type: isDuplicate ? 'duplicate_merged' : 'lead_ingested',
+      description: isDuplicate
+        ? `Merged into an existing lead by phone, within the ${dedupeWindow}-day window, from ${source}`
+        : (assignedAgentId
+            ? `Received from ${source} and assigned by round-robin`
+            : `Received from ${source} and left unassigned`),
+      created_by: assignedAgentId,
+    });
+    // Logged, not thrown. The lead is already saved; losing its trail line is
+    // not a reason to make the sender retry and create a duplicate.
+    if (trailError) console.error('[Ingestion Engine] activity trail not written:', trailError.message);
   }
+
+  // The welcome-template dispatch that used to sit here logged
+  // "[WhatsApp Welcome Template Dispatch] Template sent" and sent nothing --
+  // there is no send call in it, and its two settings, welcomeTemplate and
+  // welcomeTemplateVariables, have no columns on team_settings, so the branch
+  // could not be entered in the first place. A log line claiming a message went
+  // out is worse than silence when reading the logs is how you check.
 
   return { leadId, isDuplicate, assignedTo: assignedAgentId };
 }
