@@ -333,24 +333,18 @@ export const AgentLiveMonitor = () => {
                                 <td className="px-6 py-4">
                                   <StatusBadge outcome={call.outcome} status={call.status} />
                                 </td>
+                                {/*
+                                  A play button and a "No recording" label used
+                                  to sit here. Both are gone: CallMind does not
+                                  record calls and will not, so "No recording"
+                                  was not a state waiting to change — it was the
+                                  only state there has ever been, printed on
+                                  every row of every call an admin looked at.
+                                */}
                                 <td className="px-6 py-4 text-right">
-                                  {/* Rendered only when there is something to play. The button used
-                                      to show on every row and do nothing at all. */}
-                                  {call.recordingUrl ? (
-                                    <a
-                                      href={call.recordingUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex p-2.5 rounded-2xl bg-gray-50 text-gray-400 hover:bg-brand-50 hover:text-brand-600 transition-all active:scale-90"
-                                      title="Play recording"
-                                    >
-                                      <Play size={16} fill="currentColor" />
-                                    </a>
-                                  ) : (
-                                    <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
-                                      No recording
-                                    </span>
-                                  )}
+                                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                    {call.duration || '—'}
+                                  </span>
                                 </td>
                               </tr>
                             )) : (

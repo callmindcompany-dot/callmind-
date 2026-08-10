@@ -66,7 +66,7 @@ When you register an account, CallMind creates a tenant workspace bound to your 
 
 ### Role-Based Access Control
 * **Founder / Admin**: Uses the Web Dashboard (\`callmind.app\`) to monitor call attendance, assign leads, view reports, and manage billing.
-* **Telecaller / Team Lead**: Uses the Mobile App to dial assigned leads, log call dispositions, and record voice notes.
+* **Telecaller / Team Lead**: Uses the Mobile App to dial assigned leads, log call outcomes, and schedule follow-ups. Notes are typed; the app captures no audio.
         `
       },
       {

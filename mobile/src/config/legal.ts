@@ -30,10 +30,12 @@
  * Claims deliberately NOT made, because they are not true today:
  *   - SQLCipher, "14-layer security", or any named certification (ISO, SOC 2)
  *   - Stripe as a payment processor — only Razorpay is integrated
- *   - anything about call recordings beyond what is below. calls.recording_url
- *     exists as a column and is read by the UI, but nothing in the codebase
- *     ever writes it and no row in the live table has one. The product does
- *     not record audio, and the site is right to say so.
+ *   - anything about call recordings beyond what is below. Not recording is a
+ *     decision, not a gap: the mobile app dials with `tel:` through the phone's
+ *     own SIM and never holds the audio. calls.recording_url survives as a
+ *     column nothing writes; the UI that used to read it — a player on
+ *     CallsPage and a play button on AgentLiveMonitor — is gone, and
+ *     src/__tests__/noCallRecording.test.ts fails if either comes back.
  *   - reading call logs or contacts — the app requests neither permission
  *   - "24/7 support"
  */
@@ -302,7 +304,11 @@ const TERMS: LegalDocument = {
       title: 'How you may use it',
       body: [
         'You are responsible for the legality of the calls and messages you make through this product. That includes India\'s TRAI regulations on commercial communication and the DND registry, and the equivalent rules wherever you are calling.',
-        'You must have a lawful basis for the lead data you upload, and consent where consent is required — including for any call recording you attach.',
+        // Said "including for any call recording you attach", which told
+        // customers that attaching a recording was something the product
+        // supports. It is not, and never will be: the privacy policy two
+        // documents over states that no call audio is recorded or stored.
+        'You must have a lawful basis for the lead data you upload, and consent where consent is required.',
         'You may not use the product to send unsolicited bulk communication, to harass, to defraud, or to impersonate anyone.',
       ],
       bullets: [

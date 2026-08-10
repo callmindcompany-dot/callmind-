@@ -148,12 +148,13 @@ export const CAPABILITIES: Capability[] = [
     group: 'calling',
     source: ['mobile/src/screens/PostCallFeedbackSheet.tsx', 'src/hooks/useCallDisposition.ts'],
   },
-  {
-    title: 'Voice notes',
-    description: 'Record a note by speaking instead of typing on a phone keypad.',
-    group: 'calling',
-    source: ['mobile/src/screens/68_VoiceNotesModal.tsx'],
-  },
+  // "Voice notes — record a note by speaking instead of typing" was listed
+  // here, citing mobile/src/screens/68_VoiceNotesModal.tsx as its source. That
+  // file does not exist and never has, RECORD_AUDIO is not among the
+  // permissions in app.json, and CallMind does not capture audio at all. The
+  // entry advertised a feature that could not have been built without
+  // contradicting the privacy policy.
+
   {
     title: 'Callback scheduling',
     description: 'Set a callback and the telecaller gets reminded on their phone when it is due.',

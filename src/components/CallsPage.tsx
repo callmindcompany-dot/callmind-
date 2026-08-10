@@ -1048,20 +1048,22 @@ export const CallsPage = ({ onBack, onTabChange }: { onBack?: () => void, onTabC
                 </div>
 
                 <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar">
-                  {/* Dynamic Recording Player */}
-                  {selectedCall.recordingUrl && (
-                    <section className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2">
-                      <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700 flex items-center gap-2">
-                        <Phone size={14} className="text-brand-500" />
-                        <span>Call Recording</span>
-                      </h3>
-                      <audio 
-                        controls 
-                        src={selectedCall.recordingUrl} 
-                        className="w-full outline-none"
-                      />
-                    </section>
-                  )}
+                  {/*
+                    An <audio controls> player headed "Call Recording" sat here,
+                    shown whenever selectedCall.recordingUrl was set.
+
+                    CallMind does not record calls. The mobile app dials through
+                    the phone's own SIM with `tel:` and hands off to the system
+                    dialler, so it never has the audio; the privacy policy says
+                    plainly that no call audio is recorded or stored; and the
+                    site says the same in five places, including the footer's
+                    "Zero Audio Storage".
+
+                    Nothing has ever written calls.recording_url, so the player
+                    never appeared -- but it was a working audio element waiting
+                    for someone to fill the column, which would have made every
+                    one of those statements false.
+                  */}
 
                   {/* Post-Call Integration (S-08) */}
                   <section className="bg-gray-50 p-4 rounded-2xl border border-gray-100">

@@ -12,7 +12,6 @@ export interface CallRecord {
   startTime: string; // Exact start time
   outcome: string; // Connected, Busy, No Answer, etc.
   status: 'completed' | 'missed' | 'busy' | 'failed';
-  recordingUrl?: string;
   timestamp: string;
 }
 
@@ -201,12 +200,11 @@ export function useAgentCallsQuery(companyId: string | null, agentId: string | n
           startTime,
           outcome: c.outcome || 'No Answer',
           status: outcomeStatus as CallRecord['status'],
-          // The column was being discarded rather than passed through. Nothing
-          // currently writes it -- the product does not record audio -- so this
-          // reads as null today and the row shows "No recording". Wired anyway,
-          // because discarding a column the UI already had a control for is how
-          // the dead play button came about.
-          recordingUrl: c.recording_url ?? undefined,
+          // recording_url was passed through here on the reasoning that
+          // discarding a column the UI had a control for is how a dead button
+          // comes about. That reasoning is retired: recording is not a gap to
+          // be filled but a decision not to build, so the control went instead
+          // and this no longer carries the column.
           timestamp: c.timestamp || ''
         };
       });

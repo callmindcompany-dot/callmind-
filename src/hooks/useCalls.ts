@@ -13,7 +13,8 @@ export interface Call {
   interest?: string | null;
   createdBy: string;
   companyId: string;
-  recordingUrl?: string | null;
+  // recordingUrl was here and fed an <audio> player on CallsPage. CallMind
+  // does not record calls, so there was never anything for it to carry.
 }
 
 export interface CallFilters {
@@ -116,7 +117,6 @@ export const useCalls = ({ companyId, pageSize, page, filters }: UseCallsProps) 
         interest: row.interest || 'Pending',
         createdBy: row.created_by || 'System',
         companyId: row.company_id,
-        recordingUrl: row.recording_url
       }));
 
       return {
