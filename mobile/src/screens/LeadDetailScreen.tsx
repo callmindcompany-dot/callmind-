@@ -1,30 +1,84 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { ArrowLeft, Star, MoreVertical, Phone, MessageSquare, Calendar, Edit3, Plus, ChevronRight } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { ArrowLeft, Phone, Edit3, Star, ChevronRight } from 'lucide-react-native';
 
 import { LeadItem } from './LeadListScreen';
+import { activityService, type ActivityEntry } from '../services/activityService';
+
+/**
+ * One lead, as recorded.
+ *
+ * Everything on this screen used to have a made-up fallback. A lead with no
+ * name showed "Rahul Sharma"; no email showed "rahul.sharma@email.com"; no
+ * city showed "Pune, Maharashtra"; the source read "Facebook Ads" whatever it
+ * was. Language was always "Hindi, English", Assigned To was always the string
+ * "Assigned Telecaller", and Loan Amount was always ₹ 5,000,000 -- a fifty-lakh
+ * deal printed against every lead in the book.
+ *
+ * The timeline below them was three fixed entries: a call at 10:30 for 02:34, a
+ * note reading "Interested in Honda City V model" at 10:31, and a status change
+ * at 10:32. They showed under a lead nobody had ever called. The status bar at
+ * the bottom said "Interested" regardless of what the lead's status was.
+ *
+ * Missing data now reads as missing.
+ */
 
 interface LeadDetailScreenProps {
   leadId: string;
   lead?: LeadItem;
+  companyId?: string | null;
   onBack: () => void;
   onCall: (phone: string) => void;
 }
 
-export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ leadId, lead: passedLead, onBack, onCall }) => {
+/** A field with nothing in it says so, rather than borrowing someone else's. */
+const NOT_PROVIDED = 'Not provided';
+
+export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({
+  leadId,
+  lead: passedLead,
+  companyId,
+  onBack,
+  onCall,
+}) => {
   const lead = {
-    name: passedLead?.name || 'Rahul Sharma',
-    // A lead with no number shows that it has no number.
+    name: passedLead?.name || 'Unnamed lead',
     phone: passedLead?.phone || '',
-    email: passedLead?.email || 'rahul.sharma@email.com',
-    city: passedLead?.city || 'Pune, Maharashtra',
-    source: passedLead?.comment || 'Facebook Ads',
-    language: 'Hindi, English',
-    assignedTo: 'Assigned Telecaller',
-    loanAmount: '₹ 5,000,000',
+    email: passedLead?.email || NOT_PROVIDED,
+    city: passedLead?.address || passedLead?.city || NOT_PROVIDED,
+    notes: passedLead?.comment || NOT_PROVIDED,
+    status: passedLead?.status || 'New',
     tag: passedLead?.tag || 'New',
-    tagColor: passedLead?.color || '#EF4444',
-    initials: passedLead?.initials || 'RS',
+    tagColor: passedLead?.color || '#64748b',
+    initials: passedLead?.initials || '?',
+  };
+
+  const [activity, setActivity] = useState<ActivityEntry[] | null>(null);
+  const [activityError, setActivityError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!companyId || !leadId) { setActivity([]); return; }
+    (async () => {
+      try {
+        const rows = await activityService.forLead(companyId, leadId);
+        if (!cancelled) setActivity(rows);
+      } catch (e) {
+        if (!cancelled) {
+          setActivity(null);
+          setActivityError(e instanceof Error ? e.message : 'Could not load the history.');
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [companyId, leadId]);
+
+  const whenLabel = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const today = d.toDateString() === new Date().toDateString();
+    const time = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    return today ? `Today, ${time}` : `${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}, ${time}`;
   };
 
   return (
@@ -34,14 +88,8 @@ export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ leadId, lead
         <TouchableOpacity style={styles.iconBtn} onPress={onBack} activeOpacity={0.7}>
           <ArrowLeft size={20} color="#0f172a" />
         </TouchableOpacity>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Star size={20} color="#64748b" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
-            <MoreVertical size={20} color="#0f172a" />
-          </TouchableOpacity>
-        </View>
+        {/* The star and overflow buttons here had no handlers. */}
+        <View style={styles.headerRight} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -58,139 +106,144 @@ export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({ leadId, lead
                 <Text style={styles.hotBadgeText}>{lead.tag}</Text>
               </View>
             </View>
-            <Text style={styles.leadPhone}>{lead.phone}</Text>
+            <Text style={styles.leadPhone}>{lead.phone || 'No number on file'}</Text>
           </View>
 
-          {/* 4 Action Buttons Row matching Reference UI Image 2 Screen 7 */}
+          {/*
+            One button, because one of the four did anything. WhatsApp, Schedule
+            and Edit Note had no onPress at all -- tapping them read as the app
+            being broken rather than the feature being absent. Scheduling is on
+            the post-call form, which is where an agent actually needs it.
+          */}
           <View style={styles.actionGrid}>
-            <TouchableOpacity style={styles.actionItem} onPress={() => onCall(lead.phone)} activeOpacity={0.8}>
-              <View style={[styles.actionCircle, { backgroundColor: '#16A34A' }]}>
+            <TouchableOpacity
+              style={styles.actionItem}
+              onPress={() => onCall(lead.phone)}
+              disabled={!lead.phone}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.actionCircle, { backgroundColor: lead.phone ? '#16A34A' : '#cbd5e1' }]}>
                 <Phone size={20} color="#ffffff" />
               </View>
-              <Text style={styles.actionLabel}>Call Now</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionItem} activeOpacity={0.8}>
-              <View style={[styles.actionCircle, { backgroundColor: '#22C55E' }]}>
-                <MessageSquare size={20} color="#ffffff" />
-              </View>
-              <Text style={styles.actionLabel}>WhatsApp</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionItem} activeOpacity={0.8}>
-              <View style={[styles.actionCircle, { backgroundColor: '#2563eb' }]}>
-                <Calendar size={20} color="#ffffff" />
-              </View>
-              <Text style={styles.actionLabel}>Schedule</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionItem} activeOpacity={0.8}>
-              <View style={[styles.actionCircle, { backgroundColor: '#3B82F6' }]}>
-                <Edit3 size={20} color="#ffffff" />
-              </View>
-              <Text style={styles.actionLabel}>Edit Note</Text>
+              <Text style={styles.actionLabel}>Call now</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Lead Information Card */}
         <View style={styles.card}>
+          {/* The Edit link had no handler. */}
           <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>Lead Information</Text>
-            <TouchableOpacity>
-              <Text style={styles.editLink}>Edit</Text>
-            </TouchableOpacity>
+            <Text style={styles.cardTitle}>Lead information</Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Email</Text>
-            <Text style={styles.infoValue}>{lead.email}</Text>
+            <Text style={[styles.infoValue, lead.email === NOT_PROVIDED && styles.infoMissing]}>
+              {lead.email}
+            </Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>City</Text>
-            <Text style={styles.infoValue}>{lead.city}</Text>
+            <Text style={[styles.infoValue, lead.city === NOT_PROVIDED && styles.infoMissing]}>
+              {lead.city}
+            </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Source</Text>
-            <Text style={styles.infoValue}>{lead.source}</Text>
+            <Text style={styles.infoLabel}>Status</Text>
+            <Text style={styles.infoValue}>{lead.status}</Text>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Language</Text>
-            <Text style={styles.infoValue}>{lead.language}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Assigned To</Text>
-            <Text style={styles.infoValue}>{lead.assignedTo}</Text>
-          </View>
+          {/*
+            Language, Assigned To and Loan Amount are gone. None of the three
+            was read from anywhere: language was always "Hindi, English",
+            Assigned To was the literal string "Assigned Telecaller", and Loan
+            Amount was ₹ 5,000,000 against every lead in the book. The agent
+            looking at this screen is the person it is assigned to anyway.
+          */}
           <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-            <Text style={styles.infoLabel}>Loan Amount</Text>
-            <Text style={styles.infoValueBold}>{lead.loanAmount}</Text>
+            <Text style={styles.infoLabel}>Notes</Text>
+            <Text style={[styles.infoValue, lead.notes === NOT_PROVIDED && styles.infoMissing]}>
+              {lead.notes}
+            </Text>
           </View>
         </View>
 
         {/* Activity Timeline Card */}
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>Activity Timeline</Text>
-            <TouchableOpacity style={styles.viewAllRow}>
-              <Text style={styles.viewAllText}>View All</Text>
-              <ChevronRight size={14} color="#2563eb" />
-            </TouchableOpacity>
+            <Text style={styles.cardTitle}>History</Text>
           </View>
 
-          <View style={styles.timelineList}>
-            <View style={styles.timelineItem}>
-              <View style={[styles.timelineIconBg, { backgroundColor: '#DCFCE7' }]}>
-                <Phone size={14} color="#16A34A" />
-              </View>
-              <View style={styles.timelineContent}>
-                <Text style={styles.timelineTitle}>Called</Text>
-                <Text style={styles.timelineTime}>Today, 10:30 AM • 02:34</Text>
-                <Text style={styles.timelineSub}>Spoke to lead, interested.</Text>
-              </View>
-            </View>
+          {activityError && (
+            <Text style={styles.timelineNotice}>{activityError}</Text>
+          )}
 
-            <View style={styles.timelineItem}>
-              <View style={[styles.timelineIconBg, { backgroundColor: '#FEF3C7' }]}>
-                <Edit3 size={14} color="#D97706" />
-              </View>
-              <View style={styles.timelineContent}>
-                <Text style={styles.timelineTitle}>Note Added</Text>
-                <Text style={styles.timelineTime}>Today, 10:31 AM</Text>
-                <Text style={styles.timelineSub}>Interested in Honda City V model.</Text>
-              </View>
+          {!activityError && activity === null && (
+            <View style={styles.timelineLoading}>
+              <ActivityIndicator color="#2563eb" />
             </View>
+          )}
 
-            <View style={styles.timelineItem}>
-              <View style={[styles.timelineIconBg, { backgroundColor: '#EFF6FF' }]}>
-                <Star size={14} color="#2563eb" />
-              </View>
-              <View style={styles.timelineContent}>
-                <Text style={styles.timelineTitle}>Status Changed</Text>
-                <Text style={styles.timelineTime}>Today, 10:32 AM</Text>
-                <Text style={styles.timelineSub}>New → Interested</Text>
-              </View>
+          {!activityError && activity !== null && activity.length === 0 && (
+            <Text style={styles.timelineNotice}>
+              Nothing recorded yet. Logging a call adds a line here.
+            </Text>
+          )}
+
+          {activity !== null && activity.length > 0 && (
+            <View style={styles.timelineList}>
+              {activity.map((entry) => {
+                const isStatus = entry.type === 'status_change';
+                return (
+                  <View key={entry.id} style={styles.timelineItem}>
+                    <View style={[styles.timelineIconBg, { backgroundColor: isStatus ? '#EFF6FF' : '#DCFCE7' }]}>
+                      {isStatus
+                        ? <Star size={14} color="#2563eb" />
+                        : <Phone size={14} color="#16A34A" />}
+                    </View>
+                    <View style={styles.timelineContent}>
+                      <Text style={styles.timelineTitle}>
+                        {isStatus ? 'Status changed' : entry.type.replace(/_/g, ' ')}
+                      </Text>
+                      <Text style={styles.timelineTime}>{whenLabel(entry.at)}</Text>
+                      <Text style={styles.timelineSub}>
+                        {entry.fromStatus && entry.toStatus
+                          ? `${entry.fromStatus} → ${entry.toStatus}`
+                          : entry.description}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
             </View>
-          </View>
+          )}
 
-          <TouchableOpacity style={styles.addNoteBtn}>
-            <Plus size={16} color="#2563eb" />
-            <Text style={styles.addNoteText}>Add New Note</Text>
-          </TouchableOpacity>
+          {/* The Add New Note button had no handler; notes are written on the
+              post-call form, which is the moment an agent has something to say. */}
         </View>
       </ScrollView>
 
-      {/* Current Status Bar at Bottom matching Reference UI Image 2 Screen 7 */}
+      {/*
+        The badge here read "Interested" for every lead, whatever its status,
+        beside a Change Status button with no handler. The status is written by
+        the post-call form, which is the only place it should change from -- a
+        status set without a call recorded beside it is how a pipeline stops
+        meaning anything.
+      */}
       <View style={styles.bottomStatusBar}>
         <View style={styles.currentStatusLeft}>
-          <Text style={styles.statusLabel}>Current Status</Text>
+          <Text style={styles.statusLabel}>Current status</Text>
           <View style={styles.statusBadgeRow}>
-            <View style={styles.greenDot} />
-            <Text style={styles.statusBadgeText}>Interested</Text>
+            <View style={[styles.greenDot, { backgroundColor: lead.tagColor }]} />
+            <Text style={styles.statusBadgeText}>{lead.status}</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.changeStatusBtn}>
-          <Text style={styles.changeStatusText}>Change Status</Text>
+        <TouchableOpacity
+          style={styles.changeStatusBtn}
+          onPress={() => onCall(lead.phone)}
+          disabled={!lead.phone}
+        >
+          <Text style={styles.changeStatusText}>Call and update</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -464,5 +517,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#2563eb',
+  },
+  /** A field the lead does not have, so it does not read as a real value. */
+  infoMissing: {
+    color: '#94a3b8',
+    fontStyle: 'italic',
+  },
+  timelineNotice: {
+    fontSize: 13,
+    color: '#64748b',
+    lineHeight: 19,
+    paddingVertical: 8,
+  },
+  timelineLoading: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
 });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { appLockService } from '../services/appLockService';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
-import { Edit2, Moon, Globe, Fingerprint, Info, LogOut, CalendarCheck, BarChart3, Trash2, ChevronRight } from 'lucide-react-native';
+import { Edit2, Fingerprint, Info, LogOut, CalendarCheck, BarChart3, Trash2, ChevronRight, Target, FileText, Bell, HelpCircle } from 'lucide-react-native';
 import { useMobileAuth } from '../services/AuthContext';
 import appJson from '../../app.json';
 
@@ -17,6 +17,18 @@ interface SettingsScreenProps {
   onOpenPerformance?: () => void;
   /** Opens DeleteAccountScreen. Required by the Play Store. */
   onDeleteAccount?: () => void;
+  /*
+   * The seven below were screens App.tsx rendered in a switch case that nothing
+   * could reach. TargetScreen, DocumentsScreen, HelpCenterScreen,
+   * AboutAppScreen, LanguageSelectionScreen and NotificationCenterScreen were
+   * all written, all wired into the router, and unreachable from any button in
+   * the app -- thirteen of twenty-eight screens were in that state.
+   */
+  onOpenTargets?: () => void;
+  onOpenDocuments?: () => void;
+  onOpenHelp?: () => void;
+  onOpenAbout?: () => void;
+  onOpenNotifications?: () => void;
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
@@ -26,9 +38,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onOpenAttendance,
   onOpenPerformance,
   onDeleteAccount,
+  onOpenTargets,
+  onOpenDocuments,
+  onOpenHelp,
+  onOpenAbout,
+  onOpenNotifications,
 }) => {
   const { user, profile } = useMobileAuth();
-  const [darkMode, setDarkMode] = useState(false);
   // Read from SecureStore rather than assumed. This was `useState(true)`, so
   // the switch showed "on" whether or not any lock existed — and toggling it
   // changed a local variable and nothing else.
@@ -131,39 +147,54 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </View>
             <ChevronRight size={16} color="#94a3b8" />
           </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.settingRow} onPress={onOpenTargets}>
+            <View style={styles.settingRowLeft}>
+              <Target size={18} color="#64748b" />
+              <Text style={styles.settingRowLabel}>My targets</Text>
+            </View>
+            <ChevronRight size={16} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.settingRow} onPress={onOpenDocuments}>
+            <View style={styles.settingRowLeft}>
+              <FileText size={18} color="#64748b" />
+              <Text style={styles.settingRowLabel}>My documents</Text>
+            </View>
+            <ChevronRight size={16} color="#94a3b8" />
+          </TouchableOpacity>
         </View>
 
         {/* Settings Group List matching Reference UI Image 3 Screen 12 */}
         <Text style={styles.sectionTitle}>Settings</Text>
         <View style={styles.settingsGroup}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingRowLeft}>
-              <Moon size={18} color="#64748b" />
-              <Text style={styles.settingRowLabel}>Dark Mode</Text>
-            </View>
-            <Switch
-              value={darkMode}
-              onValueChange={setDarkMode}
-              trackColor={{ false: '#e2e8f0', true: '#93c5fd' }}
-              thumbColor={darkMode ? '#2563eb' : '#ffffff'}
-            />
-          </View>
+          {/*
+            Dark Mode and Language are gone, along with the two screens behind
+            them.
 
-          <View style={styles.divider} />
+            The switch flipped a local boolean. All forty-three screens
+            hardcode #ffffff and the rest of the light palette, so there was
+            nothing for it to change and the app stayed white either way.
 
-          <TouchableOpacity style={styles.settingRow}>
-            <View style={styles.settingRowLeft}>
-              <Globe size={18} color="#64748b" />
-              <Text style={styles.settingRowLabel}>Language</Text>
-            </View>
-            <View style={styles.settingRowRight}>
-              <Text style={styles.settingValText}>English</Text>
-              <ChevronRight size={16} color="#94a3b8" />
-            </View>
-          </TouchableOpacity>
+            The Language row opened 10_LanguageSelectionScreen, which held
+            `const [selected] = useState('en')` — no setter — and whose Save
+            button called onSelectLanguage('en') whichever language you tapped.
+            App.tsx then navigated back and stored nothing. Every language
+            saved English.
 
-          <View style={styles.divider} />
+            81_ThemeToggleScreen went with them: six switches for dark mode,
+            lead alerts, callback reminders, target alerts, auto-dial and a
+            recording warning, none of which was read by anything, on a screen
+            nothing could open.
 
+            A control that does nothing teaches people the app is broken. These
+            come back when there is a theme and a translation file to connect
+            them to.
+          */}
           <View style={styles.settingRow}>
             <View style={styles.settingRowLeft}>
               <Fingerprint size={18} color="#64748b" />
@@ -177,6 +208,38 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               thumbColor={biometric ? '#16a34a' : '#ffffff'}
             />
           </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.settingRow} onPress={onOpenNotifications}>
+            <View style={styles.settingRowLeft}>
+              <Bell size={18} color="#64748b" />
+              <Text style={styles.settingRowLabel}>Notifications</Text>
+            </View>
+            <ChevronRight size={16} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.settingRow} onPress={onOpenHelp}>
+            <View style={styles.settingRowLeft}>
+              <HelpCircle size={18} color="#64748b" />
+              <Text style={styles.settingRowLabel}>Help &amp; support</Text>
+            </View>
+            <ChevronRight size={16} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.settingRow} onPress={onOpenAbout}>
+            <View style={styles.settingRowLeft}>
+              <Info size={18} color="#64748b" />
+              <Text style={styles.settingRowLabel}>About CallMind</Text>
+            </View>
+            <ChevronRight size={16} color="#94a3b8" />
+          </TouchableOpacity>
 
           <View style={styles.divider} />
 

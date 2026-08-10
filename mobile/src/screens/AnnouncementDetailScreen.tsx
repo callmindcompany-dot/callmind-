@@ -1,17 +1,27 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { ArrowLeft, Share2, Megaphone, CheckCircle2 } from 'lucide-react-native';
+import { ArrowLeft, Megaphone, CheckCircle2 } from 'lucide-react-native';
 
 interface AnnouncementDetailScreenProps {
   onBack: () => void;
-  announcement?: any;
+  announcement?: { title?: string; time?: string; content?: string; summary?: string } | null;
 }
 
+/**
+ * One announcement, as the admin wrote it.
+ *
+ * The fallback here used to be a whole fictional message: "Monthly Target
+ * Update", dated 21 May 2024 and posted by "Admin HQ", telling every telecaller
+ * they were required to make 600 connected calls, hold a conversion rate above
+ * 15%, and that bonuses of up to ₹5,000 awaited top performers. None of it came
+ * from any company. An agent who reached this screen with nothing selected read
+ * a target and a bonus that did not exist.
+ */
 export const AnnouncementDetailScreen: React.FC<AnnouncementDetailScreenProps> = ({ onBack, announcement }) => {
-  const item = announcement || {
-    title: 'Monthly Target Update',
-    date: '21 May 2024 • Posted by Admin HQ',
-    body: 'Dear Telecalling Team,\n\nWe have updated the monthly targets for May 2024. All telecallers are required to achieve a minimum of 600 connected calls and maintain a conversion rate above 15%.\n\nSpecial bonuses of up to ₹5,000 will be awarded to top performers at the end of the month.',
+  const item = {
+    title: announcement?.title || 'Announcement',
+    date: announcement?.time || '',
+    body: announcement?.content || announcement?.summary || 'This announcement has no message.',
   };
 
   return (
@@ -22,9 +32,8 @@ export const AnnouncementDetailScreen: React.FC<AnnouncementDetailScreenProps> =
           <ArrowLeft size={20} color="#0f172a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Announcement</Text>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Share2 size={20} color="#0f172a" />
-        </TouchableOpacity>
+        {/* The share button had no handler. */}
+        <View style={styles.iconBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
-import { Menu, Search, SlidersHorizontal, ArrowUpRight, ArrowDownLeft, Phone, MoreVertical } from 'lucide-react-native';
+import { Menu, Grid3x3, ArrowUpRight, ArrowDownLeft, Phone, MoreVertical } from 'lucide-react-native';
 import { EmptyStateComponent } from '../components/EmptyStateComponent';
 
 export interface CallLogItem {
@@ -24,11 +24,20 @@ interface CallLogScreenProps {
   callLogs?: CallLogItem[];
   refreshing?: boolean;
   onRefresh?: () => void;
+  /**
+   * Opens the dial pad, for a number that is not a lead.
+   *
+   * 40_DialPadScreen was written and wired into the router with nothing able
+   * to open it. The call log is where an agent looks when they want to ring
+   * somebody back, so it is the right door.
+   */
+  onOpenDialPad?: () => void;
 }
 
 export const CallLogScreen: React.FC<CallLogScreenProps> = ({
   onBack,
   onSelectLead,
+  onOpenDialPad,
   callLogs = [],
   refreshing = false,
   onRefresh,
@@ -58,14 +67,14 @@ export const CallLogScreen: React.FC<CallLogScreenProps> = ({
           <Menu size={20} color="#0f172a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Call Log</Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Search size={20} color="#0f172a" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
-            <SlidersHorizontal size={20} color="#0f172a" />
-          </TouchableOpacity>
-        </View>
+        {/*
+          The search and filter buttons here had no handlers. The dial pad is
+          the one thing an agent actually wants from this screen that is not
+          already on it, and it had no way in at all.
+        */}
+        <TouchableOpacity style={styles.iconBtn} onPress={onOpenDialPad} accessibilityLabel="Open dial pad">
+          <Grid3x3 size={20} color="#2563eb" />
+        </TouchableOpacity>
       </View>
 
       {/* Segmented Filter Pills */}

@@ -4,15 +4,53 @@ import { Menu, Bell, Users, PhoneCall, MessageSquare, FileText, ChevronRight, Ph
 import { useMobileAuth } from '../services/AuthContext';
 import { EmptyStateComponent } from '../components/EmptyStateComponent';
 
+/**
+ * The first screen a telecaller sees, and the numbers on it are theirs.
+ *
+ * Every figure here used to be written into the file: 18 of 50 calls made and
+ * 36% achieved, Connected 12 with "+8 today", Conversions 3 with "+1 today",
+ * Follow-ups 7 pending, Avg. Talk Time 04:32 with "+12% vs avg". Above them sat
+ * an "AI NEXT BEST LEAD" banner offering Rahul Sharma at a 94% conversion
+ * score, whose Dial Now button opened lead id '1'. None of it came from
+ * anywhere, and it was identical on every agent's phone every day.
+ *
+ * targetService.fetchTelecallerStats already computed real versions of most of
+ * these and App.tsx already held the result; it simply was not passed in.
+ *
+ * Avg. Talk Time is gone rather than replaced. `calls.duration` is TEXT holding
+ * dialler elapsed time, not carrier-verified talk time, and averaging it would
+ * put a precise-looking number on something the app cannot measure.
+ */
+
+interface TodayStats {
+  totalCalls: number;
+  connectedCalls: number;
+  interestedLeads: number;
+  conversions: number;
+  callTarget: number;
+  callTargetProgress: number;
+}
+
 interface HomeScreenProps {
   onNavigateToLeads: () => void;
   onNavigateToCalls: () => void;
   onNavigateToProfile: () => void;
   onSelectLead: (leadId: string) => void;
   onCallLead?: (lead: any) => Promise<void>;
+  /** In call order, from priorityQueue — not import order. */
   recentLeads?: Array<any>;
+  /** Real figures for this agent. Absent while they load. */
+  stats?: TodayStats | null;
+  /** Follow-ups already due, counted from `callbacks`. */
+  dueFollowUps?: number;
   refreshing?: boolean;
   onRefresh?: () => Promise<void>;
+}
+
+function greetingFor(hour: number): string {
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -20,11 +58,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateToCalls,
   onNavigateToProfile,
   onSelectLead,
+  onCallLead,
   recentLeads = [],
+  stats = null,
+  dueFollowUps = 0,
 }) => {
   const { user, profile } = useMobileAuth();
   const userName = profile?.name || user?.user_metadata?.full_name || 'Telecaller';
   const initials = userName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || 'TC';
+
+  // The top of the call queue. Not a prediction — the same order the Leads tab
+  // shows, which is what the agent is about to work down anyway.
+  const nextLead = recentLeads.length > 0 ? recentLeads[0] : null;
 
   return (
     <View style={styles.container}>
@@ -42,28 +87,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </TouchableOpacity>
           <View>
             <View style={styles.greetingRow}>
-              <Text style={styles.greeting}>Good Morning, {userName.split(' ')[0]}!</Text>
+              {/* Said "Good Morning" at every hour of the day. */}
+              <Text style={styles.greeting}>
+                {greetingFor(new Date().getHours())}, {userName.split(' ')[0]}!
+              </Text>
               <Sparkles size={16} color="#2563eb" />
             </View>
 
-            {/* Live Online Badge */}
-            <View style={styles.statusRow}>
-              <View style={styles.onlineDot} />
-              <Text style={styles.statusText}>Online & Ready</Text>
-            </View>
+            {/*
+              The "Online & Ready" badge that was here was a coloured dot and a
+              string, not a status. Presence is written to agent_status by
+              App.tsx and shown on the admin's board; repeating it here as a
+              constant only made it look like a live indicator.
+            */}
+            <Text style={styles.statusText}>
+              {stats
+                ? `${stats.totalCalls} ${stats.totalCalls === 1 ? 'call' : 'calls'} logged`
+                : 'Loading your day…'}
+            </Text>
           </View>
         </View>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            accessibilityLabel="View Notifications"
-            accessibilityRole="button"
-            activeOpacity={0.75}
-          >
-            <Bell size={20} color="#0f172a" />
-          </TouchableOpacity>
-
+          {/* The bell had no handler. The Inbox tab is the real one. */}
           <TouchableOpacity
             onPress={onNavigateToProfile}
             accessibilityLabel="Open User Profile"
@@ -78,57 +124,81 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* 🤖 1000x AI Next Best Lead Banner */}
-        <View style={styles.aiSmartBanner}>
-          <View style={styles.aiBannerHeader}>
-            <View style={styles.aiTagBadge}>
-              <Sparkles size={14} color="#ffffff" />
-              <Text style={styles.aiTagText}>AI NEXT BEST LEAD</Text>
-            </View>
-            <Text style={styles.aiScoreBadge}>Conversion Score: 94%</Text>
-          </View>
+        {/*
+          The next lead to call, from the same queue the Leads tab shows.
 
-          <View style={styles.aiBannerBody}>
-            <View style={styles.aiAvatarCircle}>
-              <Text style={styles.aiAvatarInitials}>RS</Text>
+          This was an "AI NEXT BEST LEAD" banner with a 94% conversion score
+          against Rahul Sharma, who exists in no company, and a Dial Now button
+          that opened lead id '1'. There is no scoring model in this product.
+          What there is, is an ordering — due follow-ups first, then the
+          agent's own priority, oldest first — and that is what this shows.
+        */}
+        {nextLead && (
+          <View style={styles.aiSmartBanner}>
+            <View style={styles.aiBannerHeader}>
+              <View style={styles.aiTagBadge}>
+                <Zap size={14} color="#ffffff" />
+                <Text style={styles.aiTagText}>NEXT TO CALL</Text>
+              </View>
+              {!!nextLead.tag && <Text style={styles.aiScoreBadge}>{nextLead.tag}</Text>}
             </View>
-            <View style={styles.aiDetails}>
-              <Text style={styles.aiLeadName}>Rahul Sharma</Text>
-              <Text style={styles.aiReasonText}>Best Call Time: 2:00 PM (High Interest)</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.aiCallActionBtn}
-              onPress={() => onSelectLead('1')}
-              activeOpacity={0.8}
-              accessibilityLabel="Call Rahul Sharma recommended lead"
-              accessibilityRole="button"
-            >
-              <Zap size={16} color="#2563eb" />
-              <Text style={styles.aiCallActionText}>Dial Now</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* Today's Target Progress Header */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeaderTitle}>Today's Target Overview</Text>
-          <TouchableOpacity style={styles.joinCompanyBtn} activeOpacity={0.8}>
-            <Text style={styles.joinCompanyText}>Join Company</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.aiBannerBody}>
+              <View style={styles.aiAvatarCircle}>
+                <Text style={styles.aiAvatarInitials}>{nextLead.initials}</Text>
+              </View>
+              <View style={styles.aiDetails}>
+                <Text style={styles.aiLeadName} numberOfLines={1}>{nextLead.name}</Text>
+                <Text style={styles.aiReasonText} numberOfLines={1}>
+                  {nextLead.phone || 'No number on file'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.aiCallActionBtn}
+                onPress={() => (onCallLead ? void onCallLead(nextLead) : onSelectLead(nextLead.id))}
+                activeOpacity={0.8}
+                disabled={!nextLead.phone}
+                accessibilityLabel={`Call ${nextLead.name}`}
+                accessibilityRole="button"
+              >
+                <Phone size={16} color="#2563eb" />
+                <Text style={styles.aiCallActionText}>Call</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/*
+          The "Join Company" button beside this heading had no handler, and the
+          agent reading it has already joined one.
+        */}
+        <Text style={styles.sectionHeaderTitle}>Today</Text>
 
         {/* 📊 Bento Grid Dashboard Metrics */}
         <View style={styles.bentoContainer}>
-          {/* Main Progress Ring Box */}
+          {/*
+            Was 18 / 50 and "36% Achieved", hardcoded, on every agent's phone.
+            The target comes from the company's `targets` row and falls back to
+            100 in targetService; the count is this agent's calls.
+          */}
           <View style={styles.ringChartCard}>
             <View style={styles.circleRing}>
-              <Text style={styles.callsCount}>18 / 50</Text>
-              <Text style={styles.callsLabel}>Calls Made</Text>
-              <Text style={styles.targetPercent}>36% Achieved</Text>
+              <Text style={styles.callsCount}>
+                {stats ? `${stats.totalCalls} / ${stats.callTarget}` : '—'}
+              </Text>
+              <Text style={styles.callsLabel}>Calls made</Text>
+              <Text style={styles.targetPercent}>
+                {stats ? `${stats.callTargetProgress}% of target` : 'Loading…'}
+              </Text>
             </View>
           </View>
 
-          {/* 4 Stats Cards */}
+          {/*
+            Four measured figures. The "↑ +8 today" and "↑ +12% vs avg" deltas
+            that sat under the old ones compared against nothing — there is no
+            stored history to compare with — so they are gone rather than
+            recomputed from an invented baseline.
+          */}
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
               <View style={styles.statIconHeader}>
@@ -137,8 +207,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <TrendingUp size={12} color="#16a34a" />
                 </View>
               </View>
-              <Text style={styles.statValue}>12</Text>
-              <Text style={styles.statSubText}>↑ +8 today</Text>
+              <Text style={styles.statValue}>{stats ? stats.connectedCalls : '—'}</Text>
+              <Text style={styles.statSubText}>of {stats ? stats.totalCalls : '—'} calls</Text>
             </View>
 
             <View style={styles.statCard}>
@@ -148,8 +218,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <Award size={12} color="#d97706" />
                 </View>
               </View>
-              <Text style={styles.statValue}>3</Text>
-              <Text style={styles.statSubText}>↑ +1 today</Text>
+              <Text style={styles.statValue}>{stats ? stats.conversions : '—'}</Text>
+              <Text style={styles.statSubText}>leads won</Text>
             </View>
 
             <View style={styles.statCard}>
@@ -159,19 +229,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <Clock size={12} color="#ef4444" />
                 </View>
               </View>
-              <Text style={styles.statValue}>7</Text>
-              <Text style={styles.statPendingText}>Pending</Text>
+              <Text style={styles.statValue}>{dueFollowUps}</Text>
+              <Text style={styles.statPendingText}>due now</Text>
             </View>
 
             <View style={styles.statCard}>
               <View style={styles.statIconHeader}>
-                <Text style={styles.statCardTitle}>Avg. Talk Time</Text>
+                <Text style={styles.statCardTitle}>Interested</Text>
                 <View style={[styles.statBadgeBg, { backgroundColor: '#eff6ff' }]}>
                   <Phone size={12} color="#2563eb" />
                 </View>
               </View>
-              <Text style={styles.statValue}>04:32</Text>
-              <Text style={styles.statSubText}>↑ +12% vs avg</Text>
+              <Text style={styles.statValue}>{stats ? stats.interestedLeads : '—'}</Text>
+              <Text style={styles.statSubText}>said yes so far</Text>
             </View>
           </View>
         </View>
@@ -205,29 +275,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <Text style={styles.actionLabel}>Call Log</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionCard}
-            activeOpacity={0.75}
-            accessibilityLabel="Send WhatsApp Message"
-            accessibilityRole="button"
-          >
-            <View style={[styles.actionIconBg, { backgroundColor: '#FDF2F8' }]}>
-              <MessageSquare size={22} color="#DB2777" />
-            </View>
-            <Text style={styles.actionLabel}>WhatsApp</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            activeOpacity={0.75}
-            accessibilityLabel="Add New Note"
-            accessibilityRole="button"
-          >
-            <View style={[styles.actionIconBg, { backgroundColor: '#FEF3C7' }]}>
-              <FileText size={22} color="#D97706" />
-            </View>
-            <Text style={styles.actionLabel}>Add Note</Text>
-          </TouchableOpacity>
+          {/*
+            WhatsApp and Add Note tiles sat here with no onPress at all. Tapping
+            them did nothing, which reads as the app being broken rather than
+            the feature being absent. They come back when there is something
+            behind them to open.
+          */}
         </View>
 
         {/* Recent Leads Feed */}

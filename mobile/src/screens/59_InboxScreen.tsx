@@ -1,6 +1,18 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Menu, Search, CheckCircle2, Megaphone, Users, Calendar, BarChart3, ChevronRight } from 'lucide-react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { Menu, Megaphone, Bell } from 'lucide-react-native';
+import { inboxService, type InboxItem } from '../services/inboxService';
+
+/**
+ * Announcements from the admin, and this agent's own notifications.
+ *
+ * This screen took no data. It rendered five hand-written items -- "Monthly
+ * Target Update", "Product Training Session", "Holiday Notice", "New Leads
+ * Assigned", "Weekly Performance Update", all dated May 2024 -- and rendered
+ * the same five whichever tab was selected, beneath a red badge permanently
+ * reading 3. Switching tabs changed nothing. Real announcements, in a table
+ * that has existed the whole time, were never read.
+ */
 
 export interface Announcement {
   id: string;
@@ -15,64 +27,61 @@ export interface Announcement {
 
 interface InboxScreenProps {
   onBack: () => void;
-  onSelectAnnouncement: (announcement: any) => void;
+  onSelectAnnouncement: (announcement: Announcement) => void;
+  companyId?: string | null;
+  userId?: string | null;
 }
 
-export const InboxScreen: React.FC<InboxScreenProps> = ({ onBack, onSelectAnnouncement }) => {
-  const [activeTab, setActiveTab] = useState<'announcements' | 'notifications'>('announcements');
+/** "10:30", "Yesterday", "17 May" — relative near, absolute far. */
+function whenLabel(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+  });
+}
 
-  const listItems = [
-    {
-      id: '1',
-      title: 'Monthly Target Update',
-      time: '10:30 AM',
-      summary: 'New targets for May 2024 are now live. Check your dashboard!',
-      tag: 'New',
-      IconComponent: Megaphone,
-      bgColor: '#EEF2FF',
-      iconColor: '#4F46E5',
-    },
-    {
-      id: '2',
-      title: 'Product Training Session',
-      time: 'Yesterday',
-      summary: 'Join the training session on 23 May at 4:00 PM.',
-      tag: 'New',
-      IconComponent: Users,
-      bgColor: '#DCFCE7',
-      iconColor: '#16A34A',
-    },
-    {
-      id: '3',
-      title: 'Holiday Notice',
-      time: '20 May 2024',
-      summary: 'Office will remain closed on 25 May on account of Saturday.',
-      tag: null,
-      IconComponent: Calendar,
-      bgColor: '#FEF3C7',
-      iconColor: '#D97706',
-    },
-    {
-      id: '4',
-      title: 'New Leads Assigned',
-      time: '18 May 2024',
-      summary: 'You have 15 new leads assigned. Check now!',
-      tag: null,
-      IconComponent: Megaphone,
-      bgColor: '#DBEAFE',
-      iconColor: '#2563eb',
-    },
-    {
-      id: '5',
-      title: 'Weekly Performance Update',
-      time: '17 May 2024',
-      summary: 'Your weekly performance report is available.',
-      tag: null,
-      IconComponent: BarChart3,
-      bgColor: '#F3E8FF',
-      iconColor: '#9333EA',
-    },
-  ];
+export const InboxScreen: React.FC<InboxScreenProps> = ({
+  onBack,
+  onSelectAnnouncement,
+  companyId,
+  userId,
+}) => {
+  const [activeTab, setActiveTab] = useState<'announcements' | 'notifications'>('announcements');
+  const [items, setItems] = useState<InboxItem[] | null>(null);
+  const [unread, setUnread] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!companyId) return;
+    setError(null);
+    try {
+      const list = activeTab === 'announcements'
+        ? await inboxService.announcements(companyId, userId ?? '')
+        : await inboxService.notifications(companyId, userId ?? '');
+      // Pinned first, then newest. The old list had no order at all.
+      list.sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        return Date.parse(b.at || '') - Date.parse(a.at || '');
+      });
+      setItems(list);
+      setUnread(list.filter((i) => !i.isRead).length);
+    } catch (e) {
+      setItems(null);
+      setError(e instanceof Error ? e.message : 'Could not load your inbox.');
+    }
+  }, [companyId, userId, activeTab]);
+
+  useEffect(() => { void load(); }, [load]);
 
   return (
     <View style={styles.container}>
@@ -82,17 +91,13 @@ export const InboxScreen: React.FC<InboxScreenProps> = ({ onBack, onSelectAnnoun
           <Menu size={20} color="#0f172a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Inbox</Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Search size={20} color="#0f172a" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
-            <CheckCircle2 size={20} color="#0f172a" />
-          </TouchableOpacity>
-        </View>
+        {/*
+          The search and mark-all-read buttons that were here did nothing --
+          no handler, no state. They are gone rather than left as decoration.
+        */}
+        <View style={styles.iconBtn} />
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
           style={[styles.tabChip, activeTab === 'announcements' && styles.tabChipActive]}
@@ -110,43 +115,100 @@ export const InboxScreen: React.FC<InboxScreenProps> = ({ onBack, onSelectAnnoun
           <Text style={[styles.tabText, activeTab === 'notifications' && styles.tabTextActive]}>
             Notifications
           </Text>
-          <View style={styles.redBadge}>
-            <Text style={styles.redBadgeText}>3</Text>
-          </View>
+          {/* Counted, not the literal 3 this used to show for ever. */}
+          {unread > 0 && (
+            <View style={styles.redBadge}>
+              <Text style={styles.redBadgeText}>{unread > 99 ? '99+' : unread}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.listGroup}>
-          {listItems.map((item) => {
-            const Icon = item.IconComponent;
-            return (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.card}
-                onPress={() => onSelectAnnouncement(item)}
-                activeOpacity={0.75}
-              >
-                <View style={[styles.iconCircle, { backgroundColor: item.bgColor }]}>
-                  <Icon size={22} color={item.iconColor} />
-                </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }}
+          />
+        }
+      >
+        {error && (
+          <View style={styles.stateCard}>
+            <Text style={styles.stateTitle}>Could not load your inbox</Text>
+            <Text style={styles.stateBody}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => void load()}>
+              <Text style={styles.retryText}>Try again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-                <View style={styles.cardMain}>
-                  <View style={styles.titleRow}>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    <Text style={styles.cardTime}>{item.time}</Text>
+        {!error && items === null && (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator color="#2563eb" />
+          </View>
+        )}
+
+        {!error && items !== null && items.length === 0 && (
+          <View style={styles.stateCard}>
+            <Text style={styles.stateTitle}>
+              {activeTab === 'announcements' ? 'No announcements yet' : 'Nothing to catch up on'}
+            </Text>
+            <Text style={styles.stateBody}>
+              {activeTab === 'announcements'
+                ? 'Messages your admin sends the whole team will show up here.'
+                : 'Reminders and alerts meant just for you will show up here.'}
+            </Text>
+          </View>
+        )}
+
+        {items !== null && items.length > 0 && (
+          <View style={styles.listGroup}>
+            {items.map((item) => {
+              const Icon = activeTab === 'announcements' ? Megaphone : Bell;
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.card}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    if (activeTab === 'announcements' && userId) {
+                      void inboxService.markAnnouncementRead(item.id, userId);
+                      setUnread((n) => (item.isRead ? n : Math.max(0, n - 1)));
+                    }
+                    onSelectAnnouncement({
+                      id: item.id,
+                      title: item.title,
+                      content: item.body,
+                      summary: item.body,
+                      time: whenLabel(item.at),
+                      isRead: item.isRead,
+                      type: item.category,
+                    });
+                  }}
+                >
+                  <View style={[styles.iconCircle, { backgroundColor: item.isRead ? '#f8fafc' : '#EEF2FF' }]}>
+                    <Icon size={22} color={item.isRead ? '#94a3b8' : '#4F46E5'} />
                   </View>
-                  <Text style={styles.cardSummary}>{item.summary}</Text>
-                  {item.tag && (
-                    <View style={styles.newTagBadge}>
-                      <Text style={styles.newTagText}>{item.tag}</Text>
+
+                  <View style={styles.cardMain}>
+                    <View style={styles.titleRow}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                      <Text style={styles.cardTime}>{whenLabel(item.at)}</Text>
                     </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                    <Text style={styles.cardSummary} numberOfLines={2}>{item.body}</Text>
+                    {!item.isRead && (
+                      <View style={styles.newTagBadge}>
+                        <Text style={styles.newTagText}>New</Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -286,6 +348,43 @@ const styles = StyleSheet.create({
   },
   newTagText: {
     fontSize: 10,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  loadingBox: {
+    paddingVertical: 48,
+    alignItems: 'center',
+  },
+  stateCard: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  stateTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  stateBody: {
+    fontSize: 13,
+    color: '#64748b',
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#eff6ff',
+  },
+  retryText: {
+    fontSize: 13,
     fontWeight: '700',
     color: '#2563eb',
   },

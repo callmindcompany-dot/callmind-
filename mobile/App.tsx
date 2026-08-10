@@ -49,13 +49,11 @@ import { SubscriptionLockScreen } from './src/screens/SubscriptionLockScreen';
 import { DeleteAccountScreen } from './src/screens/DeleteAccountScreen';
 
 // Phase 3 Screens & Overlays
-import { AITalkScriptScreen } from './src/screens/67_AITalkScriptScreen';
 import { InboxScreen, Announcement } from './src/screens/59_InboxScreen';
 import { AnnouncementDetailScreen } from './src/screens/AnnouncementDetailScreen';
 
 // Phase 4 Screens
 import { AppPermissionsScreen } from './src/screens/11_AppPermissionsScreen';
-import { LanguageSelectionScreen } from './src/screens/10_LanguageSelectionScreen';
 import { BiometricLockScreen } from './src/screens/86_BiometricLockScreen';
 import { SetPinScreen } from './src/screens/87_SetPinScreen';
 import { OfflineSyncBanner } from './src/screens/91_OfflineSyncBanner';
@@ -69,13 +67,11 @@ import { ToastContainer, toastSuccess, toastError, toastInfo } from './src/compo
 
 // Priority 2 Screens
 import { ProfileEditScreen } from './src/screens/08_ProfileEditScreen';
-import { AILeadInsightScreen } from './src/screens/65_AILeadInsightScreen';
 import { NotificationCenterScreen } from './src/screens/62_NotificationCenterScreen';
 import { CallCompletedCard } from './src/screens/42_CallCompletedCard';
 import { ConfirmDialog } from './src/screens/137_ConfirmDialogs';
 
 // Priority 3 & New Redesigned Screens
-import { ThemeToggleScreen } from './src/screens/81_ThemeToggleScreen';
 import { AboutAppScreen } from './src/screens/83_AboutAppScreen';
 import type { LegalSlug } from './src/config/legal';
 import { useLegalAcceptance } from './src/services/useLegalAcceptance';
@@ -84,7 +80,6 @@ import { TargetScreen } from './src/screens/TargetScreen';
 import { DocumentsScreen } from './src/screens/DocumentsScreen';
 import { HelpCenterScreen } from './src/screens/HelpCenterScreen';
 import { QualityAnalyticsScreen } from './src/screens/QualityAnalyticsScreen';
-import { LeadImportScreen } from './src/screens/LeadImportScreen';
 
 type AuthStep =
   | 'splash'
@@ -106,23 +101,18 @@ type AppScreen =
   | 'leaderboard'
   | 'attendance'
   | 'settings'
-  | 'ai_script'
   | 'inbox'
   | 'announcement_detail'
-  | 'language'
   | 'call_log'
   | 'dial_pad'
   | 'profile_edit'
-  | 'ai_insight'
   | 'notifications'
-  | 'theme'
   | 'about'
   | 'privacy_terms'
   | 'target'
   | 'documents'
   | 'help'
   | 'quality'
-  | 'lead_import'
   | 'delete_account';
 
 type BottomTab = 'home' | 'leads' | 'callbacks' | 'performance' | 'inbox' | 'settings';
@@ -779,7 +769,12 @@ function MainAppContent() {
               setCurrentScreen('lead_detail');
             }}
             onCallLead={handleCallLead}
-            recentLeads={leads}
+            // queuedLeads, not leads. The raw list is import order; this is the
+            // order the Leads tab shows and the one the agent works down, so
+            // "next to call" on Home means the same lead in both places.
+            recentLeads={queuedLeads}
+            stats={telecallerStats}
+            dueFollowUps={callbacks.filter((c) => c.isOverdue).length}
             refreshing={refreshingLeads}
             onRefresh={loadLeads}
           />
@@ -808,6 +803,7 @@ function MainAppContent() {
           <LeadDetailScreen
             leadId={selectedLeadId}
             lead={selectedLead}
+            companyId={profile?.companyId}
             onBack={() => setCurrentScreen('leads')}
             onCall={(phone) => {
               // The fallback used to open the fake calling screen, so opening a
@@ -827,6 +823,7 @@ function MainAppContent() {
               setCurrentScreen('lead_detail');
             }}
             callLogs={callLogs}
+            onOpenDialPad={() => setCurrentScreen('dial_pad')}
             refreshing={refreshingSecondary}
             onRefresh={loadSecondaryData}
           />
@@ -853,30 +850,10 @@ function MainAppContent() {
           />
         );
 
-      case 'ai_insight':
-        return (
-          <AILeadInsightScreen
-            leadName="Selected Lead"
-            leadScore={88}
-            onBack={() => setCurrentScreen('lead_detail')}
-            onStartCall={() => {
-              if (selectedLead) handleCallLead(selectedLead);
-              else toastError('No lead selected', 'Open a lead first, then call from there.');
-            }}
-          />
-        );
-
       case 'notifications':
         return (
           <NotificationCenterScreen
             onBack={() => navigateToTab('home')}
-          />
-        );
-
-      case 'theme':
-        return (
-          <ThemeToggleScreen
-            onBack={() => setCurrentScreen('settings')}
           />
         );
 
@@ -945,15 +922,6 @@ function MainAppContent() {
           />
         );
 
-      case 'ai_script':
-        return (
-          <AITalkScriptScreen
-            leadName="Selected Lead"
-            productInterest="Product Inquiry"
-            onBack={() => setCurrentScreen('lead_detail')}
-          />
-        );
-
       case 'callbacks':
         return (
           <CallbacksScreen
@@ -999,6 +967,8 @@ function MainAppContent() {
       case 'inbox':
         return (
           <InboxScreen
+            companyId={profile?.companyId}
+            userId={profile?.uid}
             onBack={() => navigateToTab('home')}
             onSelectAnnouncement={(ann) => {
               setSelectedAnnouncement(ann);
@@ -1022,12 +992,18 @@ function MainAppContent() {
             stats={telecallerStats}
             refreshing={refreshingSecondary}
             onRefresh={loadSecondaryData}
+            onOpenLeaderboard={() => setCurrentScreen('leaderboard')}
+            onOpenQuality={() => setCurrentScreen('quality')}
           />
         );
 
       case 'leaderboard':
         return (
-          <LeaderboardScreen onBack={() => navigateToTab('performance')} />
+          <LeaderboardScreen
+            onBack={() => navigateToTab('performance')}
+            companyId={profile?.companyId}
+            userId={profile?.uid}
+          />
         );
 
       case 'attendance':
@@ -1069,11 +1045,6 @@ function MainAppContent() {
           <QualityAnalyticsScreen onBack={() => navigateToTab('home')} />
         );
 
-      case 'lead_import':
-        return (
-          <LeadImportScreen onBack={() => navigateToTab('home')} />
-        );
-
       case 'settings':
         return (
           <SettingsScreen
@@ -1083,6 +1054,11 @@ function MainAppContent() {
             onOpenAttendance={() => setCurrentScreen('attendance')}
             onOpenPerformance={() => setCurrentScreen('performance')}
             onDeleteAccount={() => setCurrentScreen('delete_account')}
+            onOpenTargets={() => setCurrentScreen('target')}
+            onOpenDocuments={() => setCurrentScreen('documents')}
+            onOpenHelp={() => setCurrentScreen('help')}
+            onOpenAbout={() => setCurrentScreen('about')}
+            onOpenNotifications={() => setCurrentScreen('notifications')}
             onLogout={() => {
               setConfirmDialog({
                 visible: true,
@@ -1091,14 +1067,6 @@ function MainAppContent() {
                 message: 'Are you sure you want to log out of CallMind?',
               });
             }}
-          />
-        );
-
-      case 'language':
-        return (
-          <LanguageSelectionScreen
-            onSelectLanguage={() => setCurrentScreen('settings')}
-            onBack={() => setCurrentScreen('settings')}
           />
         );
 

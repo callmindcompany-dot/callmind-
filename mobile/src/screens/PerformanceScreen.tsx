@@ -8,6 +8,12 @@ interface PerformanceScreenProps {
   stats?: TelecallerStats;
   refreshing?: boolean;
   onRefresh?: () => void;
+  /**
+   * LeaderboardScreen and QualityAnalyticsScreen were both written, both wired
+   * into the router, and reachable from nothing. This is the way in.
+   */
+  onOpenLeaderboard?: () => void;
+  onOpenQuality?: () => void;
 }
 
 export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
@@ -22,6 +28,8 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
   },
   refreshing = false,
   onRefresh,
+  onOpenLeaderboard,
+  onOpenQuality,
 }) => {
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('daily');
 
@@ -151,42 +159,64 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
 
         {/* Metric Cards List */}
         <View style={styles.card}>
+          {/*
+            Two rates, both divisions of figures on this screen.
+
+            Avg. Call Duration used to read 03:21 here. It is gone: `duration`
+            on `calls` is dialler elapsed time -- the gap between handing off to
+            the phone's dialler and coming back -- so it counts ringing and
+            hanging up as talk time, and an average of it would be a precise
+            number for something the app cannot measure.
+
+            The green "12%", "8%" and "5%" badges beside each row compared
+            against nothing. Nothing stores a previous period to compare with,
+            so there was no trend, only an arrow.
+          */}
           <View style={styles.metricRow}>
             <View style={styles.metricLeft}>
-              <Text style={styles.metricLabel}>Avg. Call Duration</Text>
-              <Text style={styles.metricValue}>03:21</Text>
+              <Text style={styles.metricLabel}>Connect rate</Text>
+              <Text style={styles.metricValue}>
+                {stats.totalCalls > 0
+                  ? `${((stats.connectedCalls / stats.totalCalls) * 100).toFixed(1)}%`
+                  : '—'}
+              </Text>
             </View>
-            <View style={styles.trendGreenBadge}>
-              <TrendingUp size={12} color="#16a34a" />
-              <Text style={styles.trendGreenText}>12%</Text>
-            </View>
+            <Text style={styles.metricNote}>
+              {stats.connectedCalls} of {stats.totalCalls}
+            </Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.metricRow}>
             <View style={styles.metricLeft}>
-              <Text style={styles.metricLabel}>Connect Rate</Text>
-              <Text style={styles.metricValue}>66.7%</Text>
+              <Text style={styles.metricLabel}>Conversion rate</Text>
+              <Text style={styles.metricValue}>
+                {stats.connectedCalls > 0
+                  ? `${((stats.conversions / stats.connectedCalls) * 100).toFixed(1)}%`
+                  : '—'}
+              </Text>
             </View>
-            <View style={styles.trendGreenBadge}>
-              <TrendingUp size={12} color="#16a34a" />
-              <Text style={styles.trendGreenText}>8%</Text>
-            </View>
+            <Text style={styles.metricNote}>
+              {stats.conversions} of {stats.connectedCalls} connected
+            </Text>
           </View>
+        </View>
 
+        {/*
+          LeaderboardScreen and QualityAnalyticsScreen were written, wired into
+          the router, and reachable from nothing at all.
+        */}
+        <View style={styles.linkGroup}>
+          <TouchableOpacity style={styles.linkRow} onPress={onOpenLeaderboard}>
+            <Text style={styles.linkLabel}>Team leaderboard</Text>
+            <ChevronRight size={16} color="#94a3b8" />
+          </TouchableOpacity>
           <View style={styles.divider} />
-
-          <View style={styles.metricRow}>
-            <View style={styles.metricLeft}>
-              <Text style={styles.metricLabel}>Conversion Rate</Text>
-              <Text style={styles.metricValue}>19.0%</Text>
-            </View>
-            <View style={styles.trendGreenBadge}>
-              <TrendingUp size={12} color="#16a34a" />
-              <Text style={styles.trendGreenText}>5%</Text>
-            </View>
-          </View>
+          <TouchableOpacity style={styles.linkRow} onPress={onOpenQuality}>
+            <Text style={styles.linkLabel}>Call quality</Text>
+            <ChevronRight size={16} color="#94a3b8" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -388,19 +418,29 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#0f172a',
   },
-  trendGreenBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0fdf4',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
-  },
-  trendGreenText: {
+  /** Shows the division behind the rate, so the number can be checked. */
+  metricNote: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#16a34a',
+    color: '#94a3b8',
+    fontWeight: '600',
+  },
+  linkGroup: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 18,
+    marginTop: 16,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  linkLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0f172a',
   },
   divider: {
     height: 1,

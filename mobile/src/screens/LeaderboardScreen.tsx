@@ -1,40 +1,77 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { ArrowLeft, Trophy, Crown } from 'lucide-react-native';
+import {
+  leaderboardService,
+  type LeaderRow,
+  type LeaderboardPeriod,
+} from '../services/leaderboardService';
 
 interface LeaderboardScreenProps {
   onBack: () => void;
+  companyId?: string | null;
+  userId?: string | null;
 }
 
-export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'allTime'>('weekly');
+/**
+ * The team ranking.
+ *
+ * This screen used to hold two hand-written arrays: Priya Verma with 168 calls
+ * on the top step, Ravi Kumar and Amit Patel beside her, then three more below.
+ * None of those people exist in any company. A telecaller opening it saw a
+ * podium of strangers, found themselves nowhere on it, and had no way to tell
+ * that the whole board was decoration.
+ *
+ * It also assumed there were always at least three team members -- top3[1] and
+ * top3[2] were read unconditionally -- so on a real company with one or two
+ * people it would have crashed as soon as it was given real data.
+ */
 
-  const top3 = [
-    { rank: 1, name: 'Priya Verma', calls: '168 Calls', conv: '24 Conv.', initials: 'PV', avatarBg: '#FEF3C7', avatarColor: '#D97706', badgeColor: '#F59E0B' },
-    { rank: 2, name: 'Ravi Kumar', calls: '142 Calls', conv: '18 Conv.', initials: 'RK', avatarBg: '#DBEAFE', avatarColor: '#2563eb', badgeColor: '#64748b' },
-    { rank: 3, name: 'Amit Patel', calls: '128 Calls', conv: '15 Conv.', initials: 'AP', avatarBg: '#DCFCE7', avatarColor: '#16A34A', badgeColor: '#D97706' },
-  ];
+const PODIUM_TINTS = [
+  { bg: '#FEF3C7', fg: '#D97706', badge: '#F59E0B' },
+  { bg: '#DBEAFE', fg: '#2563eb', badge: '#64748b' },
+  { bg: '#DCFCE7', fg: '#16A34A', badge: '#D97706' },
+];
 
-  const rankings = [
-    { rank: 4, name: 'Neha Gupta', calls: '112 Calls', conv: '12 Conv.', initials: 'NG', avatarBg: '#EFF6FF', avatarColor: '#2563eb' },
-    { rank: 5, name: 'Vikas Singh', calls: '98 Calls', conv: '10 Conv.', initials: 'VS', avatarBg: '#F8FAFC', avatarColor: '#64748b' },
-    { rank: 6, name: 'Suresh Malhotra', calls: '84 Calls', conv: '8 Conv.', initials: 'SM', avatarBg: '#F8FAFC', avatarColor: '#64748b' },
-  ];
+export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ onBack, companyId, userId }) => {
+  const [activeTab, setActiveTab] = useState<LeaderboardPeriod>('weekly');
+  const [rows, setRows] = useState<LeaderRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!companyId) return;
+    setError(null);
+    try {
+      setRows(await leaderboardService.fetch(companyId, userId ?? '', activeTab));
+    } catch (e) {
+      // Told, not swallowed. An empty board after a failed query reads as
+      // "nobody on your team has called anyone", which an agent would believe.
+      setRows(null);
+      setError(e instanceof Error ? e.message : 'Could not load the leaderboard.');
+    }
+  }, [companyId, userId, activeTab]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const podium = (rows ?? []).slice(0, 3);
+  const rest = (rows ?? []).slice(3);
+  // The podium layout puts second on the left and first in the middle, so it
+  // only makes sense once three people have something to show for themselves.
+  const showPodium = podium.length === 3 && podium[0].calls > 0;
 
   return (
     <View style={styles.container}>
-      {/* Top Header matching Reference UI Image 4 Screen 15 */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
           <ArrowLeft size={20} color="#0f172a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Leaderboard</Text>
-        <TouchableOpacity style={styles.iconBtn}>
+        <View style={styles.iconBtn}>
           <Trophy size={20} color="#f59e0b" />
-        </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Segmented Filter Pills */}
       <View style={styles.tabsContainer}>
         {(['weekly', 'monthly', 'allTime'] as const).map((t) => (
           <TouchableOpacity
@@ -49,65 +86,104 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({ onBack }) 
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Top 3 Podium Cards */}
-        <View style={styles.podiumRow}>
-          {/* #2 Rank */}
-          <View style={[styles.podiumCard, styles.podiumRank2]}>
-            <View style={[styles.podiumAvatar, { backgroundColor: top3[1].avatarBg }]}>
-              <Text style={[styles.podiumAvatarText, { color: top3[1].avatarColor }]}>{top3[1].initials}</Text>
-            </View>
-            <Text style={styles.podiumName}>{top3[1].name}</Text>
-            <Text style={styles.podiumCalls}>{top3[1].calls}</Text>
-            <Text style={styles.podiumConv}>{top3[1].conv}</Text>
-            <View style={[styles.rankBadgeCircle, { backgroundColor: top3[1].badgeColor }]}>
-              <Text style={styles.rankBadgeText}>2</Text>
-            </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }}
+          />
+        }
+      >
+        {error && (
+          <View style={styles.stateCard}>
+            <Text style={styles.stateTitle}>Could not load the leaderboard</Text>
+            <Text style={styles.stateBody}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => void load()}>
+              <Text style={styles.retryText}>Try again</Text>
+            </TouchableOpacity>
           </View>
+        )}
 
-          {/* #1 Rank Gold Crown */}
-          <View style={[styles.podiumCard, styles.podiumRank1]}>
-            <Crown size={22} color="#f59e0b" style={styles.goldCrown} />
-            <View style={[styles.podiumAvatarLarge, { backgroundColor: top3[0].avatarBg }]}>
-              <Text style={[styles.podiumAvatarTextLarge, { color: top3[0].avatarColor }]}>{top3[0].initials}</Text>
-            </View>
-            <Text style={styles.podiumNameBold}>{top3[0].name}</Text>
-            <Text style={styles.podiumCallsBold}>{top3[0].calls}</Text>
-            <Text style={styles.podiumConv}>{top3[0].conv}</Text>
-            <View style={[styles.rankBadgeCircleLarge, { backgroundColor: top3[0].badgeColor }]}>
-              <Text style={styles.rankBadgeText}>1</Text>
-            </View>
+        {!error && rows === null && (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator color="#2563eb" />
           </View>
+        )}
 
-          {/* #3 Rank */}
-          <View style={[styles.podiumCard, styles.podiumRank3]}>
-            <View style={[styles.podiumAvatar, { backgroundColor: top3[2].avatarBg }]}>
-              <Text style={[styles.podiumAvatarText, { color: top3[2].avatarColor }]}>{top3[2].initials}</Text>
-            </View>
-            <Text style={styles.podiumName}>{top3[2].name}</Text>
-            <Text style={styles.podiumCalls}>{top3[2].calls}</Text>
-            <Text style={styles.podiumConv}>{top3[2].conv}</Text>
-            <View style={[styles.rankBadgeCircle, { backgroundColor: top3[2].badgeColor }]}>
-              <Text style={styles.rankBadgeText}>3</Text>
-            </View>
+        {!error && rows !== null && rows.length === 0 && (
+          <View style={styles.stateCard}>
+            <Text style={styles.stateTitle}>Nobody on the board yet</Text>
+            <Text style={styles.stateBody}>
+              This shows your team once there are other members in your workspace.
+            </Text>
           </View>
-        </View>
+        )}
 
-        {/* Team Leaderboard List */}
-        <View style={styles.rankList}>
-          {rankings.map((r) => (
-            <View key={r.rank} style={styles.rankRowCard}>
-              <Text style={styles.rankNumberText}>#{r.rank}</Text>
-              <View style={[styles.avatarCircle, { backgroundColor: r.avatarBg }]}>
-                <Text style={[styles.avatarText, { color: r.avatarColor }]}>{r.initials}</Text>
-              </View>
-              <View style={styles.rankMain}>
-                <Text style={styles.rankName}>{r.name}</Text>
-                <Text style={styles.rankMetaText}>{r.calls} • {r.conv}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
+        {showPodium && (
+          <View style={styles.podiumRow}>
+            {[1, 0, 2].map((i) => {
+              const r = podium[i];
+              const tint = PODIUM_TINTS[i];
+              const first = i === 0;
+              return (
+                <View
+                  key={r.userId}
+                  style={[
+                    styles.podiumCard,
+                    first ? styles.podiumRank1 : i === 1 ? styles.podiumRank2 : styles.podiumRank3,
+                  ]}
+                >
+                  {first && <Crown size={22} color="#f59e0b" style={styles.goldCrown} />}
+                  <View style={[first ? styles.podiumAvatarLarge : styles.podiumAvatar, { backgroundColor: tint.bg }]}>
+                    <Text style={[first ? styles.podiumAvatarTextLarge : styles.podiumAvatarText, { color: tint.fg }]}>
+                      {r.initials}
+                    </Text>
+                  </View>
+                  <Text style={first ? styles.podiumNameBold : styles.podiumName} numberOfLines={1}>
+                    {r.isMe ? 'You' : r.name}
+                  </Text>
+                  <Text style={first ? styles.podiumCallsBold : styles.podiumCalls}>
+                    {r.calls} {r.calls === 1 ? 'call' : 'calls'}
+                  </Text>
+                  <Text style={styles.podiumConv}>{r.conversions} conv.</Text>
+                  <View style={[first ? styles.rankBadgeCircleLarge : styles.rankBadgeCircle, { backgroundColor: tint.badge }]}>
+                    <Text style={styles.rankBadgeText}>{i + 1}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {rows !== null && rows.length > 0 && (
+          <View style={styles.rankList}>
+            {(showPodium ? rest : rows).map((r, idx) => {
+              const rank = (showPodium ? 3 : 0) + idx + 1;
+              return (
+                <View key={r.userId} style={[styles.rankRowCard, r.isMe && styles.rankRowMine]}>
+                  <Text style={styles.rankNumberText}>#{rank}</Text>
+                  <View style={[styles.avatarCircle, { backgroundColor: r.isMe ? '#eff6ff' : '#f8fafc' }]}>
+                    <Text style={[styles.avatarText, { color: r.isMe ? '#2563eb' : '#64748b' }]}>{r.initials}</Text>
+                  </View>
+                  <View style={styles.rankMain}>
+                    <Text style={styles.rankName} numberOfLines={1}>{r.isMe ? 'You' : r.name}</Text>
+                    <Text style={styles.rankMetaText}>
+                      {r.calls} {r.calls === 1 ? 'call' : 'calls'} • {r.conversions} conv.
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {rows !== null && rows.length > 0 && rows.every((r) => r.calls === 0) && (
+          <Text style={styles.footnote}>
+            No calls logged in this period yet. The order is by name until somebody makes one.
+          </Text>
+        )}
       </ScrollView>
     </View>
   );
@@ -319,5 +395,53 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     marginTop: 1,
+  },
+  rankRowMine: {
+    borderColor: '#bfdbfe',
+    backgroundColor: '#f8fbff',
+  },
+  loadingBox: {
+    paddingVertical: 48,
+    alignItems: 'center',
+  },
+  stateCard: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 18,
+    padding: 20,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  stateTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  stateBody: {
+    fontSize: 13,
+    color: '#64748b',
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#eff6ff',
+  },
+  retryText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  footnote: {
+    fontSize: 12,
+    color: '#94a3b8',
+    textAlign: 'center',
+    marginTop: 16,
+    lineHeight: 18,
   },
 });

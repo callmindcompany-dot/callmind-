@@ -95,6 +95,30 @@ describe('mobile screens are reachable', () => {
     expect(orphans, 'screen files nothing imports — delete them or wire them up').toEqual([]);
   });
 
+  it('can navigate to every screen the router declares', () => {
+    // The check above is not enough on its own. A component rendered inside a
+    // `case 'x':` counts as rendered, so thirteen of twenty-eight screens
+    // passed it while being unreachable: leaderboard, ai_script, language,
+    // dial_pad, ai_insight, notifications, theme, about, target, documents,
+    // help, quality and lead_import were all wired into the switch and nothing
+    // anywhere set currentScreen to them. Half the app was built and unopenable.
+    const union = app.slice(app.indexOf('type AppScreen'), app.indexOf('type BottomTab'));
+    const screens = [...union.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    expect(screens.length, 'AppScreen union not found').toBeGreaterThan(10);
+
+    const tabsBlock = app.slice(app.indexOf('type BottomTab'), app.indexOf('type BottomTab') + 200);
+    const tabs = new Set([...tabsBlock.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]));
+
+    const unreachable = screens.filter(
+      (s) =>
+        !tabs.has(s) &&
+        !new RegExp(`setCurrentScreen\\('${s}'\\)`).test(app) &&
+        !new RegExp(`navigateToTab\\('${s}'\\)`).test(app),
+    );
+
+    expect(unreachable, 'declared in AppScreen with nothing able to open it').toEqual([]);
+  });
+
   it('has no two screens for the same thing', () => {
     // 61_AnnouncementDetailScreen and AnnouncementDetailScreen were both
     // present, differing only in the numeric prefix, and only one was reachable.
