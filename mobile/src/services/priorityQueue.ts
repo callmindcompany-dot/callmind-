@@ -55,6 +55,22 @@ export interface QueueOptions {
 }
 
 /**
+ * How long a lead stays at the bottom of its band after being called.
+ *
+ * Long enough that an agent working down the list does not meet the same
+ * no-answer three times in ten minutes, short enough that a lead tried at 10am
+ * is back in the run before the day ends.
+ */
+export const RECENTLY_TRIED_MS = 2 * 60 * 60 * 1000;
+
+/** Whether this lead was called recently enough to belong lower down. */
+export function wasTriedRecently(lead: LeadItem, now: number): boolean {
+  if (!lead.lastContactAt) return false;
+  const at = Date.parse(lead.lastContactAt);
+  return Number.isFinite(at) && now - at < RECENTLY_TRIED_MS;
+}
+
+/**
  * Sorts a copy. Does not mutate the input.
  *
  * The order:
@@ -71,6 +87,7 @@ export interface QueueOptions {
  */
 export function orderQueue(leads: LeadItem[], options: QueueOptions = {}): LeadItem[] {
   const due = options.dueLeadIds ?? new Set<string>();
+  const now = options.now ?? Date.now();
 
   const band = (lead: LeadItem): number => {
     if (isClosed(lead)) return BAND_CLOSED;
@@ -81,6 +98,15 @@ export function orderQueue(leads: LeadItem[], options: QueueOptions = {}): LeadI
   return [...leads].sort((a, b) => {
     const bandDiff = band(a) - band(b);
     if (bandDiff !== 0) return bandDiff;
+
+    // A lead just tried sinks below the ones nobody has tried yet.
+    //
+    // This is what "back of the queue" means here, and all it means. A due
+    // follow-up still outranks it, because the agent promised a time -- the
+    // check sits after the band comparison, not before it.
+    const aTried = wasTriedRecently(a, now);
+    const bTried = wasTriedRecently(b, now);
+    if (aTried !== bTried) return aTried ? 1 : -1;
 
     // Oldest first within a band.
     //

@@ -39,7 +39,8 @@ const CallbackCard = ({
 }: {
   cb: CallbackItem;
   onSelectLead: (leadId: string) => void;
-  onCallLead?: (phone: string, name: string) => void;
+  /** leadId so the caller can move the lead once the call is logged. */
+  onCallLead?: (phone: string, name: string, leadId?: string) => void;
   onReschedule?: (cb: CallbackItem) => void;
   onComplete?: (cb: CallbackItem) => void;
 }) => (
@@ -64,7 +65,11 @@ const CallbackCard = ({
       <TouchableOpacity
         style={styles.callNowBtn}
         disabled={!cb.phone}
-        onPress={() => (onCallLead && cb.phone ? onCallLead(cb.phone, cb.name) : cb.leadId && onSelectLead(cb.leadId))}
+        onPress={() =>
+          onCallLead && cb.phone
+            ? onCallLead(cb.phone, cb.name, cb.leadId)
+            : cb.leadId && onSelectLead(cb.leadId)
+        }
       >
         <Phone size={14} color="#16a34a" />
         <Text style={styles.callNowText}>Call Now</Text>
@@ -85,7 +90,7 @@ const CallbackCard = ({
 interface CallbacksScreenProps {
   onBack: () => void;
   onSelectLead: (leadId: string) => void;
-  onCallLead?: (phone: string, name: string) => void;
+  onCallLead?: (phone: string, name: string, leadId?: string) => void;
   callbacks?: CallbackItem[];
   refreshing?: boolean;
   onRefresh?: () => void;

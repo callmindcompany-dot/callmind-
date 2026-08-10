@@ -21,6 +21,14 @@ export interface LeadItem {
   comment?: string;
   /** ISO created_at. `time` is a display label and does not parse. */
   createdAt?: string;
+  /**
+   * ISO last_contact_at, written on every logged call.
+   *
+   * The queue uses it to sink a lead the agent has just tried below the ones
+   * they have not. There is no retry scheduler in this app, so this is the
+   * entire mechanism for "call it again later".
+   */
+  lastContactAt?: string | null;
 }
 
 interface LeadListScreenProps {

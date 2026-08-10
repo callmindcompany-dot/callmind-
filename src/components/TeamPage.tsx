@@ -915,7 +915,18 @@ const AgentSessionItem = React.memo(({ agent }: AgentSessionItemProps) => {
         </div>
         <div>
           <p className="text-sm font-bold text-gray-900">{agent.user_name}</p>
-          <p className="text-xs text-gray-500">{agent.location || 'Unknown Location'}</p>
+          {/*
+            Was `agent.location || 'Unknown Location'`. agent_status has no
+            location column — src/types/supabase.ts declared one and the
+            database never had it — so this row read "Unknown Location" for
+            everybody, always. last_seen is real and is the thing an admin
+            looking at a presence board actually wants.
+          */}
+          <p className="text-xs text-gray-500">
+            {agent.last_seen
+              ? `Last seen ${new Date(agent.last_seen).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
+              : 'Not seen yet'}
+          </p>
         </div>
       </div>
       <div className="flex items-center gap-4">

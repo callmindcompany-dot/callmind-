@@ -171,7 +171,9 @@ export const SettingsPage = () => {
   const [newStatusColor, setNewStatusColor] = useState('#3b82f6');
   
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteStep, setDeleteStep] = useState(1);
+  // deleteStep was declared here for a multi-step modal that was never built,
+  // alongside a delete handler nothing called. emailConfirmation is now the
+  // type-the-word guard on the deletion card in the Data & Sync section.
   const [emailConfirmation, setEmailConfirmation] = useState('');
 
   // Twilio/API keys Reveal States
@@ -1045,34 +1047,63 @@ export const SettingsPage = () => {
   // Permanent Account Deletion
   // ----------------------------------------------------
 
+  /**
+   * Deletes the signed-in user's own account.
+   *
+   * The version this replaces was never called from anywhere -- there was no
+   * button and no modal, and isDeleteModalOpen, deleteStep and
+   * emailConfirmation were declared and never read. So the web had no account
+   * deletion at all, and a function that would have done the wrong thing if
+   * anybody had wired it up:
+   *
+   *   It fired six .delete() calls and checked the result of none of them, then
+   *   reported "Workspace permanently deleted" and navigated away regardless.
+   *   Row-level security refuses most of those from a browser client, so the
+   *   message was usually false.
+   *
+   *   It deleted the company's entire book of leads and every call record. A
+   *   telecaller removing their own account would have destroyed their
+   *   employer's data.
+   *
+   *   It deleted the row in public.users but not the sign-in in auth.users, so
+   *   the account could still authenticate and would land in an app with no
+   *   profile.
+   *
+   * The work is now in delete_my_account(), a SECURITY DEFINER function added by
+   * 20260818000000_account_deletion.sql: it unassigns leads instead of deleting
+   * them, anonymises what tax law and the audit trail require be kept, removes
+   * the rows that neither cascade nor block, refuses to strand a team by
+   * removing its only administrator, and takes the auth row with it -- in one
+   * transaction. scripts/account-deletion-proof.mjs exercises it against the
+   * real database.
+   *
+   * Deleting a whole workspace is a different operation and is deliberately not
+   * this. When the last member of a company leaves, the company row and its
+   * leads remain; see the follow-up note in that migration.
+   */
   const handleDeleteAccount = useCallback(async () => {
-    if (!companyId || !user) return;
+    if (!user) return;
     try {
       setIsDeleting(true);
 
-      // Delete leads
-      await supabase.from('leads').delete().eq('company_id', companyId);
-      // Delete calls
-      await supabase.from('calls').delete().eq('company_id', companyId);
-      // Delete audit logs
-      await supabase.from('audit_logs').delete().eq('company_id', companyId);
-      // Delete team settings
-      await supabase.from('team_settings').delete().eq('company_id', companyId);
-      // Delete company
-      await supabase.from('companies').delete().eq('id', companyId);
-      // Delete user profile
-      await supabase.from('users').delete().eq('id', user.id || user.uid);
+      const { error } = await supabase.rpc('delete_my_account', { p_confirm: 'DELETE' });
+      // Checked, unlike every delete this replaces.
+      if (error) throw error;
 
-      toast.success("Workspace permanently deleted.");
       setIsDeleteModalOpen(false);
+      await supabase.auth.signOut();
+      toast.success('Your account has been deleted.');
       navigate('/');
     } catch (error: any) {
-      console.error("Critical Deletion Failed:", error);
-      toast.error(error.message || "Deletion sequence failed.");
+      // The function raises P0001 with a user-safe message and a machine code in
+      // details, the same shape src/lib/planErrors.ts parses. LAST_ADMIN is the
+      // one people will actually hit.
+      console.error('Account deletion failed:', error);
+      toast.error(error?.message || 'Deletion failed. Nothing was removed.');
     } finally {
       setIsDeleting(false);
     }
-  }, [companyId, user, navigate]);
+  }, [user, navigate]);
 
   // ----------------------------------------------------
   // GDPR Data Download
@@ -1867,6 +1898,56 @@ export const SettingsPage = () => {
                   <p className="text-xs text-slate-500">Generate a unified CSV report containing all non-deleted database leads.</p>
                   <button onClick={handleMasterLeadAudit} className="px-5 py-3 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-xl">
                     Export Leads CSV
+                  </button>
+                </div>
+              </div>
+            </SettingsCard>
+
+            {/*
+              Account deletion sits beside the export, because under the DPDP
+              Act 2023 they are two halves of the same right and somebody
+              deleting their account usually wants their data first.
+
+              There was no such control anywhere on the web before this. The
+              handler existed and nothing called it.
+            */}
+            <SettingsCard
+              title="Delete my account"
+              icon={Trash2}
+              description="Removes your profile and sign-in. Your company keeps the work you did."
+            >
+              <div className="p-6 bg-rose-50/60 border border-rose-100 rounded-2xl space-y-4">
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Your profile, sign-in, saved searches and notification settings are removed
+                  immediately. There is no undo and no waiting period.
+                </p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Leads assigned to you go back to your team unassigned — they are not deleted.
+                  Call records stay with your company without your name on them. Invoices are kept
+                  for as long as Indian tax law requires, as the privacy policy states.
+                </p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  If you are the only administrator of a workspace that still has members, this
+                  will be refused until you make somebody else an administrator.
+                </p>
+
+                <div className="pt-2 space-y-3">
+                  <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                    Type DELETE to enable the button
+                  </label>
+                  <input
+                    value={emailConfirmation}
+                    onChange={(e) => setEmailConfirmation(e.target.value)}
+                    placeholder="DELETE"
+                    autoComplete="off"
+                    className="w-full max-w-xs px-4 py-3 text-sm font-bold tracking-widest border border-slate-200 rounded-xl bg-white"
+                  />
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={emailConfirmation.trim() !== 'DELETE' || isDeleting}
+                    className="px-5 py-3 bg-rose-600 text-white text-xs font-black uppercase tracking-widest rounded-xl disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
+                  >
+                    {isDeleting ? 'Deleting…' : 'Delete my account'}
                   </button>
                 </div>
               </div>

@@ -67,6 +67,8 @@ export interface RawDbLead {
   comment?: string;
   created_at: string;
   updated_at?: string;
+  /** Set on every call. Used to sink a just-attempted lead down its band. */
+  last_contact_at?: string | null;
 }
 
 
@@ -89,6 +91,7 @@ function toLeadItem(row: RawDbLead): LeadItem {
     priority: row.priority,
     address: row.address,
     comment: row.comment,
+    lastContactAt: row.last_contact_at ?? null,
   };
 }
 
@@ -166,6 +169,58 @@ export const leadService = {
       console.error('[leadService] Exception in updateLeadStatus:', err);
       return false;
     }
+  },
+
+  /**
+   * Records the result of a call against the lead itself.
+   *
+   * This is what the post-call sheet was missing. It wrote to `calls` and
+   * `callbacks` and never touched `leads`, so the status stayed 'New' and the
+   * lead kept its place in the queue -- the agent scrolled past people they had
+   * already spoken to for the rest of the day.
+   *
+   * Throws, unlike updateLeadStatus above, which returns false and leaves the
+   * caller to notice. An agent who has filled the form and seen it close
+   * believes the call is recorded; if the write failed they need to be told
+   * while the lead is still in front of them.
+   */
+  async recordCallOutcome(
+    companyId: string,
+    userId: string,
+    leadId: string,
+    newStatus: string,
+    oldStatus?: string,
+  ): Promise<void> {
+    if (!companyId || !leadId) throw new Error('Missing company or lead id.');
+
+    const now = new Date().toISOString();
+
+    const { error } = await supabase
+      .from('leads')
+      .update({
+        status: newStatus,
+        // Sinks the lead below ones nobody has tried yet. There is no retry
+        // scheduler in this app, so this column is the whole mechanism.
+        last_contact_at: now,
+        updated_at: now,
+      })
+      .eq('id', leadId)
+      .eq('company_id', companyId);
+
+    if (error) throw error;
+
+    // The activity trail is useful but not worth failing the call log over --
+    // the outcome is already saved by the time this runs.
+    const { error: logError } = await supabase.from('lead_activity_log').insert({
+      company_id: companyId,
+      lead_id: leadId,
+      activity_type: 'status_change',
+      description: `Call logged — ${newStatus}`,
+      created_by: userId,
+      from_status: oldStatus || null,
+      to_status: newStatus,
+    });
+    if (logError) console.warn('[leadService] activity log not written:', logError);
   },
 
   /**

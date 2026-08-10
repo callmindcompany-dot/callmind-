@@ -252,12 +252,14 @@ export interface Database {
       };
       agent_status: {
         Row: {
+          /** The user id. useAgentMonitor matches it against calls.created_by. */
           id: string;
           company_id: string;
           user_name: string;
+          /** 'active' | 'on_call' | 'offline'. Anything else renders as offline. */
           status: string;
           last_seen: string;
-          location: string | null;
+          updated_at: string;
         };
         Insert: Database['public']['Tables']['agent_status']['Row'];
         Update: Partial<Database['public']['Tables']['agent_status']['Row']>;

@@ -3,8 +3,50 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 
 interface ScheduleCallbackSheetProps {
   leadName: string;
-  onSchedule: (date: string, time: string, note: string) => void;
+  /**
+   * The chosen moment, as an ISO timestamp, plus whatever the agent typed.
+   *
+   * This used to hand back the raw key and label -- ('day3', '10:00 AM') --
+   * and leave the caller to work out what date 'day3' meant. Returning the
+   * moment itself removes the second place that could get it wrong.
+   */
+  onSchedule: (isoWhen: string, note: string) => void;
   onDismiss: () => void;
+}
+
+/**
+ * The next seven days, starting today.
+ *
+ * The list was written out by hand as Today · 29 Jul, Tomorrow · 30 Jul, Wed ·
+ * 31 Jul and so on. Those dates were whenever the file was written; on any
+ * other day "Today" sat above a date that was not today, and the weekday names
+ * did not match the dates beside them either. An agent booking a follow-up
+ * would have picked a day that had already passed.
+ */
+function nextSevenDays(from: Date): { key: string; label: string; sub: string; date: Date }[] {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(from);
+    d.setDate(d.getDate() + i);
+    d.setHours(0, 0, 0, 0);
+    return {
+      key: d.toISOString().slice(0, 10),
+      label:
+        i === 0 ? 'Today'
+        : i === 1 ? 'Tomorrow'
+        : d.toLocaleDateString('en-IN', { weekday: 'short' }),
+      sub: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+      date: d,
+    };
+  });
+}
+
+/** '02:30 PM' -> { hours: 14, minutes: 30 } */
+function parseSlot(slot: string): { hours: number; minutes: number } {
+  const [, h, m, meridiem] = /^(\d{2}):(\d{2}) (AM|PM)$/.exec(slot) ?? [];
+  let hours = Number(h ?? 10);
+  if (meridiem === 'PM' && hours !== 12) hours += 12;
+  if (meridiem === 'AM' && hours === 12) hours = 0;
+  return { hours, minutes: Number(m ?? 0) };
 }
 
 export const ScheduleCallbackSheet: React.FC<ScheduleCallbackSheetProps> = ({
@@ -12,19 +54,10 @@ export const ScheduleCallbackSheet: React.FC<ScheduleCallbackSheetProps> = ({
   onSchedule,
   onDismiss,
 }) => {
-  const [selectedDate, setSelectedDate] = useState('today');
+  const dateOptions = nextSevenDays(new Date());
+  const [selectedDate, setSelectedDate] = useState(dateOptions[0].key);
   const [selectedTime, setSelectedTime] = useState('10:00 AM');
   const [note, setNote] = useState('');
-
-  const dateOptions = [
-    { key: 'today', label: 'Today', sub: '29 Jul' },
-    { key: 'tomorrow', label: 'Tomorrow', sub: '30 Jul' },
-    { key: 'day3', label: 'Wed', sub: '31 Jul' },
-    { key: 'day4', label: 'Thu', sub: '1 Aug' },
-    { key: 'day5', label: 'Fri', sub: '2 Aug' },
-    { key: 'day6', label: 'Sat', sub: '3 Aug' },
-    { key: 'day7', label: 'Sun', sub: '4 Aug' },
-  ];
 
   const timeSlots = [
     '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
@@ -87,8 +120,11 @@ export const ScheduleCallbackSheet: React.FC<ScheduleCallbackSheetProps> = ({
           <TouchableOpacity
             style={styles.scheduleBtn}
             onPress={() => {
-              const dateLabel = dateOptions.find(d => d.key === selectedDate)?.sub || '';
-              onSchedule(dateLabel, selectedTime, note);
+              const day = dateOptions.find((d) => d.key === selectedDate) ?? dateOptions[0];
+              const { hours, minutes } = parseSlot(selectedTime);
+              const when = new Date(day.date);
+              when.setHours(hours, minutes, 0, 0);
+              onSchedule(when.toISOString(), note);
             }}
           >
             <Text style={styles.scheduleText}>✅ Schedule Callback</Text>

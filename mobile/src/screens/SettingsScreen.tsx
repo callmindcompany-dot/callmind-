@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { appLockService } from '../services/appLockService';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
-import { Edit2, RotateCcw, Moon, Globe, Fingerprint, Info, LogOut, Phone, Users, CheckCircle2, Clock, ChevronRight } from 'lucide-react-native';
+import { Edit2, Moon, Globe, Fingerprint, Info, LogOut, CalendarCheck, BarChart3, Trash2, ChevronRight } from 'lucide-react-native';
 import { useMobileAuth } from '../services/AuthContext';
+import appJson from '../../app.json';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -10,9 +11,22 @@ interface SettingsScreenProps {
   onNavigateToEditProfile?: () => void;
   /** Opens the PIN setup flow. Turning the lock on needs a PIN to turn it on with. */
   onSetUpPin?: () => void;
+  /** Opens AttendanceScreen, which reads attendance_logs. */
+  onOpenAttendance?: () => void;
+  /** Opens PerformanceScreen, which reads the agent's real figures. */
+  onOpenPerformance?: () => void;
+  /** Opens DeleteAccountScreen. Required by the Play Store. */
+  onDeleteAccount?: () => void;
 }
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onNavigateToEditProfile, onSetUpPin }) => {
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({
+  onLogout,
+  onNavigateToEditProfile,
+  onSetUpPin,
+  onOpenAttendance,
+  onOpenPerformance,
+  onDeleteAccount,
+}) => {
   const { user, profile } = useMobileAuth();
   const [darkMode, setDarkMode] = useState(false);
   // Read from SecureStore rather than assumed. This was `useState(true)`, so
@@ -44,7 +58,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onNavi
       setLockBusy(false);
     }
   };
-  const [isPunchedIn, setIsPunchedIn] = useState(true);
 
   const displayName = profile?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Telecaller';
   const displayEmail = profile?.email || user?.email || 'telecaller@callmind.ai';
@@ -89,76 +102,35 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onNavi
           </View>
         </View>
 
-        {/* Attendance Punch Card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>Attendance</Text>
-            <View style={styles.punchedInBadge}>
-              <Text style={styles.punchedInText}>Punched In</Text>
+        {/*
+          Attendance and performance used to be rendered here as cards, with
+          "Since 9:02 AM • 21 May 2024", "Location: Pune, Maharashtra", and 142
+          calls / 78 connected / 12 conversions / 03:21 average -- none of it
+          read from anywhere. The Punch Out button flipped a local boolean and
+          touched neither attendance_logs nor the agent's actual shift.
+
+          AttendanceScreen and PerformanceScreen already read the real rows, so
+          these are links to them rather than a second copy of the same figures
+          that could drift from the first.
+        */}
+        <View style={styles.settingsGroup}>
+          <TouchableOpacity style={styles.settingRow} onPress={onOpenAttendance}>
+            <View style={styles.settingRowLeft}>
+              <CalendarCheck size={18} color="#64748b" />
+              <Text style={styles.settingRowLabel}>Attendance</Text>
             </View>
-          </View>
-
-          <Text style={styles.attendanceSub}>Since 9:02 AM • 21 May 2024</Text>
-          
-          <View style={styles.locationRow}>
-            <Text style={styles.locationText}>Location: Pune, Maharashtra</Text>
-            <TouchableOpacity style={styles.refreshIconBtn}>
-              <RotateCcw size={14} color="#64748b" />
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            style={styles.punchOutBtn}
-            onPress={() => setIsPunchedIn(!isPunchedIn)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.punchOutText}>{isPunchedIn ? 'Punch Out' : 'Punch In'}</Text>
+            <ChevronRight size={16} color="#94a3b8" />
           </TouchableOpacity>
-        </View>
 
-        {/* My Performance (This Week) */}
-        <View style={styles.card}>
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>My Performance <Text style={styles.subTextLabel}>(This Week)</Text></Text>
-            <TouchableOpacity style={styles.viewAllRow}>
-              <Text style={styles.viewAllText}>View All</Text>
-              <ChevronRight size={14} color="#2563eb" />
-            </TouchableOpacity>
-          </View>
+          <View style={styles.divider} />
 
-          <View style={styles.perfGrid}>
-            <View style={styles.perfBox}>
-              <Text style={styles.perfLabel}>Calls Made</Text>
-              <Text style={styles.perfNumber}>142</Text>
-              <View style={[styles.perfIconBg, { backgroundColor: '#eff6ff' }]}>
-                <Phone size={14} color="#2563eb" />
-              </View>
+          <TouchableOpacity style={styles.settingRow} onPress={onOpenPerformance}>
+            <View style={styles.settingRowLeft}>
+              <BarChart3 size={18} color="#64748b" />
+              <Text style={styles.settingRowLabel}>My performance</Text>
             </View>
-
-            <View style={styles.perfBox}>
-              <Text style={styles.perfLabel}>Connected</Text>
-              <Text style={styles.perfNumber}>78</Text>
-              <View style={[styles.perfIconBg, { backgroundColor: '#f0fdf4' }]}>
-                <CheckCircle2 size={14} color="#16a34a" />
-              </View>
-            </View>
-
-            <View style={styles.perfBox}>
-              <Text style={styles.perfLabel}>Conversions</Text>
-              <Text style={styles.perfNumber}>12</Text>
-              <View style={[styles.perfIconBg, { backgroundColor: '#fef3c7' }]}>
-                <Users size={14} color="#d97706" />
-              </View>
-            </View>
-
-            <View style={styles.perfBox}>
-              <Text style={styles.perfLabel}>Avg. Duration</Text>
-              <Text style={styles.perfNumber}>03:21</Text>
-              <View style={[styles.perfIconBg, { backgroundColor: '#eff6ff' }]}>
-                <Clock size={14} color="#2563eb" />
-              </View>
-            </View>
-          </View>
+            <ChevronRight size={16} color="#94a3b8" />
+          </TouchableOpacity>
         </View>
 
         {/* Settings Group List matching Reference UI Image 3 Screen 12 */}
@@ -213,7 +185,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onNavi
               <Info size={18} color="#64748b" />
               <Text style={styles.settingRowLabel}>App Version</Text>
             </View>
-            <Text style={styles.settingValText}>1.2.0</Text>
+            {/*
+              Read from app.json, which is the number the build actually ships
+              with. This said 1.2.0 while app.json said 2.4.0, so anyone
+              reporting a bug quoted a version that had never existed.
+            */}
+            <Text style={styles.settingValText}>{appJson.expo.version}</Text>
           </View>
         </View>
 
@@ -221,6 +198,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onLogout, onNavi
         <TouchableOpacity style={styles.logoutBtn} onPress={onLogout} activeOpacity={0.8}>
           <LogOut size={18} color="#ef4444" />
           <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+
+        {/*
+          The Play Store requires an app that creates accounts to offer deletion
+          from inside the app. It is deliberately last, plain, and separated from
+          Logout so the two are not mistaken for each other.
+        */}
+        <TouchableOpacity style={styles.deleteAccountBtn} onPress={onDeleteAccount} activeOpacity={0.8}>
+          <Trash2 size={16} color="#94a3b8" />
+          <Text style={styles.deleteAccountText}>Delete my account</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -329,117 +316,6 @@ const styles = StyleSheet.create({
     color: '#bfdbfe',
     marginTop: 1,
   },
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginBottom: 16,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
-  subTextLabel: {
-    fontWeight: '500',
-    color: '#64748b',
-    fontSize: 13,
-  },
-  punchedInBadge: {
-    backgroundColor: '#dcfce7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  punchedInText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#16a34a',
-  },
-  attendanceSub: {
-    fontSize: 12,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 14,
-  },
-  locationText: {
-    fontSize: 12,
-    color: '#64748b',
-  },
-  refreshIconBtn: {
-    padding: 2,
-  },
-  punchOutBtn: {
-    borderWidth: 1,
-    borderColor: '#fca5a5',
-    backgroundColor: '#ffffff',
-    paddingVertical: 12,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  punchOutText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#ef4444',
-  },
-  viewAllRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  viewAllText: {
-    fontSize: 13,
-    color: '#2563eb',
-    fontWeight: '700',
-  },
-  perfGrid: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  perfBox: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    padding: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    position: 'relative',
-  },
-  perfLabel: {
-    fontSize: 10,
-    color: '#64748b',
-    fontWeight: '600',
-  },
-  perfNumber: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0f172a',
-    marginTop: 4,
-  },
-  perfIconBg: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '800',
@@ -501,5 +377,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#ef4444',
+  },
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+    marginTop: 8,
+  },
+  deleteAccountText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94a3b8',
   },
 });

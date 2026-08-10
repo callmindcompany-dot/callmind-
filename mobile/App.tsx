@@ -15,8 +15,10 @@ import { callLogService } from './src/services/callLogService';
 import { callbackService } from './src/services/callbackService';
 import { appLockService, IDLE_LOCK_MS } from './src/services/appLockService';
 import { reminderService } from './src/services/reminderService';
-import { orderQueue } from './src/services/priorityQueue';
+import { orderQueue, isClosed } from './src/services/priorityQueue';
+import { resolveOutcome, describeOutcome } from './src/services/callOutcome';
 import { planStatusService, type PlanStatus } from './src/services/planStatusService';
+import { agentStatusService } from './src/services/agentStatusService';
 import { GlobalSearchScreen } from './src/screens/GlobalSearchScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { FilterState } from './src/screens/128_LeadFilterSheet';
@@ -44,6 +46,7 @@ import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
 import { AttendanceScreen } from './src/screens/AttendanceScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SubscriptionLockScreen } from './src/screens/SubscriptionLockScreen';
+import { DeleteAccountScreen } from './src/screens/DeleteAccountScreen';
 
 // Phase 3 Screens & Overlays
 import { AITalkScriptScreen } from './src/screens/67_AITalkScriptScreen';
@@ -59,8 +62,6 @@ import { OfflineSyncBanner } from './src/screens/91_OfflineSyncBanner';
 
 // Priority 1 Critical Screens
 import { CallLogScreen } from './src/screens/54_CallLogScreen';
-import { CallingScreen } from './src/screens/38_CallingScreen';
-import { ActiveCallOverlay } from './src/screens/39_ActiveCallOverlay';
 import { DialPadScreen } from './src/screens/40_DialPadScreen';
 import { ScheduleCallbackSheet } from './src/screens/131_ScheduleCallbackSheet';
 import { LeadFilterSheet } from './src/screens/128_LeadFilterSheet';
@@ -68,7 +69,6 @@ import { ToastContainer, toastSuccess, toastError, toastInfo } from './src/compo
 
 // Priority 2 Screens
 import { ProfileEditScreen } from './src/screens/08_ProfileEditScreen';
-import { AICallSummaryCard } from './src/screens/64_AICallSummaryCard';
 import { AILeadInsightScreen } from './src/screens/65_AILeadInsightScreen';
 import { NotificationCenterScreen } from './src/screens/62_NotificationCenterScreen';
 import { CallCompletedCard } from './src/screens/42_CallCompletedCard';
@@ -80,8 +80,6 @@ import { AboutAppScreen } from './src/screens/83_AboutAppScreen';
 import type { LegalSlug } from './src/config/legal';
 import { useLegalAcceptance } from './src/services/useLegalAcceptance';
 import { PrivacyTermsWebView } from './src/screens/84_PrivacyTermsWebView';
-import { DeviceVerificationModal } from './src/screens/90_DeviceVerificationModal';
-import { CompanyJoinedSuccess } from './src/screens/17_CompanyJoinedSuccess';
 import { TargetScreen } from './src/screens/TargetScreen';
 import { DocumentsScreen } from './src/screens/DocumentsScreen';
 import { HelpCenterScreen } from './src/screens/HelpCenterScreen';
@@ -124,7 +122,8 @@ type AppScreen =
   | 'documents'
   | 'help'
   | 'quality'
-  | 'lead_import';
+  | 'lead_import'
+  | 'delete_account';
 
 type BottomTab = 'home' | 'leads' | 'callbacks' | 'performance' | 'inbox' | 'settings';
 
@@ -160,7 +159,16 @@ function MainAppContent() {
 
   // Overlays & Offline
   const [showFeedback, setShowFeedback] = useState(false);
-  const [showVoiceNote, setShowVoiceNote] = useState(false);
+  // Shown after the post-call form, by 42_CallCompletedCard. That file existed
+  // and was imported and never rendered, so nothing ever told the agent what
+  // had become of the lead they just called.
+  const [callResult, setCallResult] = useState<{
+    leadName: string;
+    leadPhone: string;
+    duration: string;
+    summary: string;
+    closed: boolean;
+  } | null>(null);
   // The database enforces the plan; this is how the agent finds out why.
   // Previously `isSubscriptionLocked` was declared here and never read, and
   // SubscriptionLockScreen was imported and never rendered -- so a telecaller
@@ -173,8 +181,6 @@ function MainAppContent() {
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
 
   // Calling Flow States
-  const [showCallingScreen, setShowCallingScreen] = useState(false);
-  const [showActiveCall, setShowActiveCall] = useState(false);
   const [showScheduleCallback, setShowScheduleCallback] = useState(false);
   const [showLeadFilter, setShowLeadFilter] = useState(false);
   const [callingLeadName, setCallingLeadName] = useState('');
@@ -183,12 +189,11 @@ function MainAppContent() {
   const awaitingDialerReturnRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
 
-  // Priority 2 Overlays & Modals
-  const [showCallCompleted, setShowCallCompleted] = useState(false);
+  // showCallCompleted and showDeviceVerification were declared here and never
+  // read. The card is driven by `callResult` above, which carries what it needs
+  // to say; the device modal is gone with the screens that had no table behind
+  // them.
   const [confirmDialog, setConfirmDialog] = useState<{ visible: boolean; type: 'logout' | 'delete' | 'reassign'; title: string; message: string } | null>(null);
-
-  // Priority 3 Overlays & States
-  const [showDeviceVerification, setShowDeviceVerification] = useState(false);
   const [legalDocType, setLegalDocType] = useState<LegalSlug>('privacy');
   const [checkingApproval, setCheckingApproval] = useState(false);
 
@@ -200,12 +205,26 @@ function MainAppContent() {
   const [permissionsSeen, setPermissionsSeen] = useState<boolean | null>(null);
   const [leadFilters, setLeadFilters] = useState<FilterState | null>(null);
 
+  const [refreshingLeads, setRefreshingLeads] = useState(false);
+  const [activeCallingLead, setActiveCallingLead] = useState<LeadItem | null>(null);
+
+  // Phase 2 Database State (Call Logs, Callbacks, Attendance, Targets)
+  const [callLogs, setCallLogs] = useState<CallLogItem[]>([]);
+  const [callbacks, setCallbacks] = useState<CallbackItem[]>([]);
+
   // Call order, not import order.
   //
   // The list came back ordered by created_at descending, so the newest lead
   // sat at the top and the priority the agent had set was shown as a chip and
   // otherwise ignored. A lead whose follow-up is already due comes first;
   // after that it is the agent's own priority, oldest first within each band.
+  //
+  // This has to sit below the `callbacks` declaration, not above it. It was
+  // above, and the dependency array is evaluated the moment useMemo is called,
+  // so the first render threw "Cannot access 'callbacks' before initialization"
+  // -- the app could not start. tsc never caught it because tsconfig set
+  // moduleResolution to node10, which TypeScript 6 refuses outright, so the
+  // mobile typecheck had not run at all.
   const dueLeadIds = useMemo(
     () => new Set(callbacks.filter((c) => c.isOverdue && c.leadId).map((c) => c.leadId as string)),
     [callbacks],
@@ -220,14 +239,23 @@ function MainAppContent() {
           if (f.tag.length && !f.tag.includes(l.tag ?? '')) return false;
           return true;
         });
-    return orderQueue(filtered, { dueLeadIds });
-  }, [leads, leadFilters, dueLeadIds]);
-  const [refreshingLeads, setRefreshingLeads] = useState(false);
-  const [activeCallingLead, setActiveCallingLead] = useState<LeadItem | null>(null);
 
-  // Phase 2 Database State (Call Logs, Callbacks, Attendance, Targets)
-  const [callLogs, setCallLogs] = useState<CallLogItem[]>([]);
-  const [callbacks, setCallbacks] = useState<CallbackItem[]>([]);
+    // A finished lead leaves the queue rather than sitting at the bottom of it.
+    //
+    // orderQueue already sorted closed leads last, but last is still on the
+    // list -- an agent working a book of two hundred met every rejection they
+    // had ever recorded before they ran out of leads. They are not hidden: ask
+    // for a closed status in the filter and they come back, which is why this
+    // checks the filter rather than dropping them unconditionally.
+    const askedForClosed = (f?.status ?? []).some((s) =>
+      isClosed({ id: '', name: '', phone: '', city: '', tag: '', time: '',
+                 color: '', bgColor: '', initials: '', status: s }),
+    );
+    const working = askedForClosed ? filtered : filtered.filter((l) => !isClosed(l));
+
+    return orderQueue(working, { dueLeadIds });
+  }, [leads, leadFilters, dueLeadIds]);
+
   const [attendanceHistory, setAttendanceHistory] = useState<FormattedAttendanceDay[]>([]);
   const [isPunchedIn, setIsPunchedIn] = useState(false);
   const [lastPunchTime, setLastPunchTime] = useState('09:00 AM');
@@ -240,6 +268,24 @@ function MainAppContent() {
     callTargetProgress: 0,
   });
   const [refreshingSecondary, setRefreshingSecondary] = useState(false);
+
+  /** What the admin's board should call this agent. */
+  const agentDisplayName =
+    profile?.name || user?.user_metadata?.full_name || profile?.email || 'Telecaller';
+
+  /**
+   * Presence, from things the app already knows.
+   *
+   * Nothing had ever written to agent_status, so every agent showed as offline
+   * on the admin's live monitor for as long as the table has existed. There is
+   * no manual toggle: signed in and working, handed off to the dialler, and
+   * signed out are all observable without asking, and a control the telecaller
+   * has to remember to set is wrong by mid-morning.
+   */
+  useEffect(() => {
+    if (!profile?.companyId || !profile?.uid || !isApproved) return;
+    void agentStatusService.set(profile.companyId, profile.uid, agentDisplayName, 'active');
+  }, [profile?.companyId, profile?.uid, isApproved, agentDisplayName]);
 
   // Function to load assigned leads for logged-in telecaller
   const loadLeads = useCallback(async () => {
@@ -365,16 +411,36 @@ function MainAppContent() {
     return () => unsubscribe();
   }, [loadLeads]);
 
-  // Open the device's native dialer. This does not read call history or record audio.
-  const handleCallLead = async (lead: LeadItem) => {
-    const phone = lead.phone.replace(/[^\d+]/g, '');
+  /**
+   * The only way this app places a call.
+   *
+   * It opens the device's native dialler. It does not read the call log and it
+   * does not record audio, which is what the privacy policy says and what the
+   * permission screen lists.
+   *
+   * Everything that offers a Call button now comes through here. There used to
+   * be a second path: `setShowCallingScreen(true)` put up 38_CallingScreen,
+   * which showed "Calling..." and then fired onCallConnected off a three-second
+   * setTimeout, handing over to 39_ActiveCallOverlay and its running timer and
+   * "Connected via SIM 1". Nothing in that path dialled anything -- there was no
+   * Linking call in it at all. It was reachable from the Callbacks list, the
+   * dial pad, the AI insight screen and lead detail, so a telecaller pressing
+   * Call Now on a follow-up watched a call connect, watched a timer run, and was
+   * then asked how the call had gone. No call had been made.
+   *
+   * `lead` is optional because the dial pad has a number and no lead behind it.
+   * Without one there is nothing to move afterwards, which the post-call handler
+   * already accounts for.
+   */
+  const dialNumber = async (rawPhone: string, displayName: string, lead?: LeadItem | null) => {
+    const phone = (rawPhone ?? '').replace(/[^\d+]/g, '');
     if (!phone) {
-      toastError('Invalid phone number', 'This lead does not have a valid phone number.');
+      toastError('Invalid phone number', 'There is no valid number to call.');
       return;
     }
 
-    setActiveCallingLead(lead);
-    setCallingLeadName(lead.name);
+    setActiveCallingLead(lead ?? null);
+    setCallingLeadName(displayName);
     setCallDuration('00:00');
 
     try {
@@ -386,6 +452,7 @@ function MainAppContent() {
 
       dialerStartedAtRef.current = Date.now();
       awaitingDialerReturnRef.current = true;
+      void agentStatusService.set(profile?.companyId, profile?.uid, agentDisplayName, 'on_call');
       await Linking.openURL(dialerUrl);
     } catch {
       awaitingDialerReturnRef.current = false;
@@ -393,6 +460,8 @@ function MainAppContent() {
       toastError('Could not start call', 'Please try again or call the lead manually.');
     }
   };
+
+  const handleCallLead = (lead: LeadItem) => dialNumber(lead.phone, lead.name, lead);
 
   // Handle post-call feedback submit
   const handleFeedbackSubmit = async (feedback: PostCallFeedback) => {
@@ -436,16 +505,52 @@ function MainAppContent() {
       }
     }
 
+    // Move the lead.
+    //
+    // This is what was missing. The two writes above recorded the call and the
+    // follow-up; the lead itself was never touched, so its status stayed 'New'
+    // and it held its place in the queue. An agent worked down the list past
+    // people they had already spoken to, and a day's work left no mark on the
+    // screen they were looking at.
+    const resolved = resolveOutcome(feedback.outcome, feedback.interest);
+    let leadMoved = true;
+    if (activeCallingLead?.id) {
+      try {
+        await leadService.recordCallOutcome(
+          profile.companyId,
+          profile.uid,
+          activeCallingLead.id,
+          resolved.status,
+          activeCallingLead.status,
+        );
+      } catch (e) {
+        leadMoved = false;
+        toastError(
+          'Lead not updated',
+          e instanceof Error ? e.message : 'The call was logged but the lead still shows its old status.',
+        );
+      }
+    }
+
     const pending = await syncService.getPendingCount();
     setPendingSyncCount(pending);
 
     if (res.queued) {
       toastInfo('Saved Offline', 'Call logged locally in queue. Will sync when connection returns.');
-    } else {
-      toastSuccess('Feedback Saved', 'Call disposition logged successfully.');
+    } else if (leadMoved) {
       loadLeads();
       loadSecondaryData();
     }
+
+    // Says where the lead went. Replaces a toast that only confirmed the form
+    // had been submitted, which was never the agent's question.
+    setCallResult({
+      leadName: activeCallingLead?.name || callingLeadName || 'Lead',
+      leadPhone: activeCallingLead?.phone || 'No number on file',
+      duration: callDuration,
+      summary: describeOutcome(resolved, feedback.followUpAt),
+      closed: resolved.closes,
+    });
   };
 
   // Display the feedback sheet when the agent returns from the system dialer.
@@ -462,6 +567,9 @@ function MainAppContent() {
         awaitingDialerReturnRef.current = false;
         dialerStartedAtRef.current = null;
         setShowFeedback(true);
+        // Off the call. The admin's board was showing everyone offline
+        // permanently because nothing had ever written to agent_status.
+        void agentStatusService.set(profile?.companyId, profile?.uid, agentDisplayName, 'active');
       }
 
       // Idle lock.
@@ -702,12 +810,10 @@ function MainAppContent() {
             lead={selectedLead}
             onBack={() => setCurrentScreen('leads')}
             onCall={(phone) => {
-              if (selectedLead) {
-                handleCallLead(selectedLead);
-              } else {
-                setCallingLeadName('Selected Lead');
-                setShowCallingScreen(true);
-              }
+              // The fallback used to open the fake calling screen, so opening a
+              // lead the list had not loaded gave a call that never happened.
+              if (selectedLead) handleCallLead(selectedLead);
+              else void dialNumber(phone, 'Lead');
             }}
           />
         );
@@ -730,10 +836,9 @@ function MainAppContent() {
         return (
           <DialPadScreen
             onBack={() => navigateToTab('home')}
-            onDial={(number) => {
-              setCallingLeadName(number);
-              setShowCallingScreen(true);
-            }}
+            // No lead behind a number typed by hand, so nothing moves
+            // afterwards -- but the call is now real, which it was not.
+            onDial={(number) => void dialNumber(number, number)}
           />
         );
 
@@ -755,8 +860,8 @@ function MainAppContent() {
             leadScore={88}
             onBack={() => setCurrentScreen('lead_detail')}
             onStartCall={() => {
-              setCallingLeadName('Selected Lead');
-              setShowCallingScreen(true);
+              if (selectedLead) handleCallLead(selectedLead);
+              else toastError('No lead selected', 'Open a lead first, then call from there.');
             }}
           />
         );
@@ -857,10 +962,11 @@ function MainAppContent() {
               setSelectedLeadId(id);
               setCurrentScreen('lead_detail');
             }}
-            onCallLead={(phone, name) => {
-              setCallingLeadName(name);
-              setShowCallingScreen(true);
-            }}
+            // Call Now on a follow-up. This was the worst of the four fake
+            // paths: the agent had promised this person a call at this time.
+            onCallLead={(phone, name, leadId) =>
+              void dialNumber(phone, name, leads.find((l) => l.id === leadId) ?? null)
+            }
             callbacks={callbacks}
             onReschedule={async (cb) => {
               // Tomorrow at 10, the same default the post-call form offers and
@@ -974,6 +1080,9 @@ function MainAppContent() {
             onBack={() => navigateToTab('home')}
             onNavigateToEditProfile={() => setCurrentScreen('profile_edit')}
             onSetUpPin={() => setCurrentScreen('set_pin')}
+            onOpenAttendance={() => setCurrentScreen('attendance')}
+            onOpenPerformance={() => setCurrentScreen('performance')}
+            onDeleteAccount={() => setCurrentScreen('delete_account')}
             onLogout={() => {
               setConfirmDialog({
                 visible: true,
@@ -990,6 +1099,21 @@ function MainAppContent() {
           <LanguageSelectionScreen
             onSelectLanguage={() => setCurrentScreen('settings')}
             onBack={() => setCurrentScreen('settings')}
+          />
+        );
+
+      case 'delete_account':
+        return (
+          <DeleteAccountScreen
+            onBack={() => setCurrentScreen('settings')}
+            onDeleted={async () => {
+              // The rows are already gone; this only tears down the local
+              // session so the app does not sit on a token for an account that
+              // no longer exists.
+              await signOut();
+              setCurrentAuthStep('splash');
+              setCurrentScreen('home');
+            }}
           />
         );
 
@@ -1082,35 +1206,19 @@ function MainAppContent() {
         />
       )}
 
-      {showCallingScreen && (
-        <CallingScreen
-          leadName={callingLeadName || activeCallingLead?.name || 'Lead'}
-          leadPhone={activeCallingLead?.phone || 'No number on file'}
-          sim="SIM 1"
-          onCallConnected={() => {
-            setShowCallingScreen(false);
-            setShowActiveCall(true);
-          }}
-          onCallFailed={() => {
-            setShowCallingScreen(false);
-            setShowFeedback(true);
-          }}
-          onCancel={() => setShowCallingScreen(false)}
-        />
-      )}
+      {/*
+        38_CallingScreen and 39_ActiveCallOverlay used to be rendered here.
+        Both are gone.
 
-      {showActiveCall && (
-        <ActiveCallOverlay
-          leadName={callingLeadName || activeCallingLead?.name || 'Lead'}
-          leadPhone={activeCallingLead?.phone || 'No number on file'}
-          sim="SIM 1"
-          onEndCall={() => {
-            setShowActiveCall(false);
-            setShowFeedback(true);
-          }}
-          onOpenScript={() => setCurrentScreen('ai_script')}
-        />
-      )}
+        They were an in-app calling UI for a product that does not place calls
+        in the app: CallMind dials with `tel:` and the system dialler takes over
+        the screen, so there is no in-app call state to draw. What they drew
+        instead was invented -- a "Calling..." screen that fired
+        onCallConnected off a three-second setTimeout whether or not anything
+        connected, then a "Connected via SIM 1" overlay with a running timer,
+        over a call that had never been placed. `sim` could only ever have been
+        made up; `tel:` does not tell the app which SIM the phone chose.
+      */}
 
       {showFeedback && (
         <PostCallFeedbackSheet
@@ -1118,6 +1226,62 @@ function MainAppContent() {
           callDuration={callDuration}
           onSubmit={handleFeedbackSubmit}
           onDismiss={() => setShowFeedback(false)}
+        />
+      )}
+
+      {/*
+        Imported and never rendered until now, so "Set a follow-up" on the
+        card below had nothing to open.
+      */}
+      {showScheduleCallback && (
+        <ScheduleCallbackSheet
+          leadName={activeCallingLead?.name || callingLeadName || 'Lead'}
+          onDismiss={() => setShowScheduleCallback(false)}
+          onSchedule={async (isoWhen, note) => {
+            setShowScheduleCallback(false);
+            if (!profile?.companyId || !activeCallingLead?.id) {
+              toastError('Cannot schedule', 'No lead is selected.');
+              return;
+            }
+            try {
+              await callbackService.scheduleCallback({
+                companyId: profile.companyId,
+                leadId: activeCallingLead.id,
+                agentEmail: profile.email ?? '',
+                reminderDate: isoWhen,
+                notes: note || null,
+              });
+              toastSuccess('Follow-up set', new Date(isoWhen).toLocaleString('en-IN'));
+              loadSecondaryData();
+            } catch (e) {
+              toastError(
+                'Follow-up not saved',
+                e instanceof Error ? e.message : 'Please set it again from Callbacks.',
+              );
+            }
+          }}
+        />
+      )}
+
+      {callResult && (
+        <CallCompletedCard
+          leadName={callResult.leadName}
+          leadPhone={callResult.leadPhone}
+          duration={callResult.duration}
+          summary={callResult.summary}
+          closed={callResult.closed}
+          onDone={() => {
+            setCallResult(null);
+            setActiveCallingLead(null);
+          }}
+          onScheduleCallback={() => {
+            setCallResult(null);
+            setShowScheduleCallback(true);
+          }}
+          onLogFeedback={() => {
+            setCallResult(null);
+            setShowFeedback(true);
+          }}
         />
       )}
 
@@ -1130,6 +1294,9 @@ function MainAppContent() {
           confirmText="Sign Out"
           onConfirm={async () => {
             setConfirmDialog(null);
+            // Before signOut, while the session can still satisfy the policy
+            // that scopes this table to the caller's own row.
+            await agentStatusService.set(profile?.companyId, profile?.uid, agentDisplayName, 'offline');
             // Reminders are scheduled on the device, not the account. Without
             // this the next person to sign in on the same phone gets alerts to
             // call the previous agent's leads.
