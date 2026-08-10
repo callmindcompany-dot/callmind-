@@ -212,24 +212,38 @@ export const TicketDetail = ({
           {isClosed ? 'Reopen Ticket' : 'Close Ticket'}
         </button>
 
-        {/* Communication channels */}
+        {/*
+          Both of these fell back to +91 99999 88888 when the ticket carried no
+          phone number, so the call and WhatsApp buttons dialled a number
+          nobody had given us — and whoever owns it would have taken the call.
+          A ticket without a number now shows no way to ring it, which is the
+          truth.
+        */}
         <div className="flex gap-2">
-          <a
-            href={`tel:${ticket.user_phone || '+919999988888'}`}
-            className="p-2.5 bg-white text-gray-500 hover:text-brand-600 hover:bg-brand-50 border border-gray-200 rounded-xl transition-all"
-            title="Initiate Call"
-          >
-            <Phone size={14} />
-          </a>
-          <a
-            href={`https://wa.me/${(ticket.user_phone || '+919999988888').replace(/\D/g, '')}`}
-            target="_blank"
-            rel="noreferrer"
-            className="p-2.5 bg-white text-gray-500 hover:text-green-600 hover:bg-green-50 border border-gray-200 rounded-xl transition-all"
-            title="WhatsApp Chat"
-          >
-            <MessageSquare size={14} />
-          </a>
+          {ticket.user_phone ? (
+            <>
+              <a
+                href={`tel:${ticket.user_phone}`}
+                className="p-2.5 bg-white text-gray-500 hover:text-brand-600 hover:bg-brand-50 border border-gray-200 rounded-xl transition-all"
+                title={`Call ${ticket.user_phone}`}
+              >
+                <Phone size={14} />
+              </a>
+              <a
+                href={`https://wa.me/${ticket.user_phone.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noreferrer"
+                className="p-2.5 bg-white text-gray-500 hover:text-green-600 hover:bg-green-50 border border-gray-200 rounded-xl transition-all"
+                title={`WhatsApp ${ticket.user_phone}`}
+              >
+                <MessageSquare size={14} />
+              </a>
+            </>
+          ) : (
+            <span className="px-2.5 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-300">
+              No phone on ticket
+            </span>
+          )}
         </div>
 
         <button
