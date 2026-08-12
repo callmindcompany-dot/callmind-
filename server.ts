@@ -17,6 +17,7 @@ import aiRouter from "./src/routes/ai";
 import adminRouter, { runTrialExpirationJob } from "./src/routes/admin";
 import authRouter from "./src/routes/auth";
 import leadsRouter, { startLeadsBackgroundCrons } from "./src/routes/leads";
+import { SERVICE_ROLE_CONFIGURED } from "./src/lib/dbAdapter";
 import callsRouter from "./src/routes/calls";
 import paymentsRouter from "./src/routes/payments";
 import notificationsRouter from "./src/routes/notifications";
@@ -360,7 +361,33 @@ async function startServer() {
 
   const server = app.listen(PORT, "0.0.0.0", () => {
     logger.info(`Server running on http://localhost:${PORT}`);
-    
+
+    /*
+     * Say out loud whether this process can actually act as the service role.
+     *
+     * It could not, and nothing said so. SUPABASE_SERVICE_ROLE_KEY held the
+     * anon key — the same string as VITE_SUPABASE_ANON_KEY, byte for byte — and
+     * dbAdapter fell back to the anon key anyway when the variable was missing.
+     * So `supabaseAdmin` was a client with the privileges of a logged-out
+     * visitor, and every privileged path ran into row-level security and
+     * failed quietly: inbound lead ingestion, the payment write-back after a
+     * verified Razorpay signature, the admin routes, and the trial-expiry job
+     * below, which had been raising "Subscription details can only be changed
+     * by completing a payment" every hour into a swallowed catch.
+     *
+     * Production refuses to start, because a server that cannot settle a
+     * payment should not be taking them. Development warns instead, so the app
+     * still runs for UI work.
+     */
+    if (!SERVICE_ROLE_CONFIGURED) {
+      const message =
+        'SUPABASE_SERVICE_ROLE_KEY is not a service-role key. Copy it from ' +
+        'Supabase → Project Settings → API → service_role. Without it, webhook ' +
+        'lead ingestion, payment activation and trial expiry all fail silently.';
+      if (process.env.NODE_ENV === 'production') throw new Error(message);
+      logger.error(`[Startup] ${message}`);
+    }
+
     // Start automated background crons for trial expiration (hourly)
     setInterval(() => {
       runTrialExpirationJob().catch(err => logger.error('[Cron] Hourly trial expiration error:', err));

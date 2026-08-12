@@ -19,9 +19,60 @@ if (geminiApiKey) {
 
 // Supabase configuration
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+/**
+ * What role the configured key actually grants.
+ *
+ * A Supabase key is a JWT whose payload carries the role it authenticates as.
+ * Decoding it is not verification — the server does not need to verify its own
+ * key — it is a way to notice that the wrong one has been pasted in.
+ *
+ * Returns null when the value is not a JWT at all, which is the case for the
+ * newer `sb_secret_...` style keys. Those are opaque, so nothing can be
+ * concluded from them and the check stays quiet.
+ */
+export function roleOfSupabaseKey(key: string): string | null {
+  const parts = (key || '').split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    return typeof payload.role === 'string' ? payload.role : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether the server can actually act with elevated privileges.
+ *
+ * Read from SUPABASE_SERVICE_ROLE_KEY alone. That is the point: the client
+ * below still falls back to the anon key so the module can load and UI work is
+ * possible without one, but this flag never does, so the fallback can no longer
+ * pass itself off as the real thing.
+ *
+ * It had been passing itself off for a long time. Both env vars held the same
+ * anon key, byte for byte, so `supabaseAdmin` had the privileges of a
+ * logged-out visitor while every privileged path assumed otherwise: inbound
+ * lead ingestion, the payment write-back after a verified Razorpay signature,
+ * the admin routes, and the hourly trial-expiry job.
+ *
+ * Trial expiry is how it surfaced. expire_trials() is refused by
+ * trg_protect_billing_columns unless the caller is service_role, so the cron
+ * raised "Subscription details can only be changed by completing a payment"
+ * every hour into a swallowed catch, and eight companies sat in `trialing` past
+ * their end date.
+ *
+ * server.ts refuses to start in production when this is false.
+ */
+export const SERVICE_ROLE_CONFIGURED =
+  roleOfSupabaseKey(process.env.SUPABASE_SERVICE_ROLE_KEY || '') === 'service_role';
+
+// The anon key keeps the module loadable; SERVICE_ROLE_CONFIGURED above is what
+// tells the truth about what it can do.
+const transportKey = supabaseServiceKey || process.env.VITE_SUPABASE_ANON_KEY || 'missing-key';
+
+export const supabaseAdmin = createClient(supabaseUrl || 'http://localhost', transportKey);
 export const isPlaceholder = false;
 
 // Convert camelCase to snake_case for PostgreSQL
