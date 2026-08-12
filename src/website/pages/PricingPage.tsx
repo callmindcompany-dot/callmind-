@@ -52,7 +52,7 @@ export const PricingPage = () => {
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
         title="CallMind Pricing — Plans for Indian Telecalling Teams"
-        description="Transparent per-telecaller pricing for CallMind CRM. Start a 7-day free trial with 3 telecallers included. All plans include GST-compliant invoices."
+        description={`Transparent per-telecaller pricing for CallMind CRM. Start a ${FREE_TRIAL_CONFIG.trialDays}-day free trial with ${FREE_TRIAL_CONFIG.includedTelecallers} telecallers included. All plans include GST-compliant invoices.`}
         path="/pricing"
       />
       <Navbar />
@@ -75,7 +75,15 @@ export const PricingPage = () => {
             Choose the Plan for Your Sales Team
           </h1>
           <p className="text-lg text-slate-500 max-w-2xl mx-auto font-medium">
-            Start with a 7-day free trial. Upgrade as your telecaller team grows. Download tax-compliant GST invoices anytime.
+            {/*
+              Read from the config. Both of these said "7-day" as a literal, so
+              shortening the trial would have left the page advertising the old
+              one — the same drift that once had four surfaces quoting four
+              different prices.
+            */}
+            Start with a {FREE_TRIAL_CONFIG.trialDays}-day free trial, {FREE_TRIAL_CONFIG.includedTelecallers} telecallers
+            and {new Intl.NumberFormat('en-IN').format(FREE_TRIAL_CONFIG.leadLimit)} leads included.
+            Upgrade as your team grows. Download tax-compliant GST invoices anytime.
           </p>
 
           {/* Billing Switch */}

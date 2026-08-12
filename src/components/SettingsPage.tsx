@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
+import { usePlan } from '@/hooks/usePlan';
 import { 
   User, Shield, Settings, Database, Lock, Camera, 
   Smartphone, Key, FileText, Clock, CreditCard,
@@ -150,6 +151,9 @@ export const SettingsPage = () => {
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+  // Gates the bulk lead CSV. The data-rights JSON export beside it is
+  // deliberately not gated -- see the note where both are rendered.
+  const plan = usePlan();
   const [isExporting, setIsExporting] = useState(false);
   const [isEditingCompany, setIsEditingCompany] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -1884,10 +1888,27 @@ export const SettingsPage = () => {
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <SettingsCard title="Data Sync & Backups" icon={Database} description="Download data snapshots, export leads audit sheet, and trigger syncs.">
+              {/*
+                Two downloads that look alike and are not.
+
+                The JSON export is the data-rights export. Under the Digital
+                Personal Data Protection Act 2023 — which src/config/legal.ts
+                promises by name — a person may ask for a copy of their personal
+                data. That right does not depend on what someone is paying, so
+                this one is never gated. Putting it behind a plan would make the
+                published privacy policy false.
+
+                The CSV is every lead in the workspace. That is a product
+                feature, and an ungated one let a trial take the whole database
+                and leave. It is gated like every other export on ReportsPage.
+              */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="p-6 bg-slate-50 border border-slate-100 rounded-2xl space-y-4">
-                  <h6 className="text-sm font-bold text-slate-900">GDPR Organizational Export</h6>
-                  <p className="text-xs text-slate-500">Download complete metadata parameters, user profile setups, and lead databases in JSON.</p>
+                  <h6 className="text-sm font-bold text-slate-900">Your data, on request</h6>
+                  <p className="text-xs text-slate-500">
+                    A copy of your profile, your leads and your call records in JSON. Available on
+                    every plan, including the trial — this is a right, not a feature.
+                  </p>
                   <button onClick={handleDownloadData} className="px-5 py-3 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-xl">
                     Download JSON Data
                   </button>
@@ -1895,10 +1916,26 @@ export const SettingsPage = () => {
 
                 <div className="p-6 bg-slate-50 border border-slate-100 rounded-2xl space-y-4">
                   <h6 className="text-sm font-bold text-slate-900">CSV Leads Spreadsheet Export</h6>
-                  <p className="text-xs text-slate-500">Generate a unified CSV report containing all non-deleted database leads.</p>
-                  <button onClick={handleMasterLeadAudit} className="px-5 py-3 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-xl">
-                    Export Leads CSV
-                  </button>
+                  <p className="text-xs text-slate-500">
+                    Every non-deleted lead as a spreadsheet, for working outside CallMind.
+                  </p>
+                  {plan.can('exports') ? (
+                    <button onClick={handleMasterLeadAudit} className="px-5 py-3 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-xl">
+                      Export Leads CSV
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <button
+                        disabled
+                        className="px-5 py-3 bg-slate-200 text-slate-400 text-xs font-black uppercase tracking-widest rounded-xl cursor-not-allowed"
+                      >
+                        Export Leads CSV
+                      </button>
+                      <p className="text-[11px] font-semibold text-amber-700">
+                        Not on the free trial. Choose a plan to export your leads as a spreadsheet.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </SettingsCard>

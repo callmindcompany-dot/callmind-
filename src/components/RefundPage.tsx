@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FREE_TRIAL_CONFIG } from '@/config/pricing';
 import {
   Ban,
   CheckCircle,
@@ -261,7 +262,11 @@ export const RefundPage = () => {
                 No <span className="text-2xl md:text-3xl text-red-400 font-bold tracking-normal uppercase print:text-black">Refund Policy</span>
               </h2>
               <p className="text-gray-400 font-medium text-xs mt-3 max-w-xl print:text-gray-600">
-                CallMind SaaS subscriptions are strictly non-refundable. All sales are final. Please evaluate your team's requirements during the 7-day free trial before purchasing.
+                {/* The trial length is read from the config, not typed here, so
+                    this page cannot contradict the one that sells it. */}
+                CallMind SaaS subscriptions are strictly non-refundable. All sales are final.
+                Please evaluate your team's requirements during the {FREE_TRIAL_CONFIG.trialDays}-day
+                free trial before purchasing.
               </p>
             </div>
             <div className="relative z-10 shrink-0 print:hidden">

@@ -84,10 +84,23 @@ export interface PlanDetails {
   whiteLabel?: boolean | "addon";
 }
 
+/**
+ * The free trial.
+ *
+ * Five days rather than seven, and a thousand leads rather than five hundred:
+ * enough room to import a real book of leads and work it, over a window short
+ * enough that the team either adopts the habit or does not.
+ *
+ * `includedTelecallers` is 2, so a trial workspace holds three people — the
+ * owner who signs up, plus two telecallers. The third person to try to join is
+ * refused by the seat limit, and that refusal is the moment the owner is asked
+ * to pick a plan. It is the only hard wall in the trial, and it is deliberate:
+ * a team that wants a third caller has proved the product works for them.
+ */
 export const FREE_TRIAL_CONFIG = {
-  trialDays: 7,
+  trialDays: 5,
   includedTelecallers: 2, // 2 Telecallers + 1 Admin = 3 Total Users
-  leadLimit: 500,
+  leadLimit: 1000,
   pipelineStages: 5,
 };
 

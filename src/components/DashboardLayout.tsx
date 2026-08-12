@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Bell, Search, Plus, Lock, AlertTriangle, HelpCircle, Send, X, Loader2 } from 'lucide-react';
 import { useAuth } from '@/AuthContext';
 import { usePlan } from '@/hooks/usePlan';
+import { FREE_TRIAL_CONFIG } from '@/config/pricing';
 import { useNavigate } from 'react-router-dom';
 import { useCompany } from '@/CompanyContext';
 import { SubscriptionStatusHeader } from './SubscriptionStatusHeader';
@@ -133,7 +134,10 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }: LayoutProp
               </div>
               <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-4">Trial Expired</h2>
               <p className="text-gray-500 font-medium mb-8 leading-relaxed">
-                Your 7-day Free Trial of CallMind Pro has officially ended. Upgrade your subscription to restore full dashboard access and continue scaling your operations.
+                {/* Said "7-day" as a literal, and "CallMind Pro" — a plan the
+                    trial was never on. Both come from the config now. */}
+                Your {FREE_TRIAL_CONFIG.trialDays}-day free trial has ended. Choose a plan to get
+                your team back into the dashboard.
               </p>
               
               <div className="space-y-4">

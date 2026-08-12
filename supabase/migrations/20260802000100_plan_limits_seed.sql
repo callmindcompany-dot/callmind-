@@ -51,7 +51,7 @@ INSERT INTO public.plan_limits (
   ai_lead_scoring, team_targets, api_access, pdf_export,
   storage_gb_per_seat, storage_flat_mb, max_file_size_mb, files_per_lead
 ) VALUES
-  ('trial', 'Free Trial', 0, 0, 3, 1, 500, 30, 50, 1, 0, 'off', false, 'off', false, 0, 500, 5, 5),
+  ('trial', 'Free Trial', 0, 0, 3, 1, 1000, 30, 50, 1, 0, 'off', false, 'off', false, 0, 500, 5, 5),
   ('starter', 'Starter', 699, 599, 10, 1, 50000, 30, 50, 2, 0, 'off', false, 'off', false, 3, 0, 10, 10),
   ('growth', 'Growth', 1199, 999, 25, 2, 250000, NULL, 200, 15, 10000, 'on', true, 'read_only', true, 5, 0, 25, 25),
   ('pro', 'Pro', 1499, 1299, 50, 3, NULL, NULL, NULL, 50, NULL, 'advanced', true, 'full_read_write', true, 8, 0, 100, NULL)
