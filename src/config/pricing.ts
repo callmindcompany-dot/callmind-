@@ -31,7 +31,20 @@ export interface PlanDetails {
   aiLeadScoring: boolean | "advanced";
   teamTargets: boolean;
   apiAccess: boolean | "read_only" | "full_read_write";
+  /** Rendering a report as a PDF. Safe to sample: it produces a document, not the data. */
   pdfExport: boolean;
+  /**
+   * Downloading the whole lead book as a spreadsheet.
+   *
+   * Split from `pdfExport`, which it used to share a flag with. They are not
+   * the same thing: a PDF report shows a customer what the product can tell
+   * them, while a CSV of every lead is the database walking out of the door.
+   * The trial gets the first and not the second.
+   *
+   * This does not touch the data-rights export in Settings, which is a right
+   * under the DPDP Act 2023 and is available on every plan.
+   */
+  bulkLeadExport: boolean;
   /**
    * Document storage included per seat, pooled across the whole company.
    *
@@ -110,6 +123,28 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
    * trial, and the one it falls back to if a subscription lapses. It exists
    * here so `companies.plan` has a config entry for all four of its legal
    * values and the enforcement layer never has to special-case "no plan".
+   *
+   * The trial samples the product rather than fencing it off. It used to have
+   * every capability switched off, so a company evaluating CallMind met a lock
+   * everywhere the product is actually interesting and then bought Starter,
+   * which had the same capabilities switched off -- they never saw what they
+   * were paying for.
+   *
+   * Three fences already exist and they are enough: five days, three seats,
+   * a thousand leads. Capability fences on top of those only hide the product
+   * from the person deciding whether to buy it.
+   *
+   * Two rules govern what is switched on here.
+   *
+   * Only what exists. aiLeadScoring, apiAccess, WhatsApp Business API, SMS
+   * credits and white label stay off because none of them is built -- nothing
+   * writes neural_score, no route authenticates a workspace API key, and no
+   * route sends a WhatsApp message. Switching those on would demonstrate
+   * nothing and promise something.
+   *
+   * Never more than Starter. Whatever the trial samples, Starter keeps, or a
+   * customer loses features by paying. src/__tests__/planLimits.sync.test.ts
+   * enforces that in both directions.
    */
   trial: {
     id: "trial",
@@ -122,12 +157,16 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     aiDraftLimit: 30,
     aiCreditLimit: 50,
     pipelineStages: FREE_TRIAL_CONFIG.pipelineStages,
-    automationRules: 1,
-    bulkImport: false,
+    automationRules: 2,
+    // Enough rows to try an import and see the column mapper work, nowhere
+    // near enough to migrate a real book of leads for free.
+    bulkImport: 200,
     aiLeadScoring: false,
-    teamTargets: false,
+    teamTargets: true,
     apiAccess: false,
-    pdfExport: false,
+    // The report renders; the lead book does not leave.
+    pdfExport: true,
+    bulkLeadExport: false,
     storageGbPerSeat: 0,
     storageFlatMb: 500,
     maxFileSizeMb: 5,
@@ -153,11 +192,22 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     aiCreditLimit: 50,
     pipelineStages: 5,
     automationRules: 2,
-    bulkImport: false,
+    /*
+     * Starter keeps everything the trial sampled, with room to use it.
+     *
+     * It used to have every capability off -- no import, no targets, no
+     * reports -- so converting from the trial bought volume and nothing else,
+     * and now that the trial samples those, keeping them off would mean paying
+     * ₹699 a seat to lose features. Nobody should get less by paying.
+     */
+    bulkImport: 2000,
     aiLeadScoring: false,
-    teamTargets: false,
+    teamTargets: true,
     apiAccess: false,
-    pdfExport: false,
+    pdfExport: true,
+    // The one thing Starter adds over the trial beyond volume: your data is
+    // yours to take out as a spreadsheet.
+    bulkLeadExport: true,
     storageGbPerSeat: 3,
     maxFileSizeMb: 10,
     videoUpload: false,
@@ -187,6 +237,7 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     teamTargets: true,
     apiAccess: "read_only",
     pdfExport: true,
+    bulkLeadExport: true,
     storageGbPerSeat: 5,
     maxFileSizeMb: 25,
     videoUpload: true,
@@ -216,6 +267,7 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     teamTargets: true,
     apiAccess: "full_read_write",
     pdfExport: true,
+    bulkLeadExport: true,
     storageGbPerSeat: 8,
     maxFileSizeMb: 100,
     videoUpload: true,

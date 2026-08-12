@@ -76,11 +76,22 @@ beforeEach(() => {
 });
 
 describe('usePlan entitlements', () => {
+  /*
+   * The trial samples the product instead of fencing it off, so it now carries
+   * bulkImport, pdfExport and teamTargets — and Starter has to keep every one
+   * of them, or paying would remove features. planLimits.sync.test.ts enforces
+   * that direction across the whole ladder; this checks what `can()` reports.
+   *
+   * bulkLeadExport is the one capability the trial does not get: a PDF report
+   * shows the buyer what the product can tell them, while a CSV of every lead
+   * is the database walking out. aiLeadScoring and apiAccess stay off
+   * everywhere they are not built.
+   */
   it.each([
-    ['trial',   { bulkImport: false, pdfExport: false, teamTargets: false, aiLeadScoring: false, apiAccess: false }],
-    ['starter', { bulkImport: false, pdfExport: false, teamTargets: false, aiLeadScoring: false, apiAccess: false }],
-    ['growth',  { bulkImport: true,  pdfExport: true,  teamTargets: true,  aiLeadScoring: true,  apiAccess: true }],
-    ['pro',     { bulkImport: true,  pdfExport: true,  teamTargets: true,  aiLeadScoring: true,  apiAccess: true }],
+    ['trial',   { bulkImport: true,  pdfExport: true, bulkLeadExport: false, teamTargets: true,  aiLeadScoring: false, apiAccess: false }],
+    ['starter', { bulkImport: true,  pdfExport: true, bulkLeadExport: true,  teamTargets: true,  aiLeadScoring: false, apiAccess: false }],
+    ['growth',  { bulkImport: true,  pdfExport: true, bulkLeadExport: true,  teamTargets: true,  aiLeadScoring: true,  apiAccess: true }],
+    ['pro',     { bulkImport: true,  pdfExport: true, bulkLeadExport: true,  teamTargets: true,  aiLeadScoring: true,  apiAccess: true }],
   ])('%s unlocks the right features', async (plan, expected) => {
     setCompany({ plan, plan_status: 'active', seat_limit: 10, billing_cycle: 'monthly', plan_expires_at: null, trial_ends_at: null });
     const { result } = await render();
@@ -119,7 +130,10 @@ describe('usePlan entitlements', () => {
 
     expect(result.current.isLapsed).toBe(true);
     expect(result.current.plan.id).toBe('trial');
-    expect(result.current.can('pdfExport')).toBe(false);
+    // bulkLeadExport, not pdfExport: the trial samples PDF reports now, so
+    // that flag no longer distinguishes a lapsed Pro from a paying one. Taking
+    // the lead book out as a spreadsheet does — Pro has it, the trial does not.
+    expect(result.current.can('bulkLeadExport')).toBe(false);
     expect(result.current.limit('leads')).toBe(PRICING_PLANS.trial.leadLimit);
   });
 
@@ -146,7 +160,9 @@ describe('usePlan entitlements', () => {
     const { result } = await render();
 
     expect(result.current.isUnlimited).toBe(false);
-    expect(result.current.can('pdfExport')).toBe(false);
+    // apiAccess: still off on Starter, which is the plan set in beforeEach.
+    // pdfExport used to serve here and no longer can — Starter has it.
+    expect(result.current.can('apiAccess')).toBe(false);
     expect(result.current.atLimit('leads')).toBe(true);
   });
 

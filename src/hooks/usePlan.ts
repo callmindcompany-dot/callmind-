@@ -33,6 +33,16 @@ export type PlanFeature =
   | 'aiLeadScoring'
   | 'sequences'
   | 'exports'
+  /**
+   * Downloading the whole lead book as a spreadsheet.
+   *
+   * Separate from `exports`/`pdfExport`, which it shared a flag with. A PDF
+   * report shows a customer what the product can tell them and is safe to
+   * sample on the trial; a CSV of every lead is the database leaving, and is
+   * not. The data-rights export in Settings is neither of these and is never
+   * gated.
+   */
+  | 'bulkLeadExport'
   | 'automations';
 
 export type PlanMetric =
@@ -228,6 +238,8 @@ export function usePlan(): UsePlanResult {
         case 'pdfExport':
         case 'exports':
           return effectivePlan.pdfExport;
+        case 'bulkLeadExport':
+          return effectivePlan.bulkLeadExport;
         case 'apiAccess':
           return effectivePlan.apiAccess !== false;
         case 'teamTargets':

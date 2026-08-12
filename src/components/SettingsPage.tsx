@@ -1919,7 +1919,13 @@ export const SettingsPage = () => {
                   <p className="text-xs text-slate-500">
                     Every non-deleted lead as a spreadsheet, for working outside CallMind.
                   </p>
-                  {plan.can('exports') ? (
+                  {/*
+                    Gated on bulkLeadExport, not on `exports`. The trial can
+                    render a PDF report -- it should see what the product can
+                    tell it -- but cannot take the lead book out as a
+                    spreadsheet.
+                  */}
+                  {plan.can('bulkLeadExport') ? (
                     <button onClick={handleMasterLeadAudit} className="px-5 py-3 bg-slate-900 text-white text-xs font-black uppercase tracking-widest rounded-xl">
                       Export Leads CSV
                     </button>
@@ -1932,7 +1938,7 @@ export const SettingsPage = () => {
                         Export Leads CSV
                       </button>
                       <p className="text-[11px] font-semibold text-amber-700">
-                        Not on the free trial. Choose a plan to export your leads as a spreadsheet.
+                        Included from Starter onwards. Reports still export as PDF on the trial.
                       </p>
                     </div>
                   )}
