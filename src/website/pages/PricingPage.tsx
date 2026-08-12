@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ArrowRight, HelpCircle, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
+import { ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SEOHead } from '../components/SEOHead';
+import { PlanCard } from '../components/PlanCard';
 import { useNavigate } from 'react-router-dom';
-import { FREE_TRIAL_CONFIG } from '../../config/pricing';
+import { FREE_TRIAL_CONFIG, GST_RATE } from '../../config/pricing';
 import { MARKETING_PLANS } from '../data/planCopy';
 
 const faqs = [
@@ -41,6 +42,11 @@ export const PricingPage = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const plans = MARKETING_PLANS;
+
+  // The largest annual discount across the three plans, from the config.
+  const maxAnnualSavingPercent = Math.max(
+    ...plans.map((p) => Math.round(((p.monthlyPrice - p.annualPrice) / p.monthlyPrice) * 100)),
+  );
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
@@ -90,70 +96,42 @@ export const PricingPage = () => {
             </button>
             <span className={`text-sm font-semibold flex items-center gap-1.5 ${isAnnual ? 'text-slate-900' : 'text-slate-500'}`}>
               Annual
+              {/*
+                Was a hardcoded "Save ~20%". The real discount differs by plan --
+                Starter, Growth and Pro do not save the same share -- so this
+                states the best of the three and computes it from the config
+                rather than rounding a guess into the page.
+              */}
               <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold">
-                Save ~20%
+                Save up to {maxAnnualSavingPercent}%
               </span>
             </span>
           </div>
         </section>
 
-        {/* Pricing Cards */}
+        {/*
+          Each card carries its own seat stepper and shows what that team size
+          actually costs, GST included in the arithmetic and named on the line.
+          The page previously printed a per-seat rate and left the customer to
+          multiply, then meet the tax on the invoice.
+        */}
         <section className="py-20 px-6 md:px-12 bg-slate-50">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-            {plans.map((plan) => {
-              const price = isAnnual ? plan.annualPrice : plan.monthlyPrice;
-              return (
-                <div
-                  key={plan.id}
-                  className={`glass-card p-8 rounded-3xl flex flex-col justify-between relative space-y-6 ${
-                    plan.highlight ? 'border-2 border-brand-500 shadow-xl shadow-brand-500/10' : ''
-                  }`}
-                >
-                  {plan.badge && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3.5 py-1 bg-brand-600 text-white text-xs font-bold rounded-full shadow-md font-sans">
-                      {plan.badge}
-                    </div>
-                  )}
-
-                  <div className="space-y-4">
-                    <h3 className="text-xl font-black text-slate-900 font-display">{plan.name}</h3>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed">{plan.description}</p>
-                    
-                    <div className="pt-2">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-bold text-slate-900 font-grotesk">₹{price}</span>
-                        <span className="text-sm text-slate-500 font-medium">/ seat / month</span>
-                      </div>
-                      <div className="text-xs text-slate-400 mt-1 font-medium">{plan.seats} · {plan.leads}</div>
-                    </div>
-
-                    <hr className="border-slate-100" />
-
-                    <div className="space-y-2.5">
-                      {plan.features.map((feature, i) => (
-                        <div key={i} className="flex items-start gap-2.5 text-xs text-slate-700 font-medium">
-                          <CheckCircle2 size={15} className="text-emerald-500 shrink-0 mt-0.5" />
-                          <span>{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => navigate('/signup')}
-                    className={`w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider btn-tactile font-sans flex items-center justify-center gap-2 ${
-                      plan.highlight
-                        ? 'bg-brand-600 text-white btn-glow'
-                        : 'bg-slate-900 text-white hover:bg-slate-800'
-                    }`}
-                  >
-                    Start Free Trial
-                    <ArrowRight size={14} />
-                  </button>
-                </div>
-              );
-            })}
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+            {plans.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                isAnnual={isAnnual}
+                onChoose={() => navigate('/signup')}
+              />
+            ))}
           </div>
+
+          <p className="max-w-2xl mx-auto text-center text-xs text-slate-500 font-medium mt-10 leading-relaxed">
+            Prices are per telecaller seat and exclude {Math.round(GST_RATE * 100)}% GST, which is
+            shown separately on every invoice with your GSTIN. Move up a plan whenever your team
+            outgrows its seat limit.
+          </p>
         </section>
 
         {/* FAQs */}
