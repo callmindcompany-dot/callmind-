@@ -39,21 +39,48 @@ describe('the hub cannot invent a sync schedule', () => {
     expect(hub).not.toMatch(/polling active/i);
   });
 
-  it('derives the four polled cards from the database', () => {
+  it('derives every card from the database', () => {
     const hub = code(HUB);
     expect(hub).toContain('useIntegrationSyncStatus');
-    // Each polled provider goes through the same helper, so none of them can
-    // be given a hand-written status.
+    expect(hub).toContain('useIntegrationRunSummary');
+    // One derivation for all of them, so no card can be given a hand-written
+    // status. The sources are data now rather than nine copies of the JSX.
+    expect(hub).toContain('deriveIntegrationState');
     for (const provider of ['indiamart', 'justdial', 'tradeindia', 'facebook']) {
-      expect(hub, `${provider} is not derived`).toContain(`polled('${provider}'`);
+      expect(hub, `${provider} is not in the source list`).toMatch(
+        new RegExp(`key: '${provider}'`),
+      );
     }
   });
 
-  it('says "manual" when there is no schedule, rather than nothing', () => {
-    // The dangerous state is a connected source with no schedule: that is
-    // exactly when the old card said "Live". It has to name the limitation.
+  it('puts what is broken above what is fine', () => {
+    // A source failing since Tuesday used to sit wherever it was typed,
+    // usually below three healthy ones, looking identical to them.
     const hub = code(HUB);
-    expect(hub).toMatch(/Manual sync only/i);
+    expect(hub).toMatch(/\.sort\(\(a, b\) => a\.state\.priority - b\.state\.priority\)/);
+  });
+
+  it('replaces the permanent "Hub Active" pill with a real count', () => {
+    const hub = code(HUB);
+    expect(hub).not.toMatch(/Hub Active/);
+    expect(hub).toMatch(/needsAttention/);
+  });
+
+  it('says nothing sends, where nothing sends', () => {
+    // "Enterprise Template", "Proxy connection staging", "SMTP credentials
+    // registry" and "pending certificate signoff" described a working system
+    // awaiting paperwork. Nothing sends at all.
+    const hub = code(HUB);
+    for (const phrase of [
+      'Enterprise Template',
+      'Proxy connection staging',
+      'SMTP credentials registry',
+      'certificate signoff',
+      'Configure Vault',
+    ]) {
+      expect(hub, `"${phrase}" is back`).not.toContain(phrase);
+    }
+    expect(hub).toMatch(/does not send messages yet/i);
   });
 
   it('throws instead of assuming unscheduled when the query fails', () => {

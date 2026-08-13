@@ -242,6 +242,13 @@ export interface IntegrationCardProps {
   actionLabel: string;
   onClick: () => void;
   isLocked?: boolean;
+  /**
+   * How the badge should read at a glance. The card used to colour itself by
+   * matching the status string against 'Live' and 'Setup Ready', which is
+   * fine for two states and wrong for six -- a broken source and a working one
+   * would both have fallen through to grey. See src/lib/integrationState.ts.
+   */
+  tone?: 'ok' | 'warn' | 'bad' | 'idle';
 }
 
 export interface ProviderCardProps {
