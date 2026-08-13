@@ -31,6 +31,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/AuthContext';
 import { useCompany } from '@/CompanyContext';
+import { SeatBlockedBanner } from './SeatBlockedBanner';
 import { toast } from 'react-hot-toast';
 import { 
   useSubscription, 
@@ -720,6 +721,19 @@ export const BillingPage = () => {
 
 
       <div className="max-w-[1500px] mx-auto pt-12 px-4 sm:px-8">
+        {/*
+          Why they are here, before the plans.
+
+          Somebody on this owner's team tried to join and could not get a seat.
+          That is usually the reason a trial turns into a purchase, and it is
+          worth naming above the price cards rather than leaving them to work it
+          out. No action button -- they are already on the page it would send
+          them to.
+        */}
+        <div className="mb-8 empty:hidden">
+          <SeatBlockedBanner companyId={companyId} onChoosePlan={() => {}} hideAction />
+        </div>
+
         {/* MAIN DASHBOARD MATRIX */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8">
           

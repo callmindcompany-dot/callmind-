@@ -3,6 +3,7 @@ import { supabase } from '@/supabaseClient';
 import { useAuth } from '@/AuthContext';
 import { usePlan } from '@/hooks/usePlan';
 import { useCompany } from '@/CompanyContext';
+import { SeatBlockedBanner } from './SeatBlockedBanner';
 import { TelecallerInviteModal } from './TelecallerInviteModal';
 import { 
   Users, 
@@ -1660,7 +1661,17 @@ export const TeamPage = ({ onTabChange }: { onTabChange?: (tab: string) => void 
         onConfirm={confirmModal.onConfirm}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
       />
-      
+
+      {/*
+        Above the numbers, because a person who could not get in matters more
+        than a count of the ones who did. Renders nothing when nobody is
+        waiting.
+      */}
+      <SeatBlockedBanner
+        companyId={companyId}
+        onChoosePlan={() => navigate('/dashboard/subscription')}
+      />
+
       {/* Premium Operational Summary Strip */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {React.useMemo(() => [

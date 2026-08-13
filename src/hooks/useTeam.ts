@@ -121,6 +121,43 @@ export function usePendingRequests(companyId: string | null) {
 }
 
 /**
+ * People who tried to join and could not, because every seat is taken.
+ *
+ * These are the strongest buying signal the product produces: somebody wanted
+ * to put another telecaller on it. They used to be discarded —
+ * submit_join_request returned before writing anything, so the owner never
+ * learned anyone had tried, and the telecaller was told to go and find an
+ * administrator, which is not something they can act on.
+ *
+ * 20260818000200_seat_full_join_requests.sql records them with status
+ * 'blocked_seat_limit' instead. Approving one is not possible while the seat
+ * limit stands; the answer is a plan, which is why this feeds the billing
+ * prompt rather than the approve/reject queue.
+ */
+export function useSeatBlockedRequests(companyId: string | null) {
+  return useQuery<JoinRequestRow[]>({
+    queryKey: ['seatBlockedRequests', companyId],
+    queryFn: async (): Promise<JoinRequestRow[]> => {
+      if (!companyId) return [];
+      const { data, error } = await supabase
+        .from('join_requests')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('status', 'blocked_seat_limit')
+        .order('created_at', { ascending: false });
+
+      // Thrown, not swallowed into an empty array: an owner shown "nobody is
+      // waiting" after a failed query would leave a telecaller stranded and
+      // never buy the plan that would let them in.
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!companyId,
+    refetchInterval: 30000,
+  });
+}
+
+/**
  * useInvites
  * Queries invites table scoping to company_id.
  */
