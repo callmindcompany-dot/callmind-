@@ -1,20 +1,24 @@
-import { Sliders } from 'lucide-react';
-
+/**
+ * Two controls were removed from this panel: an "exclude offline agents"
+ * checkbox and a "Lead Response Overflow SLA Threshold" dropdown.
+ *
+ * Neither did anything. processInboundLead keeps its active-agent list at an
+ * empty array and never reads agent_status, so excluding offline agents changed
+ * no assignment; and an overflow SLA requires a job that reassigns untouched
+ * leads after N hours, which cannot run while pg_cron is not installed. Both
+ * also lacked columns, so submitting this form raised 42703 and the assignment
+ * rule -- the one setting that is genuinely honoured -- could not be saved at
+ * all because of the two beside it.
+ */
 interface RoutingConfigPanelProps {
   assignmentRule: 'Manual' | 'RoundRobin';
   setAssignmentRule: (v: 'Manual' | 'RoundRobin') => void;
-  excludeInactive: boolean;
-  setExcludeInactive: (v: boolean) => void;
-  overflowHours: number;
-  setOverflowHours: (v: number) => void;
   onSave: () => void;
   isSaving: boolean;
 }
 
 export function RoutingConfigPanel({
   assignmentRule, setAssignmentRule,
-  excludeInactive, setExcludeInactive,
-  overflowHours, setOverflowHours,
   onSave, isSaving,
 }: RoutingConfigPanelProps) {
   return (
@@ -43,24 +47,6 @@ export function RoutingConfigPanel({
                 </div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase">Circulate equally among active telecallers</p>
               </label>
-            </div>
-          </div>
-
-          <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 space-y-4">
-            <h4 className="text-xs font-bold text-gray-800 flex items-center gap-1"><Sliders size={16} /> 2. Overflow Adjusters</h4>
-            <div className="space-y-4">
-              <label className="flex items-center gap-3 text-xs font-semibold text-gray-700 cursor-pointer">
-                <input type="checkbox" checked={excludeInactive} onChange={(e) => setExcludeInactive(e.target.checked)} className="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
-                <span>Exclude agents marked &quot;Offline&quot; from the Round Robin queue</span>
-              </label>
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Lead Response Overflow SLA Threshold</label>
-                <select value={overflowHours} onChange={(e) => setOverflowHours(Number(e.target.value))} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-semibold outline-none">
-                  <option value={12}>12 Hours (Aggressive)</option>
-                  <option value={24}>24 Hours (Standard)</option>
-                  <option value={48}>48 Hours (Relaxed)</option>
-                </select>
-              </div>
             </div>
           </div>
 

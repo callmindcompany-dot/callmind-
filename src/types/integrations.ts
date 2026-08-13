@@ -97,10 +97,21 @@ export interface WebhookConfig {
   url: string;
 }
 
+/**
+ * How an inbound lead gets an owner.
+ *
+ * `excludeInactive` and `overflowHours` used to be here and are gone. Neither
+ * was honoured: processInboundLead holds `activeIds` at an empty array and
+ * never consults agent_status, so excluding offline agents changed nothing, and
+ * an overflow SLA needs a job that reassigns untouched leads after N hours --
+ * which cannot exist while pg_cron is not installed on this database.
+ *
+ * They also had no columns, so saving the panel raised 42703 and took the
+ * assignment rule down with it. Storing them would have turned two controls
+ * that do nothing into two settings that persist and still do nothing.
+ */
 export interface RoutingConfig {
   assignmentRule: 'Manual' | 'RoundRobin';
-  excludeInactive: boolean;
-  overflowHours: number;
 }
 
 export type FieldAliasesMap = Record<string, string[]>;
@@ -195,8 +206,6 @@ export const DEFAULT_WEBHOOK_CONFIG: WebhookConfig = {
 
 export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
   assignmentRule: 'Manual',
-  excludeInactive: true,
-  overflowHours: 24,
 };
 
 export const DEFAULT_FIELD_ALIASES: FieldAliasesMap = {
@@ -277,8 +286,12 @@ export type IntegrationConfigPayload = Partial<{
   whatsapp_config: WhatsAppConfig;
   email_config: EmailConfig;
   webhook_config: WebhookConfig;
-  assignment_rule: string;
-  routing_exclude_inactive: boolean;
-  routing_overflow_hours: number;
+  /**
+   * The column is `assignment_mode`, not `assignment_rule`. team_settings has
+   * only the first, and it is what processInboundLead reads when it chooses
+   * between Manual and RoundRobin -- the old key matched no column at all, so
+   * every routing save failed with 42703.
+   */
+  assignment_mode: string;
   field_aliases: FieldAliasesMap;
 }>;

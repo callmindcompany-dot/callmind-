@@ -14,26 +14,26 @@ interface UseRoutingConfigParams {
 /**
  * useRoutingConfig
  *
- * Manages lead distribution (Manual/RoundRobin) and overflow SLA settings.
+ * Manages how an inbound lead gets an owner: Manual, or Round Robin.
+ *
+ * The "exclude offline agents" checkbox and the "overflow SLA" dropdown are
+ * gone. Neither was ever honoured -- processInboundLead keeps its active-agent
+ * list at an empty array and never reads agent_status, and reassigning leads
+ * that go untouched for N hours needs a scheduled job, which cannot exist while
+ * pg_cron is absent. They also had no columns, so sending them raised 42703 and
+ * took the assignment rule down with them: the one control that does work could
+ * not be saved because of two that do not.
  */
 export function useRoutingConfig({ companyId, initialConfig, saveMutation }: UseRoutingConfigParams) {
   const [assignmentRule, setAssignmentRule] = useState<'Manual' | 'RoundRobin'>(initialConfig.assignmentRule);
-  const [excludeInactive, setExcludeInactive] = useState(initialConfig.excludeInactive);
-  const [overflowHours, setOverflowHours] = useState(initialConfig.overflowHours);
 
   const syncFromSettings = useCallback((config: RoutingConfig) => {
     setAssignmentRule(config.assignmentRule);
-    setExcludeInactive(config.excludeInactive);
-    setOverflowHours(config.overflowHours);
   }, []);
 
   const saveRouting = useCallback(() => {
     saveMutation.mutate(
-      {
-        assignment_rule: assignmentRule,
-        routing_exclude_inactive: excludeInactive,
-        routing_overflow_hours: overflowHours,
-      },
+      { assignment_mode: assignmentRule },
       {
         onSuccess: async () => {
           toast.success('🎉 Global routing rules updated!');
@@ -43,18 +43,18 @@ export function useRoutingConfig({ companyId, initialConfig, saveMutation }: Use
               action: 'ASSIGNMENT_RULE_UPDATED',
               category: 'config',
               target: 'Lead Routing',
-              details: `Routing: ${assignmentRule}. Exclude inactive: ${excludeInactive}. Overflow: ${overflowHours}h.`,
-                          });
+              details: `Routing: ${assignmentRule}.`,
+            });
           }
         },
       }
     );
-  }, [saveMutation, assignmentRule, excludeInactive, overflowHours, companyId]);
+  }, [saveMutation, assignmentRule, companyId]);
 
   const quickToggle = useCallback((rule: 'Manual' | 'RoundRobin') => {
     setAssignmentRule(rule);
     saveMutation.mutate(
-      { assignment_rule: rule },
+      { assignment_mode: rule },
       {
         onSuccess: async () => {
           toast.success(`Routing mode set to: ${rule}`);
@@ -74,8 +74,6 @@ export function useRoutingConfig({ companyId, initialConfig, saveMutation }: Use
 
   return {
     assignmentRule, setAssignmentRule,
-    excludeInactive, setExcludeInactive,
-    overflowHours, setOverflowHours,
     saveRouting,
     quickToggle,
     isSaving: saveMutation.isPending,

@@ -311,8 +311,6 @@ function IntegrationsPageContent() {
               {activeWorkspace === 'routing' && (
                 <RoutingConfigPanel
                   assignmentRule={routingHook.assignmentRule} setAssignmentRule={routingHook.setAssignmentRule}
-                  excludeInactive={routingHook.excludeInactive} setExcludeInactive={routingHook.setExcludeInactive}
-                  overflowHours={routingHook.overflowHours} setOverflowHours={routingHook.setOverflowHours}
                   onSave={routingHook.saveRouting}
                   isSaving={routingHook.isSaving}
                 />
