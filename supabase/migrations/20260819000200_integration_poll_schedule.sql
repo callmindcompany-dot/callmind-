@@ -76,7 +76,14 @@ BEGIN
                    'Authorization', 'Bearer ' || v_key,
                    'Content-Type',  'application/json'
                  ),
-      body    := jsonb_build_object('company_id', v_company.company_id)
+      -- `trigger` tells the function this run came from the schedule rather
+      -- than from someone pressing Sync Now. A source that only ever runs on
+      -- 'manual' is not connected in any useful sense, however well each of
+      -- those runs went, and integration_runs records the difference.
+      body    := jsonb_build_object(
+                   'company_id', v_company.company_id,
+                   'trigger',    'schedule'
+                 )
     );
     v_count := v_count + 1;
   END LOOP;

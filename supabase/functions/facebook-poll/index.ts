@@ -17,6 +17,7 @@ import { Sentry } from "../_shared/sentry.ts";
  */
 
 import { checkRateLimit, getRateLimitKey } from "../_shared/rateLimit.ts";
+import { startRun, finishRun, type RunTrigger } from "../_shared/runLog.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8"
 
@@ -70,9 +71,13 @@ serve(async (req) => {
 
     // Optional manual parameter
     let targetCompanyId: string | null = null
+    // Defaults to 'manual', because a bare invoke is the Sync Now button.
+    // run_integration_poll() sends trigger: 'schedule'.
+    let trigger: RunTrigger = "manual"
     try {
       const body = await req.json()
       targetCompanyId = body.company_id || null
+      if (body.trigger === "schedule") trigger = "schedule"
     } catch {
       // No body
     }
@@ -125,6 +130,11 @@ serve(async (req) => {
         skipped_duplicates: 0,
         errors: [] as string[],
       }
+
+      // Opened before the work so a run exists even if the first call throws.
+      // Closed in the finally, which also covers the `continue` paths below --
+      // those are the error cases, and they are the ones worth having.
+      const run = await startRun(supabase, companyId, "facebook", trigger)
 
       try {
         // 2. Fetch leads from Graph API
@@ -281,6 +291,18 @@ serve(async (req) => {
         console.error(err);
         Sentry.captureException(err);
         companyResult.errors.push('Internal server error');
+      } finally {
+        await finishRun(supabase, run, {
+          outcome:
+            companyResult.errors.length === 0
+              ? "success"
+              : companyResult.new_leads > 0
+                ? "partial"
+                : "failed",
+          leadsCreated: companyResult.new_leads,
+          leadsDuplicate: companyResult.skipped_duplicates,
+          error: companyResult.errors.length ? companyResult.errors.join('; ') : undefined,
+        })
       }
 
       results.push(companyResult)

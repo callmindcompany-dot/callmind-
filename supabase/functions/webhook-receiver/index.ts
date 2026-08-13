@@ -9,6 +9,7 @@ import { Sentry } from "../_shared/sentry.ts";
  */
 
 import { checkRateLimit, getRateLimitKey } from "../_shared/rateLimit.ts";
+import { startRun, finishRun, type RunHandle, type RunOutcome } from "../_shared/runLog.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8"
 
@@ -62,10 +63,21 @@ serve(async (req) => {
     });
   }
 
+  // Opened once the sender is identified, closed in the finally below so a
+  // rejected signature and a dropped payload are recorded as well as a
+  // successful one -- those are the runs somebody will come looking for.
+  let run: RunHandle | null = null
+  let runSupabase: ReturnType<typeof createClient> | null = null
+  let runOutcome: RunOutcome = "failed"
+  let runError: string | undefined
+  let runCreated = 0
+  let runDuplicate = 0
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? ""
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    runSupabase = supabase
 
     // Extract company ID from path (e.g. /webhook-receiver/[company_id])
     const url = new URL(req.url)
@@ -147,14 +159,26 @@ serve(async (req) => {
     let source = "Webhook"
 
     // 3. Determine if Google Ads payload
+    //
+    // The shape decides which provider this run belongs to, so the run is
+    // opened here -- before the verify-token check below, so a rejected token
+    // is recorded rather than vanishing.
+    if (Array.isArray(payload.user_column_data)) source = "GoogleAds"
+    run = await startRun(
+      supabase,
+      companyId,
+      source === "GoogleAds" ? "googleads" : "webhook",
+      "push",
+    )
+
     if (Array.isArray(payload.user_column_data)) {
-      source = "GoogleAds"
 
       // Validate Google Ads Verify Token
       const gConfig = settings.googleads_config as { googleVerifyToken?: string; isActive?: boolean } | null
       if (gConfig?.googleVerifyToken) {
         const gKey = String(payload.google_key || "")
         if (gKey !== gConfig.googleVerifyToken) {
+          runError = "Invalid Google Ads verify token"
           return new Response(
             JSON.stringify({ success: false, error: "Invalid Google Ads verify token" }),
             { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -249,6 +273,11 @@ serve(async (req) => {
       .maybeSingle()
 
     if (duplicate) {
+      // A duplicate is a normal outcome, not a failure -- the sender did
+      // nothing wrong and nothing is broken. Recording it as failed would put
+      // a red mark on a healthy source every time a customer enquires twice.
+      runOutcome = "success"
+      runDuplicate = 1
       return new Response(
         JSON.stringify({ success: false, error: "Duplicate lead detected" }),
         { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -313,6 +342,9 @@ serve(async (req) => {
       timestamp: new Date().toISOString(),
     })
 
+    runOutcome = "success"
+    runCreated = 1
+
     return new Response(
       JSON.stringify({ success: true, lead_id: newLead.id }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -321,9 +353,22 @@ serve(async (req) => {
   } catch (err: unknown) {
     console.error(err);
     Sentry.captureException(err);
+    runError = String((err as { message?: string })?.message ?? err)
     return new Response(
       JSON.stringify({ success: false, error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     )
+  } finally {
+    // Every path that got far enough to identify the sender is recorded,
+    // including the ones that returned early. A webhook that was rejected is
+    // precisely what somebody will be looking for later.
+    if (run && runSupabase) {
+      await finishRun(runSupabase, run, {
+        outcome: runOutcome,
+        leadsCreated: runCreated,
+        leadsDuplicate: runDuplicate,
+        error: runError,
+      })
+    }
   }
 })
