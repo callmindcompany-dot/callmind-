@@ -283,13 +283,13 @@ Supabase Edge Functions (Deno) handle background jobs and third-party integratio
 
 | Function | Purpose |
 |---|---|
-| `indiamart-poll` | Sync leads from IndiaMart API |
-| `justdial-poll` | Sync leads from JustDial |
-| `tradeindia-poll` | Sync leads from TradeIndia |
-| `facebook-poll` | Sync Facebook Lead Ads |
-| `send-whatsapp-message` | Send WhatsApp via Business API |
-| `receive-whatsapp-webhook` | Inbound WhatsApp webhook handler |
-| `send-email` | SMTP email dispatch |
+| `indiamart-poll` | Sync leads from IndiaMart API — scheduled only after `schedule_integration_polls()` is run |
+| `justdial-poll` | Sync leads from JustDial — same |
+| `tradeindia-poll` | Sync leads from TradeIndia — same |
+| `facebook-poll` | Sync Facebook Lead Ads — same |
+| `send-whatsapp-message` | **Not implemented.** Answers 501; never called Meta |
+| `receive-whatsapp-webhook` | **Not implemented.** Answers 501, including the setup handshake |
+| `send-email` | Custom-domain SMTP is disabled on every plan; returns `success: false` |
 | `send-scheduled-messages` | Cron-based scheduled message worker |
 | `execute-automation-rules` | Automation rule execution engine |
 | `data-cleanup-cron` | Periodic data hygiene jobs |

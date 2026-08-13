@@ -10,12 +10,26 @@ Leads enter the CallMind CRM through 5 primary channels:
 
 1. **API Webhooks (`/v1/webhooks/incoming/:companyId`):**
    * Custom website landing pages, WordPress forms, Elementor.
-2. **B2B Marketplace Polling Crons:**
-   * **IndiaMART:** `indiamart-poll` Edge Function runs every 10 mins using vendor API keys.
+2. **B2B Marketplace Polling:**
+   * **IndiaMART:** `indiamart-poll` Edge Function, using vendor API keys.
    * **JustDial:** `justdial-poll` Edge Function extracts lead pushes.
    * **TradeIndia:** `tradeindia-poll` Edge Function fetches inquiry streams.
+
+   These run on a schedule **only once polling has been switched on** —
+   `pg_cron` calls them through `public.run_integration_poll()`, and the setup
+   steps are at the bottom of
+   `supabase/migrations/20260819000200_integration_poll_schedule.sql`. Until
+   then they run only when somebody presses Sync Now.
+
+   This section used to say the IndiaMART function "runs every 10 mins". It did
+   not: nothing scheduled any of them, and `pg_cron` was not installed. Do not
+   restate an interval here — `public.integration_sync_status()` reports the
+   real one, and the hub reads it from there.
 3. **Social Media Ads:**
-   * **Meta Lead Ads:** Direct Webhook verification using HMAC-SHA256 signature verification (`X-Hub-Signature-256`).
+   * **Meta Lead Ads:** currently polled by `facebook-poll` on the same
+     schedule, not pushed. The receiver in `receive-whatsapp-webhook` is for
+     WhatsApp and is not connected; a Meta *leadgen* webhook would remove the
+     need to poll and is the better shape, but it is not built.
 4. **Bulk CSV Upload (`SmartImportModal.tsx`):**
    * Admins upload CSVs. Gemini AI maps erratic column names (e.g. "Mobile Num" -> `phone`).
 5. **Manual Entry (`LeadForm.tsx`):**

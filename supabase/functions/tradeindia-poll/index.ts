@@ -87,11 +87,16 @@ serve(async (req) => {
       // No body
     }
 
-    // 1. Fetch companies with TradeIndia configs
+    // 1. Fetch companies with TradeIndia configured.
+    //
+    // Was team_settings.tradeindia_config, a column that has never existed, so
+    // this query failed on every invocation. Credentials moved to their own
+    // admin-only table in 20260819000100_integration_credentials.sql.
     let query = supabase
-      .from("team_settings")
-      .select("company_id, tradeindia_config")
-      .not("tradeindia_config", "is", null)
+      .from("integration_credentials")
+      .select("company_id, config")
+      .eq("provider", "tradeindia")
+      .eq("is_active", true)
 
     if (targetCompanyId) {
       query = query.eq("company_id", targetCompanyId)
@@ -108,9 +113,8 @@ serve(async (req) => {
     }> = []
 
     for (const row of companies || []) {
-      const config = row.tradeindia_config as { apiKey?: string; userid?: string; isActive?: boolean } | null
+      const config = row.config as { apiKey?: string; userid?: string } | null
       if (!config?.apiKey) continue
-      if (config.isActive === false) continue
 
       const companyId = row.company_id
       const companyResult = {
@@ -227,16 +231,18 @@ serve(async (req) => {
 
         // 7. Update last_synced stats
         await supabase
-          .from("team_settings")
+          .from("integration_credentials")
           .update({
-            tradeindia_config: {
+            config: {
               ...config,
               lastSyncedAt: new Date().toISOString(),
               lastSyncCount: companyResult.new_leads,
               lastSyncErrors: companyResult.errors,
             },
+            updated_at: new Date().toISOString(),
           })
           .eq("company_id", companyId)
+          .eq("provider", "tradeindia")
 
         // 8. Audit logs
         await supabase.from("audit_logs").insert({

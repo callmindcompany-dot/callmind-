@@ -7,6 +7,11 @@ import { IntegrationCard } from './IntegrationCard';
 import { ProviderCard } from './ProviderCard';
 import { WorkflowCard } from './WorkflowCard';
 import type { IntegrationWorkspace } from '@/types/integrations';
+import {
+  useIntegrationSyncStatus,
+  describeSchedule,
+  type SyncProvider,
+} from '@/hooks/useIntegrationSyncStatus';
 
 interface IntegrationHubProps {
   onOpenWorkspace: (ws: IntegrationWorkspace) => void;
@@ -21,6 +26,34 @@ interface IntegrationHubProps {
 }
 
 export function IntegrationHub({ onOpenWorkspace, assignmentRule, isSaving, quickToggle, indiamartActive, justdialActive, tradeindiaActive, facebookActive, googleadsActive }: IntegrationHubProps) {
+  /*
+   * Every polled card used to say "Live" and "Auto-Sync Active" the moment a
+   * config existed. Nothing polled: the four functions were invoked only from a
+   * Sync Now button, so a customer who connected IndiaMART and walked away
+   * received nothing while the card said it was live.
+   *
+   * The status is read from the database now -- integration_sync_status()
+   * reports what cron.job actually holds -- so a card can only claim automatic
+   * sync when a schedule exists. See 20260819000200_integration_poll_schedule.
+   */
+  const { data: syncStatus } = useIntegrationSyncStatus();
+
+  /** What a connected, polled source can honestly say about itself. */
+  const polled = (provider: SyncProvider, connected: boolean) => {
+    if (!connected) {
+      return { status: 'Setup Ready' as const, detail: 'Config required' };
+    }
+    const every = describeSchedule(syncStatus?.[provider]?.schedule ?? null);
+    return syncStatus?.[provider]?.is_scheduled && every
+      ? { status: 'Live' as const, detail: `Syncing ${every}` }
+      : { status: 'Connected' as const, detail: 'Manual sync only' };
+  };
+
+  const im = polled('indiamart', indiamartActive);
+  const jd = polled('justdial', justdialActive);
+  const ti = polled('tradeindia', tradeindiaActive);
+  const fb = polled('facebook', facebookActive);
+
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 items-start">
@@ -46,56 +79,56 @@ export function IntegrationHub({ onOpenWorkspace, assignmentRule, isSaving, quic
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <IntegrationCard
             title="Facebook Leads"
-            description={facebookActive ? "Live Meta Graph API / Webhook integration active. New ads leads syncing instantly." : "Connect Meta developer credentials to auto-import leads from Facebook Ads Forms."}
+            description={facebookActive ? "Meta Ads lead forms, pulled into your pipeline." : "Connect Meta developer credentials to auto-import leads from Facebook Ads Forms."}
             icon={<Facebook size={24} />}
             iconBg="bg-[#1877F2]/10"
             iconColor="text-[#1877F2]"
-            status={facebookActive ? 'Live' : 'Setup Ready'}
-            statusDetail={facebookActive ? 'Auto-Sync Active' : 'Config Required'}
+            status={fb.status}
+            statusDetail={fb.detail}
             actionLabel={facebookActive ? 'Manage' : 'Configure'}
             onClick={() => onOpenWorkspace('facebook')}
           />
           <IntegrationCard
             title="IndiaMart"
-            description={indiamartActive ? "Live GLUSR API polling active. New enquiries syncing automatically." : "Connect your GLUSR API credentials to start auto-importing seller enquiries."}
+            description={indiamartActive ? "GLUSR enquiries, pulled into your pipeline." : "Connect your GLUSR API credentials to start auto-importing seller enquiries."}
             icon={<ShoppingBag size={24} />}
             iconBg="bg-orange-50"
             iconColor="text-orange-600"
-            status={indiamartActive ? 'Live' : 'Setup Ready'}
-            statusDetail={indiamartActive ? 'Auto-Sync Active' : 'Config Required'}
+            status={im.status}
+            statusDetail={im.detail}
             actionLabel={indiamartActive ? 'Manage' : 'Configure'}
             onClick={() => onOpenWorkspace('indiamart')}
           />
           <IntegrationCard
             title="Justdial"
-            description={justdialActive ? "Live Justdial API polling active. Business enquiries syncing automatically." : "Connect your Justdial API Key and Listing ID to start auto-importing listing enquiries."}
+            description={justdialActive ? "Listing enquiries, pulled into your pipeline." : "Connect your Justdial API Key and Listing ID to start auto-importing listing enquiries."}
             icon={<Search size={24} />}
             iconBg="bg-blue-50"
             iconColor="text-blue-600"
-            status={justdialActive ? 'Live' : 'Setup Ready'}
-            statusDetail={justdialActive ? 'Auto-Sync Active' : 'Config Required'}
+            status={jd.status}
+            statusDetail={jd.detail}
             actionLabel={justdialActive ? 'Manage' : 'Configure'}
             onClick={() => onOpenWorkspace('justdial')}
           />
           <IntegrationCard
             title="TradeIndia"
-            description={tradeindiaActive ? "Live TradeIndia buyer inquiry polling active. Enquiries syncing automatically." : "Connect your TradeIndia API key to start auto-importing buyer enquiries."}
+            description={tradeindiaActive ? "Buyer enquiries, pulled into your pipeline." : "Connect your TradeIndia API key to start auto-importing buyer enquiries."}
             icon={<ShoppingBag size={24} />}
             iconBg="bg-orange-50"
             iconColor="text-orange-600"
-            status={tradeindiaActive ? 'Live' : 'Setup Ready'}
-            statusDetail={tradeindiaActive ? 'Auto-Sync Active' : 'Config Required'}
+            status={ti.status}
+            statusDetail={ti.detail}
             actionLabel={tradeindiaActive ? 'Manage' : 'Configure'}
             onClick={() => onOpenWorkspace('tradeindia')}
           />
           <IntegrationCard
             title="Google Ads"
-            description={googleadsActive ? "Live Google Lead Form Extension webhook active. Form leads syncing instantly." : "Connect Google Ads Lead Form webhook verify tokens to auto-import leads."}
+            description={googleadsActive ? "Google sends each lead form submission to your webhook." : "Connect Google Ads Lead Form webhook verify tokens to auto-import leads."}
             icon={<Target size={24} />}
             iconBg="bg-blue-50"
             iconColor="text-blue-600"
             status={googleadsActive ? 'Live' : 'Setup Ready'}
-            statusDetail={googleadsActive ? 'Auto-Sync Active' : 'Config Required'}
+            statusDetail={googleadsActive ? 'Arrives on submission' : 'Config required'}
             actionLabel={googleadsActive ? 'Manage' : 'Configure'}
             onClick={() => onOpenWorkspace('googleads')}
           />

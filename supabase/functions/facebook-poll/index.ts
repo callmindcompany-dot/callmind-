@@ -77,11 +77,16 @@ serve(async (req) => {
       // No body
     }
 
-    // 1. Fetch companies with Facebook Config
+    // 1. Fetch companies with Meta configured.
+    //
+    // Was team_settings.facebook_config, a column that has never existed, so
+    // this query failed on every invocation. Credentials moved to their own
+    // admin-only table in 20260819000100_integration_credentials.sql.
     let query = supabase
-      .from("team_settings")
-      .select("company_id, facebook_config")
-      .not("facebook_config", "is", null)
+      .from("integration_credentials")
+      .select("company_id, config")
+      .eq("provider", "facebook")
+      .eq("is_active", true)
 
     if (targetCompanyId) {
       query = query.eq("company_id", targetCompanyId)
@@ -98,7 +103,7 @@ serve(async (req) => {
     }> = []
 
     for (const row of companies || []) {
-      const config = row.facebook_config as {
+      const config = row.config as {
         appId?: string
         appSecret?: string
         pageId?: string
@@ -247,18 +252,20 @@ serve(async (req) => {
           status: companyResult.errors.length > 0 ? "partial" : "completed",
         })
 
-        // 7. Update last_synced settings stats
+        // 7. Record when this ran, beside the credentials it used
         await supabase
-          .from("team_settings")
+          .from("integration_credentials")
           .update({
-            facebook_config: {
+            config: {
               ...config,
               lastSyncedAt: new Date().toISOString(),
               lastSyncCount: companyResult.new_leads,
               lastSyncErrors: companyResult.errors,
             },
+            updated_at: new Date().toISOString(),
           })
           .eq("company_id", companyId)
+          .eq("provider", "facebook")
 
         // 8. Audit logs
         await supabase.from("audit_logs").insert({

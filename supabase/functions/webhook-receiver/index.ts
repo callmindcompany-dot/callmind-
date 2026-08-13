@@ -78,18 +78,49 @@ serve(async (req) => {
       )
     }
 
-    // 1. Fetch configurations
-    const { data: settings, error: fetchError } = await supabase
-      .from("team_settings")
-      .select("webhook_config, googleads_config, field_aliases")
-      .eq("company_id", companyId)
-      .maybeSingle()
+    // 1. Fetch configurations.
+    //
+    // This selected webhook_config and googleads_config from team_settings.
+    // Neither column has ever existed there, so the query failed and every
+    // inbound webhook was answered "Company settings not found" -- which took
+    // down the one lead path that does not depend on a scheduler. Website form
+    // submissions, custom webhooks and Google Ads lead forms were all lost at
+    // this line.
+    //
+    // Credentials moved to integration_credentials in
+    // 20260819000100_integration_credentials.sql; field_aliases is a mapping
+    // rather than a secret and stays on team_settings with the other lead
+    // preferences.
+    const [credsRes, prefsRes] = await Promise.all([
+      supabase
+        .from("integration_credentials")
+        .select("provider, config, is_active")
+        .eq("company_id", companyId)
+        .in("provider", ["webhook", "googleads"]),
+      supabase
+        .from("team_settings")
+        .select("field_aliases")
+        .eq("company_id", companyId)
+        .maybeSingle(),
+    ])
 
-    if (fetchError || !settings) {
+    if (credsRes.error || prefsRes.error) {
       return new Response(
-        JSON.stringify({ success: false, error: "Company settings not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: "Company settings could not be read" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       )
+    }
+
+    const credentialFor = (provider: string) => {
+      const row = (credsRes.data || []).find((r) => r.provider === provider)
+      if (!row || row.is_active === false) return null
+      return (row.config || {}) as Record<string, unknown>
+    }
+
+    const settings = {
+      webhook_config: credentialFor("webhook"),
+      googleads_config: credentialFor("googleads"),
+      field_aliases: prefsRes.data?.field_aliases ?? {},
     }
 
     const rawBody = await req.text()
@@ -249,18 +280,20 @@ serve(async (req) => {
 
     // 6. Update sync stats for Google Ads (if applicable)
     if (source === "GoogleAds") {
-      const gConfig = settings.googleads_config as { googleWebhookUrl?: string; googleVerifyToken?: string; isActive?: boolean } | null
+      const gConfig = (settings.googleads_config || {}) as Record<string, unknown>
       await supabase
-        .from("team_settings")
+        .from("integration_credentials")
         .update({
-          googleads_config: {
+          config: {
             ...gConfig,
             lastSyncedAt: new Date().toISOString(),
-            lastSyncCount: (gConfig as any)?.lastSyncCount ? (gConfig as any).lastSyncCount + 1 : 1,
+            lastSyncCount: typeof gConfig.lastSyncCount === "number" ? gConfig.lastSyncCount + 1 : 1,
             lastSyncErrors: [],
-          }
+          },
+          updated_at: new Date().toISOString(),
         })
         .eq("company_id", companyId)
+        .eq("provider", "googleads")
     }
 
     // 7. Log history

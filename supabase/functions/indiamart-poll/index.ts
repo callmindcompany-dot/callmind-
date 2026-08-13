@@ -86,11 +86,19 @@ serve(async (req) => {
       // No body — poll all companies
     }
 
-    // 1. Fetch companies with IndiaMART configs
+    // 1. Fetch companies with IndiaMART configured.
+    //
+    // This read team_settings.indiamart_config, a column that has never existed
+    // -- team_settings holds ten lead and team preference columns and none of
+    // the integration ones. So the query failed on every invocation, and since
+    // nothing schedules this function either, no IndiaMART lead has ever
+    // reached the CRM through it. Credentials now live in their own
+    // admin-only table (20260819000100_integration_credentials.sql).
     let query = supabase
-      .from("team_settings")
-      .select("company_id, indiamart_config")
-      .not("indiamart_config", "is", null)
+      .from("integration_credentials")
+      .select("company_id, config")
+      .eq("provider", "indiamart")
+      .eq("is_active", true)
 
     if (targetCompanyId) {
       query = query.eq("company_id", targetCompanyId)
@@ -107,9 +115,8 @@ serve(async (req) => {
     }> = []
 
     for (const row of companies || []) {
-      const config = row.indiamart_config as { apiKey?: string; mobile?: string; isActive?: boolean } | null
+      const config = row.config as { apiKey?: string; mobile?: string } | null
       if (!config?.apiKey || !config?.mobile) continue
-      if (config.isActive === false) continue
 
       const companyId = row.company_id
       const companyResult = {
@@ -238,18 +245,20 @@ serve(async (req) => {
           status: companyResult.errors.length > 0 ? "partial" : "completed",
         })
 
-        // 7. Update last_synced timestamp on team_settings
+        // 7. Record when this ran, beside the credentials it used
         await supabase
-          .from("team_settings")
+          .from("integration_credentials")
           .update({
-            indiamart_config: {
+            config: {
               ...config,
               lastSyncedAt: new Date().toISOString(),
               lastSyncCount: companyResult.new_leads,
               lastSyncErrors: companyResult.errors,
             },
+            updated_at: new Date().toISOString(),
           })
           .eq("company_id", companyId)
+          .eq("provider", "indiamart")
 
         // 8. Audit log
         await supabase.from("audit_logs").insert({
