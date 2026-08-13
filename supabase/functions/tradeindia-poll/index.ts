@@ -156,7 +156,7 @@ serve(async (req) => {
         // 3. Fetch existing leads for deduplication
         const { data: existingLeads } = await supabase
           .from("leads")
-          .select("phone, metadata")
+          .select("phone, custom_data")
           .eq("company_id", companyId)
           .eq("is_deleted", false)
 
@@ -165,8 +165,8 @@ serve(async (req) => {
         )
         const existingEnquiryIds = new Set(
           (existingLeads || [])
-            .filter((l) => l.metadata?.tradeindia_enquiry_id)
-            .map((l) => l.metadata.tradeindia_enquiry_id)
+            .filter((l) => l.custom_data?.tradeindia_enquiry_id)
+            .map((l) => l.custom_data.tradeindia_enquiry_id)
         )
 
         // 4. Process enquiries
@@ -202,8 +202,9 @@ serve(async (req) => {
             assigned_to: "unassigned",
             is_deleted: false,
             is_unseen: true,
-            // AUTO-TAGGING & DETAILS (JSONB metadata)
-            metadata: {
+            // AUTO-TAGGING & DETAILS (JSONB custom_data)
+            integration_run_id: run.id,
+            custom_data: {
               tradeindia_enquiry_id: uniqueId || null,
               tradeindia_date: enquiry.enquiry_date || null,
               product_name: pName || null,

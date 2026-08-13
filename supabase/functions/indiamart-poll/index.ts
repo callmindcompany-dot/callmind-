@@ -163,7 +163,11 @@ serve(async (req) => {
         // 3. Fetch existing phone numbers for dedup
         const { data: existingLeads } = await supabase
           .from("leads")
-          .select("phone, metadata")
+          // custom_data, not metadata. leads has never had a metadata column,
+          // so this select failed with 42703 and took the whole poll with it --
+          // one of several independent reasons no IndiaMART lead has ever
+          // reached the CRM.
+          .select("phone, custom_data")
           .eq("company_id", companyId)
           .eq("is_deleted", false)
 
@@ -172,8 +176,8 @@ serve(async (req) => {
         )
         const existingQueryIds = new Set(
           (existingLeads || [])
-            .filter((l) => l.metadata?.indiamart_query_id)
-            .map((l) => l.metadata.indiamart_query_id)
+            .filter((l) => l.custom_data?.indiamart_query_id)
+            .map((l) => l.custom_data.indiamart_query_id)
         )
 
         // 4. Process each enquiry
@@ -217,7 +221,10 @@ serve(async (req) => {
             assigned_to: "unassigned",
             is_deleted: false,
             is_unseen: true,
-            metadata: {
+            // Which run brought this lead in, so the lead can say where it
+            // came from and not just which vendor sent it.
+            integration_run_id: run.id,
+            custom_data: {
               indiamart_query_id: enquiry.UNIQUE_QUERY_ID,
               indiamart_query_type: enquiry.QUERY_TYPE,
               indiamart_query_time: enquiry.QUERY_TIME,

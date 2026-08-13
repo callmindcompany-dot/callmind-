@@ -45,6 +45,7 @@ import { CommunicationRedirectPanel } from './integrations/CommunicationRedirect
 import { RoutingConfigPanel } from './integrations/RoutingConfigPanel';
 import { FieldAliasesPanel } from './integrations/FieldAliasesPanel';
 import { HealthDashboard } from './integrations/HealthDashboard';
+import { SourcePerformancePanel } from './integrations/SourcePerformancePanel';
 import { ImportLogsTable } from './integrations/ImportLogsTable';
 import { WaitlistPanel } from './integrations/WaitlistPanel';
 import { SmartImportModal } from './SmartImportModal';
@@ -327,7 +328,12 @@ function IntegrationsPageContent() {
               )}
 
               {activeWorkspace === 'health' && (
-                <HealthDashboard companyId={companyId} />
+                <>
+                  <HealthDashboard companyId={companyId} />
+                  {/* Health says whether the pipes are working; this says
+                      whether what comes through them is worth paying for. */}
+                  <SourcePerformancePanel />
+                </>
               )}
 
               {activeWorkspace === 'import-logs' && (

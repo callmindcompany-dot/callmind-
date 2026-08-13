@@ -151,7 +151,7 @@ serve(async (req) => {
         // 3. Fetch existing phone numbers and query IDs for dedup
         const { data: existingLeads } = await supabase
           .from("leads")
-          .select("phone, metadata")
+          .select("phone, custom_data")
           .eq("company_id", companyId)
           .eq("is_deleted", false)
 
@@ -160,8 +160,8 @@ serve(async (req) => {
         )
         const existingEnquiryIds = new Set(
           (existingLeads || [])
-            .filter((l) => l.metadata?.justdial_enquiry_id)
-            .map((l) => l.metadata.justdial_enquiry_id)
+            .filter((l) => l.custom_data?.justdial_enquiry_id)
+            .map((l) => l.custom_data.justdial_enquiry_id)
         )
 
         // 4. Process each enquiry
@@ -194,7 +194,8 @@ serve(async (req) => {
             assigned_to: "unassigned",
             is_deleted: false,
             is_unseen: true,
-            metadata: {
+            integration_run_id: run.id,
+            custom_data: {
               justdial_enquiry_id: uniqueId || null,
               justdial_created_time: enquiry.created_time || enquiry.date || null,
               justdial_listing_id: config.listingId,

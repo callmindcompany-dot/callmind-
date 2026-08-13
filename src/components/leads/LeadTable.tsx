@@ -12,6 +12,27 @@ import { isLeadRotting } from '@/utils/leadRotting';
 import { LeadsPagination } from '../LeadsPagination';
 import { StatusBadge, Lead } from '../LeadsPage';
 
+/**
+ * A colour for each lead source, so a column of them can be read at a glance.
+ *
+ * Matched loosely because the value is whatever the ingest function wrote --
+ * "IndiaMart", "IndiaMART", "Facebook Ads" -- and a customer can type their own
+ * on a manual lead. Anything unrecognised stays neutral rather than being given
+ * a colour that would imply a vendor we do not know it came from.
+ */
+export function sourceChipClass(source?: string | null): string {
+  const s = (source ?? '').toLowerCase();
+  if (s.includes('indiamart')) return 'bg-orange-50 text-orange-700 border-orange-100';
+  if (s.includes('justdial')) return 'bg-blue-50 text-blue-700 border-blue-100';
+  if (s.includes('tradeindia')) return 'bg-amber-50 text-amber-700 border-amber-100';
+  if (s.includes('facebook') || s.includes('meta')) return 'bg-[#1877F2]/10 text-[#1877F2] border-[#1877F2]/20';
+  if (s.includes('google')) return 'bg-red-50 text-red-700 border-red-100';
+  if (s.includes('webhook') || s.includes('api')) return 'bg-brand-50 text-brand-700 border-brand-100';
+  if (s.includes('website') || s.includes('form')) return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+  if (s.includes('csv') || s.includes('import') || s.includes('excel')) return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  return 'bg-gray-100 text-gray-600 border-gray-200';
+}
+
 interface LeadRowProps {
   lead: Lead;
   assignedAgent?: { id: string; name: string } | null;
@@ -131,8 +152,24 @@ const LeadRow = React.memo(({
       <div className="w-[120px] px-4 py-3 border-r border-gray-100 flex items-center shrink-0 truncate">
         {lead.branch || '-'}
       </div>
-      <div className="w-[140px] px-4 py-3 border-r border-gray-100 flex items-center shrink-0 truncate font-bold text-blue-500">
-        {lead.source || lead.brand || '-'}
+      {/* Was plain blue text. A chip in the vendor's own colour makes a column
+          of sources scannable -- which is the point of having the column, since
+          a telecaller wants to know where this person came from before the
+          call connects. sourceChipClass keeps unknown sources neutral rather
+          than inventing a colour for them. */}
+      <div className="w-[140px] px-4 py-3 border-r border-gray-100 flex items-center shrink-0">
+        {lead.source || lead.brand ? (
+          <span
+            className={`px-2 py-1 rounded-md text-[11px] font-bold truncate max-w-full border ${sourceChipClass(
+              lead.source || lead.brand,
+            )}`}
+            title={lead.source || lead.brand}
+          >
+            {lead.source || lead.brand}
+          </span>
+        ) : (
+          <span className="text-gray-300 text-xs font-bold">—</span>
+        )}
       </div>
       <div className="w-[100px] px-4 py-3 border-r border-gray-100 flex items-center justify-center shrink-0">
         <span className={`px-2 py-1 rounded text-xs font-bold shrink-0 ${lead.priority === 'High' ? 'bg-red-100 text-red-700' : lead.priority === 'Medium' ? 'bg-orange-100 text-orange-700' : lead.priority === 'Low' ? 'bg-green-100 text-green-700' : ''}`}>

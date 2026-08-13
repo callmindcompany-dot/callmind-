@@ -160,7 +160,7 @@ serve(async (req) => {
         // 3. Fetch existing phone numbers and query IDs for duplicate checks
         const { data: existingLeads } = await supabase
           .from("leads")
-          .select("phone, metadata")
+          .select("phone, custom_data")
           .eq("company_id", companyId)
           .eq("is_deleted", false)
 
@@ -169,8 +169,8 @@ serve(async (req) => {
         )
         const existingFacebookIds = new Set(
           (existingLeads || [])
-            .filter((l) => l.metadata?.facebook_lead_id)
-            .map((l) => l.metadata.facebook_lead_id)
+            .filter((l) => l.custom_data?.facebook_lead_id)
+            .map((l) => l.custom_data.facebook_lead_id)
         )
 
         // 4. Process field data mapping
@@ -227,7 +227,8 @@ serve(async (req) => {
             assigned_to: "unassigned",
             is_deleted: false,
             is_unseen: true,
-            metadata: {
+            integration_run_id: run.id,
+            custom_data: {
               facebook_lead_id: lead.id,
               facebook_created_time: lead.created_time,
               facebook_form_id: config.formId,
