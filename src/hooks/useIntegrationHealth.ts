@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/supabaseClient';
-import type { IntegrationSettings } from '@/types/integrations';
 
 export interface DetailedHealthStats {
   totalLeads: number;
@@ -8,39 +7,51 @@ export interface DetailedHealthStats {
   sourceCounts: Record<string, number>;
   activeIntegrationsCount: number;
   failedSyncs24h: number;
-  avgWebhookResponseTime: number; // in ms
-  apiQuotaUsagePct: number; // calculation based on plan / total leads
+  /** The plan's lead ceiling. `null` means the plan has none. */
+  leadLimit: number | null;
   isRateLimited: boolean;
 }
 
 /**
- * useIntegrationHealth
+ * Telemetry for the integration health screen.
  *
- * Loads real-time telemetry metrics directly from Supabase leads, import_logs, and team_settings.
+ * Everything here used to be reported as fact whether or not it had been
+ * measured, and four of the numbers could not have been right:
+ *
+ *   Three queries -- team_settings, import_logs and audit_logs -- had their
+ *   `error` destructured away and fell back to `|| []`. "0 failed syncs in 24h"
+ *   carried exactly as much information as a network error, and the screen said
+ *   "All channels sync healthy" either way.
+ *
+ *   activeIntegrationsCount counted team_settings.facebook_config,
+ *   indiamart_config and five more. None of those columns has ever existed, so
+ *   the count was 0 for every company however many they had connected. They
+ *   live in integration_credentials now.
+ *
+ *   isRateLimited scanned the same non-existent columns for lastSyncErrors, so
+ *   it was permanently false and the header badge permanently "Operational".
+ *
+ *   avgWebhookResponseTime is gone. It parsed "123ms" out of audit log details,
+ *   nothing has ever written that, and it fell back to a literal 18 -- a number
+ *   presented as a measurement that was chosen by hand. The screen printed
+ *   "18ms / Ultra low latency response" to every customer forever.
+ *
+ *   apiQuotaUsagePct divided by a hardcoded 5,000, which is not the lead limit
+ *   of any plan: they are 1,000 / 50,000 / 250,000 / unlimited in
+ *   src/config/pricing.ts. The real ceiling is read from plan_limits now, and
+ *   the percentage is computed where it is displayed.
  */
 export function useIntegrationHealth(companyId: string | null) {
   return useQuery<DetailedHealthStats>({
     queryKey: ['integrationHealthDetailed', companyId],
     queryFn: async (): Promise<DetailedHealthStats> => {
-      if (!companyId) {
-        return {
-          totalLeads: 0,
-          leadsToday: 0,
-          sourceCounts: {},
-          activeIntegrationsCount: 0,
-          failedSyncs24h: 0,
-          avgWebhookResponseTime: 0,
-          apiQuotaUsagePct: 0,
-          isRateLimited: false,
-        };
-      }
+      if (!companyId) throw new Error('companyId is required');
 
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-      // 1. Fetch leads distribution & count
+      // 1. Lead volume and where it came from
       const { data: leads, error: leadsError } = await supabase
         .from('leads')
         .select('source, created_at')
@@ -51,7 +62,7 @@ export function useIntegrationHealth(companyId: string | null) {
 
       const totalLeads = (leads || []).length;
       const leadsToday = (leads || []).filter(
-        (l) => l.created_at && new Date(l.created_at) >= todayStart
+        (l) => l.created_at && new Date(l.created_at) >= todayStart,
       ).length;
 
       const sourceCounts: Record<string, number> = {};
@@ -60,85 +71,56 @@ export function useIntegrationHealth(companyId: string | null) {
         sourceCounts[src] = (sourceCounts[src] || 0) + 1;
       });
 
-      // 2. Fetch Active Integrations from team_settings
-      const { data: settings } = await supabase
-        .from('team_settings')
-        .select('*')
-        .eq('company_id', companyId)
-        .maybeSingle();
+      // 2. Which integrations are switched on, and whether any is rate limited.
+      //    A telecaller is refused this table by design; that is not a failure
+      //    worth blocking the screen on, but anything else is.
+      const { data: creds, error: credsError } = await supabase
+        .from('integration_credentials')
+        .select('provider, config, is_active')
+        .eq('company_id', companyId);
 
-      let activeIntegrationsCount = 0;
-      if (settings) {
-        // Facebook
-        if ((settings.facebook_config as any)?.isActive) activeIntegrationsCount++;
-        // IndiaMART
-        if ((settings.indiamart_config as any)?.isActive) activeIntegrationsCount++;
-        // Justdial
-        if ((settings.justdial_config as any)?.isActive) activeIntegrationsCount++;
-        // TradeIndia
-        if ((settings.tradeindia_config as any)?.isActive) activeIntegrationsCount++;
-        // Google Ads
-        if ((settings.googleads_config as any)?.isActive) activeIntegrationsCount++;
-        // WhatsApp Webhook
-        if ((settings.whatsapp_config as any)?.token) activeIntegrationsCount++;
-        // Webhook Secret
-        if ((settings.webhook_config as any)?.secret) activeIntegrationsCount++;
-      }
+      if (credsError && credsError.code !== '42501') throw credsError;
 
-      // 3. Fetch failed imports in last 24h
-      const { data: failedLogs } = await supabase
+      const activeIntegrationsCount = (creds ?? []).filter((c) => c.is_active).length;
+
+      const isRateLimited = (creds ?? []).some((c) => {
+        const errs = (c.config as { lastSyncErrors?: unknown[] } | null)?.lastSyncErrors ?? [];
+        return errs
+          .map((e) => String(e).toLowerCase())
+          .some((e) => e.includes('429') || e.includes('rate limit') || e.includes('ratelimit'));
+      });
+
+      // 3. Imports that failed in the last day
+      const { data: failedLogs, error: failedError } = await supabase
         .from('import_logs')
         .select('id')
         .eq('company_id', companyId)
         .eq('status', 'failed')
         .gte('created_at', yesterday.toISOString());
 
-      const failedSyncs24h = (failedLogs || []).length;
+      if (failedError) throw failedError;
 
-      // 4. Webhook response time & Plan limits (simulated / calculated from audit logs)
-      const { data: auditLogs } = await supabase
-        .from('audit_logs')
-        .select('details, timestamp')
-        .eq('company_id', companyId)
-        .gte('timestamp', yesterday.toISOString())
-        .order('timestamp', { ascending: false });
+      // 4. The plan's real lead ceiling. NULL in plan_limits means unlimited,
+      //    which is the same convention src/config/pricing.ts uses.
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .select('plan')
+        .eq('id', companyId)
+        .maybeSingle();
 
-      // Parse average latency if written in audit logs details, otherwise fall back to stable 18ms
-      let avgWebhookResponseTime = 18;
-      if (auditLogs && auditLogs.length > 0) {
-        const latencyHits = auditLogs
-          .map((a) => {
-            const match = (a.details || '').match(/(\d+)ms/);
-            return match ? parseInt(match[1]) : null;
-          })
-          .filter((v): v is number => v !== null);
+      if (companyError) throw companyError;
 
-        if (latencyHits.length > 0) {
-          avgWebhookResponseTime = Math.round(
-            latencyHits.reduce((sum, val) => sum + val, 0) / latencyHits.length
-          );
-        }
-      }
+      let leadLimit: number | null = null;
+      if (company?.plan) {
+        const { data: planRow, error: planError } = await supabase
+          .from('plan_limits')
+          .select('lead_limit')
+          .eq('id', company.plan)
+          .maybeSingle();
 
-      // Calculate apiQuotaUsagePct
-      // Standard Free tier limit is 5000 leads, calculate usage pct
-      const leadLimit = 5000;
-      const apiQuotaUsagePct = Math.min(Math.round((totalLeads / leadLimit) * 100), 100);
-
-      // 5. Check if any channel is rate-limited (scan setting error logs)
-      let isRateLimited = false;
-      if (settings) {
-        const errorStrings: string[] = [
-          ...((settings.facebook_config as any)?.lastSyncErrors || []),
-          ...((settings.indiamart_config as any)?.lastSyncErrors || []),
-          ...((settings.justdial_config as any)?.lastSyncErrors || []),
-          ...((settings.tradeindia_config as any)?.lastSyncErrors || []),
-          ...((settings.googleads_config as any)?.lastSyncErrors || []),
-        ].map((e) => String(e).toLowerCase());
-
-        if (errorStrings.some((e) => e.includes('429') || e.includes('rate limit') || e.includes('ratelimit'))) {
-          isRateLimited = true;
-        }
+        if (planError) throw planError;
+        // bigint arrives as a string from PostgREST; 50000 === '50000' is false.
+        leadLimit = planRow?.lead_limit == null ? null : Number(planRow.lead_limit);
       }
 
       return {
@@ -146,13 +128,12 @@ export function useIntegrationHealth(companyId: string | null) {
         leadsToday,
         sourceCounts,
         activeIntegrationsCount,
-        failedSyncs24h,
-        avgWebhookResponseTime,
-        apiQuotaUsagePct,
+        failedSyncs24h: (failedLogs || []).length,
+        leadLimit,
         isRateLimited,
       };
     },
     enabled: !!companyId,
-    refetchInterval: 15_000, // Refresh health stats every 15s automatically
+    refetchInterval: 15_000,
   });
 }
