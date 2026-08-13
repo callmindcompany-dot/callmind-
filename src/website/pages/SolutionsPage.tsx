@@ -41,7 +41,9 @@ const solutions = [
       'Structured follow-up call queues per agent',
       '1-click SIM dialing with zero call recording overhead',
       'Post-call stage updates and quick notes',
-      'Audit log history for every customer interaction',
+      // Was "every customer interaction". Ordinary calls and status changes
+      // are not audited; deletions, reassignments and document access are.
+      'Audit log history for deletions, reassignments and document access',
     ],
   },
   {

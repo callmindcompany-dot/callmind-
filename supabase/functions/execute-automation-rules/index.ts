@@ -1,5 +1,6 @@
 import { Sentry } from "../_shared/sentry.ts";
 import { checkRateLimit } from "../_shared/rateLimit.ts";
+import { invokeOrThrow } from "../_shared/dispatch.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8"
 
@@ -39,22 +40,25 @@ serve(async (req) => {
       for (const step of steps) {
         try {
           if (step.type === "send_whatsapp") {
-            await supabase.functions.invoke("send-whatsapp-message", {
-              body: {
-                lead_id: lead.id,
-                lead_phone: lead.phone,
-                message_content: "Automated sequence notification",
-                company_id
-              }
+            // FIXME: this sends step.config's message, not a fixed string. The
+            // body below is a placeholder that would reach a real customer as
+            // "Automated sequence notification" no matter what the owner typed
+            // into the rule. It is unreachable today because
+            // send-whatsapp-message refuses, and it must not be switched on
+            // until it reads the configured content.
+            await invokeOrThrow(supabase, "send-whatsapp-message", {
+              lead_id: lead.id,
+              lead_phone: lead.phone,
+              message_content: step.config?.message ?? "Automated sequence notification",
+              company_id
             })
           } else if (step.type === "send_email" && lead.email) {
-            await supabase.functions.invoke("send-email", {
-              body: {
-                to_email: lead.email,
-                subject: "Workflow Update",
-                body_content: "Automated email sequence notification",
-                company_id
-              }
+            // Same placeholder problem as the WhatsApp branch above.
+            await invokeOrThrow(supabase, "send-email", {
+              to_email: lead.email,
+              subject: step.config?.subject ?? "Workflow Update",
+              body_content: step.config?.body ?? "Automated email sequence notification",
+              company_id
             })
           } else if (step.type === "change_status") {
             await supabase
@@ -83,7 +87,7 @@ serve(async (req) => {
             trigger_type: rule.trigger_type,
             action_type: step.type,
             status: "failed",
-            error_message: 'Internal server error'
+            error_message: String(err?.message ?? err).slice(0, 500)
           })
         }
       }

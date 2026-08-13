@@ -237,7 +237,7 @@ POST https://callmind.app/v1/webhooks/facebook
 
 Include your workspace API Key header:
 \`\`\`http
-x-callmind-key: YOUR_WORKSPACE_API_KEY
+x-callmind-key: <supabase-access-token>
 \`\`\`
         `
       }
@@ -252,20 +252,43 @@ x-callmind-key: YOUR_WORKSPACE_API_KEY
       {
         id: 'api-auth-headers',
         slug: 'api-auth-headers',
-        title: 'API Authentication & Bearer Tokens',
+        title: 'API Authentication',
         category: 'api-reference',
-        summary: 'Authenticate API requests using Workspace Bearer Tokens.',
+        summary: 'How these endpoints authenticate, and what does not exist yet.',
         readTime: '2 min read',
-        lastUpdated: '2026-07-30',
-        tags: ['API', 'Auth', 'Bearer Token'],
+        lastUpdated: '2026-08-13',
+        tags: ['API', 'Auth'],
+        /*
+         * This page told developers to send "Bearer <supabase-access-token>".
+         * There is no workspace API key: no api_keys table, no issuance screen,
+         * and nothing that would accept one. src/middleware/authGuard.ts reads
+         * the Authorization header and validates it with
+         * supabaseAdmin.auth.getUser(token) -- a signed-in user's Supabase
+         * access token, which is a different thing with different lifetime and
+         * scope. Anyone following the old page could not have obtained the
+         * credential it asked for.
+         */
         content: `
-### Authentication Header
-Pass your Workspace API Key in the \`Authorization\` HTTP header:
+### There is no workspace API key yet
+
+CallMind does not issue long-lived API keys. If you are looking for a key to
+paste into a script or another system, it does not exist today — say so in
+support and it will count towards building it.
+
+### What these endpoints do accept
+
+The routes below are the same ones the CallMind web app calls, and they
+authenticate the signed-in user's Supabase access token:
 
 \`\`\`http
-Authorization: Bearer YOUR_WORKSPACE_API_KEY
+Authorization: Bearer <supabase-access-token>
 Content-Type: application/json
 \`\`\`
+
+That token belongs to a person, not to a workspace. It expires, it carries that
+user's role and company, and it is refreshed by the app — so it is suitable for
+exploring the API, and not for a background integration that has to keep
+running on its own.
         `
       },
       {
@@ -286,7 +309,7 @@ Use this endpoint to push leads from landing pages or external systems into Call
           path: '/api/leads',
           description: 'Pushes a new lead into the workspace queue.',
           headers: {
-            'Authorization': 'Bearer YOUR_WORKSPACE_API_KEY',
+            'Authorization': 'Bearer <supabase-access-token>',
             'Content-Type': 'application/json'
           },
           requestBody: JSON.stringify({
@@ -308,7 +331,7 @@ Use this endpoint to push leads from landing pages or external systems into Call
               language: 'bash',
               label: 'cURL',
               code: `curl -X POST https://callmind.app/api/leads \\
-  -H "Authorization: Bearer YOUR_WORKSPACE_API_KEY" \\
+  -H "Authorization: Bearer <supabase-access-token>" \\
   -H "Content-Type: application/json" \\
   -d '{
     "name": "Rajesh Kumar",
@@ -324,7 +347,7 @@ Use this endpoint to push leads from landing pages or external systems into Call
               code: `const response = await fetch('https://callmind.app/api/leads', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer YOUR_WORKSPACE_API_KEY',
+    'Authorization': 'Bearer <supabase-access-token>',
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
@@ -345,7 +368,7 @@ console.log(data);`
 
 url = "https://callmind.app/api/leads"
 headers = {
-    "Authorization": "Bearer YOUR_WORKSPACE_API_KEY",
+    "Authorization": "Bearer <supabase-access-token>",
     "Content-Type": "application/json"
 }
 payload = {
@@ -381,7 +404,7 @@ print(response.json())`
           path: '/api/leads?status=New&limit=10',
           description: 'Returns a list of leads for the workspace.',
           headers: {
-            'Authorization': 'Bearer YOUR_WORKSPACE_API_KEY'
+            'Authorization': 'Bearer <supabase-access-token>'
           },
           responseBody: JSON.stringify({
             total: 142,
@@ -401,13 +424,13 @@ print(response.json())`
               language: 'bash',
               label: 'cURL',
               code: `curl -X GET "https://callmind.app/api/leads?status=New&limit=10" \\
-  -H "Authorization: Bearer YOUR_WORKSPACE_API_KEY"`
+  -H "Authorization: Bearer <supabase-access-token>"`
             },
             {
               language: 'javascript',
               label: 'JavaScript',
               code: `const response = await fetch('https://callmind.app/api/leads?status=New&limit=10', {
-  headers: { 'Authorization': 'Bearer YOUR_WORKSPACE_API_KEY' }
+  headers: { 'Authorization': 'Bearer <supabase-access-token>' }
 });
 const data = await response.json();`
             }
@@ -432,7 +455,7 @@ Records completed call details from telecallers or automated dialers.
           path: '/api/calls/log',
           description: 'Records a completed sales call entry.',
           headers: {
-            'Authorization': 'Bearer YOUR_WORKSPACE_API_KEY',
+            'Authorization': 'Bearer <supabase-access-token>',
             'Content-Type': 'application/json'
           },
           requestBody: JSON.stringify({
@@ -453,7 +476,7 @@ Records completed call details from telecallers or automated dialers.
               language: 'bash',
               label: 'cURL',
               code: `curl -X POST https://callmind.app/api/calls/log \\
-  -H "Authorization: Bearer YOUR_WORKSPACE_API_KEY" \\
+  -H "Authorization: Bearer <supabase-access-token>" \\
   -H "Content-Type: application/json" \\
   -d '{
     "lead_id": "lead_89f7a2b1c4e",

@@ -40,7 +40,10 @@ const PlanCard: React.FC<PlanCardProps> = ({
     >
       {isRecommended && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest shadow-xl shadow-brand-500/20 z-20">
-          MOST POPULAR
+          {/* Was "MOST POPULAR". The prop is already called isRecommended;
+              the label now matches it, and matches the fact that no plan has
+              been bought yet. */}
+          RECOMMENDED
         </div>
       )}
       

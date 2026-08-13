@@ -1,5 +1,6 @@
 import { Sentry } from "../_shared/sentry.ts";
 import { checkRateLimit } from "../_shared/rateLimit.ts";
+import { invokeOrThrow } from "../_shared/dispatch.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8"
 
@@ -39,27 +40,23 @@ serve(async (req) => {
       try {
         if (msg.channel === "whatsapp" && lead?.phone) {
           // Invoke outbound Meta API
-          await supabase.functions.invoke("send-whatsapp-message", {
-            body: {
-              lead_id: msg.lead_id,
-              lead_phone: lead.phone,
-              message_content: msg.content,
-              company_id: msg.company_id
-            }
+          await invokeOrThrow(supabase, "send-whatsapp-message", {
+            lead_id: msg.lead_id,
+            lead_phone: lead.phone,
+            message_content: msg.content,
+            company_id: msg.company_id
           })
         } else if (msg.channel === "email" && lead?.email) {
           // Invoke SMTP Relay
-          await supabase.functions.invoke("send-email", {
-            body: {
-              to_email: lead.email,
-              subject: msg.subject || "Relayed Message",
-              body_content: msg.content,
-              company_id: msg.company_id
-            }
+          await invokeOrThrow(supabase, "send-email", {
+            to_email: lead.email,
+            subject: msg.subject || "Relayed Message",
+            body_content: msg.content,
+            company_id: msg.company_id
           })
         }
 
-        // Mark as sent successfully
+        // Only now, and only because the dispatch above did not throw.
         await supabase
           .from("scheduled_messages")
           .update({ status: "sent" })
@@ -69,7 +66,9 @@ serve(async (req) => {
         Sentry.captureException(err);
         await supabase
           .from("scheduled_messages")
-          .update({ status: "failed", error_message: 'Internal server error' })
+          // The reason has to survive: "failed" with no cause sends whoever is
+          // looking to the logs of a function that already forgot.
+          .update({ status: "failed", error_message: String(err?.message ?? err).slice(0, 500) })
           .eq("id", msg.id)
       }
     }

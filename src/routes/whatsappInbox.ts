@@ -76,7 +76,10 @@ whatsappInboxRouter.post('/conversations/:id/messages', authGuard, async (req: R
     );
 
     if (!result.success) {
-      res.status(500).json({ error: result.error });
+      // 501, not 500: sending is not implemented rather than broken. The
+      // mandatory fields are already rejected as 400 above, so this is the only
+      // remaining failure and the client should show it as a limitation.
+      res.status(501).json({ error: result.error });
       return;
     }
 

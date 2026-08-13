@@ -28,7 +28,13 @@ const securityPillars = [
   {
     icon: FileText,
     title: 'Audit Logs & Activity Trails',
-    description: 'Every stage change, lead export, and telecaller action is recorded in immutable audit logs accessible from your founder dashboard.',
+    // Named three things, two of which are not logged. AuditService.logEvent is
+    // called for bulk lead distribution and assignment, lead delete and
+    // restore, document upload and view, and admin metadata sync -- there is no
+    // call on a status change and none on an export. "Immutable" was wrong too:
+    // 20260818000000_account_deletion.sql updates these rows to detach a
+    // deleted user. The page now claims what the code does.
+    description: 'Lead deletions, bulk reassignments, document access and admin changes are written to an audit log your founder dashboard can review.',
     tag: 'Compliance',
   },
   // Backed by the export-user-data / purge-user-data edge functions — both

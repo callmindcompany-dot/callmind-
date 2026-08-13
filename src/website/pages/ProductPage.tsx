@@ -41,7 +41,10 @@ const PRODUCT_MODULES = [
       'Multi-source API polling & webhook triggers',
       'Automatic phone number sanitization & deduplication',
       'Custom JSON metadata extraction (Budget, Location, Requirement)',
-      'Instant SMS / WhatsApp notification to assigned agent'
+      // Was "Instant SMS / WhatsApp notification to assigned agent". There is
+      // no SMS sending anywhere in the product, and WhatsApp does not
+      // dispatch. In-app and push notification is real -- notification.service.
+      'Instant in-app notification to the assigned agent'
     ]
   },
   {

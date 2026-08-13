@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Check, Zap, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PRICING_PLANS, FREE_TRIAL_CONFIG } from '../../config/pricing';
+import { describePlan, describeUpgrade, PLAN_DESCRIPTIONS } from '../data/planCopy';
 
 /**
  * Plan copy for the landing page.
@@ -11,47 +12,51 @@ import { PRICING_PLANS, FREE_TRIAL_CONFIG } from '../../config/pricing';
  * drift from what the billing flow actually charges. This component previously
  * hardcoded ₹599/₹1199/₹1799 and advertised an "Enterprise" plan with SSO and a
  * 99.9% uptime guarantee — none of which exist in the pricing config.
+ *
+ * The feature lists used to be hand-typed here as well, which made this a
+ * second source of truth for what each plan includes — the exact thing
+ * src/config/pricing.ts exists to prevent. It claimed "AI talk scripts & lead
+ * scoring", "Unlimited leads & pipeline stages", "Full read/write REST API
+ * access" and "Advanced AI lead scoring": nothing writes a lead score, there
+ * is no pipeline_stages table, and no customer-facing API exists. They are
+ * derived from the config now, so the page can only advertise what the plan
+ * actually holds.
+ *
+ * Growth and Pro show the difference from the plan below rather than a full
+ * list, which is the comparison a visitor is actually making.
  */
-const PLAN_COPY = [
-  {
-    key: 'starter',
-    desc: 'For small sales teams starting with SIM telecalling',
-    popular: false,
-    features: [
-      'Android app with 1-click SIM dialing',
-      'Excel & CSV lead import',
-      'Call duration & timestamp logs',
-      'Performance dashboards',
-      'Email support',
-    ],
-  },
-  {
-    key: 'growth',
-    desc: 'For scaling SMEs that need automated lead capture and AI scripts',
-    popular: true,
-    features: [
-      'Everything in Starter, plus:',
-      'IndiaMART GLUSR webhook integration',
-      'Meta Lead Ads auto-capture',
-      'AI talk scripts & lead scoring',
-      'Kanban lead pipeline board',
-      'Automated 18% GST tax invoices',
-      'Chat support',
-    ],
-  },
-  {
-    key: 'pro',
-    desc: 'For large sales teams needing unlimited leads and full API access',
-    popular: false,
-    features: [
-      'Everything in Growth, plus:',
-      'Unlimited leads & pipeline stages',
-      'Full read/write REST API access',
-      'Advanced AI lead scoring',
-      'Priority WhatsApp support',
-    ],
-  },
-] as const;
+const QUALITATIVE: Record<string, string[]> = {
+  // Prose the config does not carry. Each line was checked against the code:
+  // the dialer is a tel: hand-off in the Expo app, import is SmartImportModal,
+  // and both lead sources have live pollers (supabase/functions/indiamart-poll
+  // and facebook-poll, routed through processInboundLead in dbAdapter).
+  starter: [
+    'Android app with 1-click SIM dialling',
+    'Excel & CSV lead import',
+    'Call duration & timestamp logs',
+    'Performance dashboards',
+  ],
+  growth: [
+    'IndiaMART lead auto-capture',
+    'Meta Lead Ads auto-capture',
+  ],
+  pro: [],
+};
+
+const PLAN_COPY = (['starter', 'growth', 'pro'] as const).map((key, i, keys) => {
+  const plan = PRICING_PLANS[key];
+  const previous = i > 0 ? PRICING_PLANS[keys[i - 1]] : undefined;
+
+  const derived = previous ? describeUpgrade(plan, previous) : describePlan(plan);
+  const lead = previous ? [`Everything in ${previous.name}, plus:`] : [];
+
+  return {
+    key,
+    desc: PLAN_DESCRIPTIONS[key],
+    popular: Boolean(plan.highlight),
+    features: [...lead, ...QUALITATIVE[key], ...derived],
+  };
+});
 
 export const PricingPreview = () => {
   const navigate = useNavigate();
@@ -135,7 +140,9 @@ export const PricingPreview = () => {
                 {p.popular && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-brand-500 to-brand-500 text-white text-[11px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1">
                     <Sparkles size={12} />
-                    Most Popular for SMEs
+                    {/* Was "Most Popular for SMEs". No plan has been bought
+                        yet, so that described customers who do not exist. */}
+                    Recommended
                   </div>
                 )}
 

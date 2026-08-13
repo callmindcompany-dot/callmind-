@@ -84,14 +84,22 @@ describe('usePlan entitlements', () => {
    *
    * bulkLeadExport is the one capability the trial does not get: a PDF report
    * shows the buyer what the product can tell them, while a CSV of every lead
-   * is the database walking out. aiLeadScoring and apiAccess stay off
-   * everywhere they are not built.
+   * is the database walking out.
+   *
+   * aiLeadScoring and apiAccess are false on **every** plan, including the two
+   * that used to sell them. Growth carried aiLeadScoring: true and apiAccess:
+   * 'read_only', Pro carried 'advanced' and 'full_read_write', and neither
+   * exists: a query of the live database found no lead with a neural_score and
+   * nothing in the codebase writes one, and there is no api_keys table, no key
+   * issuance and no route that authenticates a customer key. This row is the
+   * guard -- flipping one back to true here without building it turns the
+   * pricing cards back on, since they render straight from the config.
    */
   it.each([
     ['trial',   { bulkImport: true,  pdfExport: true, bulkLeadExport: false, teamTargets: true,  aiLeadScoring: false, apiAccess: false }],
     ['starter', { bulkImport: true,  pdfExport: true, bulkLeadExport: true,  teamTargets: true,  aiLeadScoring: false, apiAccess: false }],
-    ['growth',  { bulkImport: true,  pdfExport: true, bulkLeadExport: true,  teamTargets: true,  aiLeadScoring: true,  apiAccess: true }],
-    ['pro',     { bulkImport: true,  pdfExport: true, bulkLeadExport: true,  teamTargets: true,  aiLeadScoring: true,  apiAccess: true }],
+    ['growth',  { bulkImport: true,  pdfExport: true, bulkLeadExport: true,  teamTargets: true,  aiLeadScoring: false, apiAccess: false }],
+    ['pro',     { bulkImport: true,  pdfExport: true, bulkLeadExport: true,  teamTargets: true,  aiLeadScoring: false, apiAccess: false }],
   ])('%s unlocks the right features', async (plan, expected) => {
     setCompany({ plan, plan_status: 'active', seat_limit: 10, billing_cycle: 'monthly', plan_expires_at: null, trial_ends_at: null });
     const { result } = await render();

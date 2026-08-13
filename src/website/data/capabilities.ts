@@ -56,7 +56,10 @@ export const CAPABILITY_GROUPS: Record<CapabilityGroup, { label: string; blurb: 
   },
   communication: {
     label: 'Communication',
-    blurb: 'WhatsApp and email from one inbox, on your own credentials.',
+    // Was "WhatsApp and email from one inbox, on your own credentials."
+    // Neither channel sends: the WhatsApp functions never reach Meta, and
+    // send-email reports custom-domain sending disabled.
+    blurb: 'Every conversation with a lead in one place, whoever handled it.',
   },
   analytics: {
     label: 'Reports & Analytics',
@@ -178,31 +181,41 @@ export const CAPABILITIES: Capability[] = [
     group: 'automation',
     source: ['src/components/AutomationPage.tsx', 'supabase/functions/execute-automation-rules'],
   },
-  {
-    title: 'Message sequences',
-    description:
-      'Build a multi-step follow-up sequence once and let it run for every lead that enters it.',
-    group: 'automation',
-    source: ['src/components/SequencesPage.tsx', 'src/hooks/useSequences.ts'],
-  },
-  {
-    title: 'Scheduled messages',
-    description: 'Queue WhatsApp and email to go out at a chosen time, handled by a background worker.',
-    group: 'automation',
-    source: ['src/components/SchedulerPage.tsx', 'supabase/functions/send-scheduled-messages'],
-  },
+  /*
+   * "Message sequences" and "Scheduled messages" are gone from this list.
+   *
+   * Both build a queue and hand it to a worker, and the worker has nothing to
+   * hand it to: send-whatsapp-message never reached Meta, and send-email
+   * reports custom-domain sending disabled. Worse, the worker used to mark
+   * every row 'sent' regardless, because supabase.functions.invoke resolves
+   * with { error } instead of throwing and the surrounding try/catch never
+   * fired. It now records the real failure (see
+   * supabase/functions/_shared/dispatch.ts).
+   *
+   * The screens still exist and the queue still works. What does not exist is
+   * delivery, which is the entire point of a scheduled message -- so listing
+   * them as capabilities promised the one part that is missing. They come back
+   * when a channel sends.
+   */
 
   // ── Communication ──────────────────────────────────────────────────────────
   {
-    title: 'WhatsApp Business messaging',
+    title: 'WhatsApp follow-up from the lead',
+    /*
+     * Was "Send and receive WhatsApp on your own Business API credentials,
+     * with replies landing in a shared inbox."
+     *
+     * Neither direction is connected to Meta. send-whatsapp-message had the
+     * Graph API call commented out and returned an invented message id;
+     * receive-whatsapp-webhook stored nothing and answered 200, so Meta would
+     * have considered every inbound message delivered and never retried. Both
+     * now refuse, and this describes the part that works: the telecaller opens
+     * WhatsApp with the lead's number already filled in.
+     */
     description:
-      'Send and receive WhatsApp on your own Business API credentials, with replies landing in a shared inbox.',
+      'Open WhatsApp on the lead’s number straight from the app, without retyping it.',
     group: 'communication',
-    source: [
-      'supabase/functions/send-whatsapp-message',
-      'supabase/functions/receive-whatsapp-webhook',
-      'src/components/ChatInbox.tsx',
-    ],
+    source: ['src/components/ChatInbox.tsx'],
   },
   {
     title: 'Email from your own domain',
@@ -375,7 +388,10 @@ export const CAPABILITIES: Capability[] = [
   },
   {
     title: 'Audit logs',
-    description: 'Admin actions, exports and stage changes are recorded and reviewable.',
+    // Exports and stage changes are not logged -- no call site exists for
+    // either. What is logged: lead deletion and restore, bulk distribution and
+    // assignment, document upload and view, admin metadata sync.
+    description: 'Lead deletions, bulk reassignments, document access and admin changes are recorded and reviewable.',
     group: 'trust',
     source: ['src/components/AuditLogPage.tsx', 'src/services/audit.service.ts'],
   },

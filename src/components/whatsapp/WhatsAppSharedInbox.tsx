@@ -19,20 +19,26 @@ export const WhatsAppSharedInbox: React.FC<WhatsAppSharedInboxProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('open');
   const [loading, setLoading] = useState<boolean>(true);
   const [sending, setSending] = useState<boolean>(false);
+  // "No conversations yet" and "the request failed" used to look identical
+  // here, because every catch was empty. They are different things to tell
+  // somebody staring at an empty inbox.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const fetchConversations = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch(`/api/whatsapp/conversations?status=${statusFilter}`);
-      if (res.ok) {
-        const data = await res.json();
-        setConversations(data.conversations || []);
-        if (data.conversations?.length > 0 && !selectedConv) {
-          setSelectedConv(data.conversations[0]);
-        }
+      if (!res.ok) throw new Error(`Could not load conversations (${res.status})`);
+      const data = await res.json();
+      setConversations(data.conversations || []);
+      if (data.conversations?.length > 0 && !selectedConv) {
+        setSelectedConv(data.conversations[0]);
       }
-    } catch {
-      // Handle error gracefully
+    } catch (err: any) {
+      setLoadError(err?.message || 'Could not load conversations.');
+      setConversations([]);
     } finally {
       setLoading(false);
     }
@@ -41,12 +47,12 @@ export const WhatsAppSharedInbox: React.FC<WhatsAppSharedInboxProps> = ({
   const fetchMessages = async (convId: string) => {
     try {
       const res = await fetch(`/api/whatsapp/conversations/${convId}/messages`);
-      if (res.ok) {
-        const data = await res.json();
-        setMessages(data.messages || []);
-      }
-    } catch {
-      // Handle error
+      if (!res.ok) throw new Error(`Could not load this conversation (${res.status})`);
+      const data = await res.json();
+      setMessages(data.messages || []);
+    } catch (err: any) {
+      setLoadError(err?.message || 'Could not load this conversation.');
+      setMessages([]);
     }
   };
 
@@ -66,6 +72,7 @@ export const WhatsAppSharedInbox: React.FC<WhatsAppSharedInboxProps> = ({
     const textToSend = inputText.trim();
     setInputText('');
     setSending(true);
+    setSendError(null);
 
     try {
       const res = await fetch(`/api/whatsapp/conversations/${selectedConv.id}/messages`, {
@@ -74,12 +81,19 @@ export const WhatsAppSharedInbox: React.FC<WhatsAppSharedInboxProps> = ({
         body: JSON.stringify({ messageText: textToSend }),
       });
 
-      if (res.ok) {
-        await fetchMessages(selectedConv.id);
-        await fetchConversations();
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Message not sent (${res.status})`);
       }
-    } catch {
-      // Error handling
+
+      await fetchMessages(selectedConv.id);
+      await fetchConversations();
+    } catch (err: any) {
+      // Put the text back. The input was cleared optimistically, and a failed
+      // send used to leave the operator with an empty box, no message in the
+      // thread and no explanation -- so the natural reading was that it went.
+      setInputText(textToSend);
+      setSendError(err?.message || 'Message not sent.');
     } finally {
       setSending(false);
     }
@@ -129,7 +143,18 @@ export const WhatsAppSharedInbox: React.FC<WhatsAppSharedInboxProps> = ({
           </div>
         </div>
 
+        {loadError && (
+          <div className="mx-3 mt-3 px-3 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-[11px] font-semibold text-rose-800">
+            {loadError}
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+          {!loading && !loadError && filteredConversations.length === 0 && (
+            <div className="p-6 text-center text-xs font-medium text-slate-400">
+              No conversations yet.
+            </div>
+          )}
           {filteredConversations.map((conv) => (
             <div
               key={conv.id}
@@ -201,6 +226,13 @@ export const WhatsAppSharedInbox: React.FC<WhatsAppSharedInboxProps> = ({
             </div>
 
             {/* Input Box */}
+            {sendError && (
+              <div className="px-3 pt-3 bg-white">
+                <div className="px-3 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-[11px] font-semibold text-rose-800">
+                  {sendError}
+                </div>
+              </div>
+            )}
             <div className="p-3 bg-white border-t border-slate-200 flex items-center gap-2">
               <input
                 type="text"

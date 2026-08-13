@@ -41,33 +41,24 @@ describe('WhatsApp Shared Inbox (Step 3)', () => {
       expect(res.error).toBe('Missing mandatory fields');
     });
 
-    it('attaches unique idempotency key when storing outbound message', async () => {
+    /*
+     * This used to assert that a well-formed send stored a whatsapp_messages
+     * row with an idempotency key and returned success: true.
+     *
+     * It did all of that, and never sent anything: the row was written with
+     * status 'sent' while supabase/functions/send-whatsapp-message had the Meta
+     * Graph API call commented out and returned a hardcoded
+     * "wamid.HBgLOTE5OTk5OTk5OTk5..." for a message that did not exist. So the
+     * test passed on the exact behaviour that made the product lie -- the
+     * telecaller saw the message delivered and the customer heard nothing.
+     *
+     * The assertion is inverted now: nothing is written and nothing succeeds
+     * until there is a provider to send through.
+     */
+    it('refuses, and writes no row, while no provider is connected', async () => {
       const { supabaseAdmin } = await import('../lib/dbAdapter');
-      let capturedPayload: any = null;
-
-      (supabaseAdmin.from as any).mockImplementation((table: string) => {
-        if (table === 'whatsapp_messages') {
-          return {
-            insert: (payload: any) => {
-              capturedPayload = payload;
-              return {
-                select: () => ({
-                  single: async () => ({ data: { id: 'msg-uuid-123' }, error: null }),
-                }),
-              };
-            },
-          };
-        }
-        if (table === 'whatsapp_conversations') {
-          return {
-            update: () => ({
-              eq: () => ({
-                eq: async () => ({ data: null, error: null }),
-              }),
-            }),
-          };
-        }
-        return {};
+      (supabaseAdmin.from as any).mockImplementation(() => {
+        throw new Error('sendMessage must not touch the database');
       });
 
       const res = await WhatsAppInboxService.sendMessage(
@@ -77,9 +68,10 @@ describe('WhatsApp Shared Inbox (Step 3)', () => {
         'Hello from CallMind Inbox!'
       );
 
-      expect(res.success).toBe(true);
-      expect(capturedPayload).toBeDefined();
-      expect(capturedPayload.idempotency_key).toContain('wa_company-1_conv-123');
+      expect(res.success).toBe(false);
+      expect(res.messageId).toBeUndefined();
+      expect(res.error).toMatch(/not available yet/i);
+      expect(supabaseAdmin.from).not.toHaveBeenCalled();
     });
   });
 });

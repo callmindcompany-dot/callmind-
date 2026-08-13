@@ -8,19 +8,33 @@ import { useNavigate } from 'react-router-dom';
 import { SectionHeader } from '../components/SectionHeader';
 
 /**
- * Every card below maps to something that actually exists in this repo — a
- * Supabase edge function or an API route — so the marketing page can't claim an
- * integration the product doesn't have:
+ * Every card below maps to something that actually *works* — not merely to a
+ * file with the right name:
  *   IndiaMART      -> supabase/functions/indiamart-poll
  *   JustDial       -> supabase/functions/justdial-poll
  *   TradeIndia     -> supabase/functions/tradeindia-poll
  *   Meta Lead Ads  -> supabase/functions/facebook-poll
  *   Website Forms  -> supabase/functions/webhook-receiver (+ WebsiteFormPanel)
  *   Custom Webhook -> supabase/functions/webhook-receiver
- *   WhatsApp       -> supabase/functions/send-whatsapp-message + receive-whatsapp-webhook
- *   Email / SMTP   -> supabase/functions/send-email + test-smtp
  *   Excel / Sheets -> in-app importer
  *   Razorpay       -> src/routes/payments.ts
+ *
+ * Two cards are gone, and the reason is the reason this comment now says
+ * "works" rather than "exists":
+ *
+ *   WhatsApp Business  send-whatsapp-message and receive-whatsapp-webhook are
+ *                      both present and neither talks to Meta. The first had
+ *                      the Graph API call commented out and returned an
+ *                      invented message id; the second stored nothing and
+ *                      answered 200. Listing them as proof was checking the
+ *                      filenames, not the code inside them.
+ *
+ *   Email / SMTP       send-email answers `success: false, "Custom domain
+ *                      email sending is currently disabled"`, and
+ *                      emailFromOwnDomain is false on every plan in
+ *                      src/config/pricing.ts. Honest function, false card.
+ *
+ * Put them back in the same change that makes them send something.
  */
 const allIntegrations = [
   { icon: Database, name: 'IndiaMART', desc: 'GLUSR webhook lead sync' },
@@ -29,8 +43,6 @@ const allIntegrations = [
   { icon: Facebook, name: 'Meta Lead Ads', desc: 'Facebook & Instagram forms' },
   { icon: Globe, name: 'Website Forms', desc: 'Embed a form, leads flow in' },
   { icon: Webhook, name: 'Custom Webhooks', desc: 'POST leads from any source' },
-  { icon: MessageCircle, name: 'WhatsApp Business', desc: 'Send & receive on WhatsApp' },
-  { icon: Mail, name: 'Email / SMTP', desc: 'Send email from your own domain' },
   { icon: FileSpreadsheet, name: 'Excel & Google Sheets', desc: 'Bulk import with AI mapping' },
   { icon: CreditCard, name: 'Razorpay', desc: 'GST-compliant subscription billing' },
 ];
@@ -42,7 +54,7 @@ export const IntegrationsPage = () => {
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead 
         title="Integrations | CallMind by Voolabs" 
-        description="Connect CallMind with IndiaMART, JustDial, TradeIndia, Meta Lead Ads, WhatsApp, email, website forms and custom webhooks to auto-capture leads."
+        description="Connect CallMind with IndiaMART, JustDial, TradeIndia, Meta Lead Ads, website forms and custom webhooks to auto-capture leads."
         path="/integrations"
       />
       <Navbar />

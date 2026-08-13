@@ -100,6 +100,24 @@ describe('pricing page', () => {
     }
   });
 
+  it('the invoice names the entity that actually sells this', () => {
+    // The footer credited "CallMind Systems India", which is not a company that
+    // exists. The operating entity is the one on the Terms and the privacy
+    // policy, and an Indian B2B invoice needs the seller's name and address for
+    // the buyer to claim input tax credit -- the seller side was absent
+    // entirely, leaving only "Billed To".
+    const billing = code('src/components/BillingPage.tsx');
+
+    expect(billing, 'invented seller name is back').not.toContain('CallMind Systems India');
+    expect(billing).toContain('OPERATOR_NAME');
+    expect(billing).toContain('ENTITY.address');
+    expect(billing).toMatch(/Billed By/);
+
+    // The GSTIN line is conditional. Printing "GSTIN:" with nothing after it
+    // reads as a broken invoice; printing an invented one would be worse.
+    expect(billing).toMatch(/ENTITY\.gstin \?/);
+  });
+
   it('quotes the annual saving from the config rather than a round guess', () => {
     const page = code(PAGE);
     // Was a hardcoded "Save ~20%". The three plans do not discount equally.

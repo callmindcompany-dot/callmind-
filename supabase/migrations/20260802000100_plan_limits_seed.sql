@@ -53,8 +53,8 @@ INSERT INTO public.plan_limits (
 ) VALUES
   ('trial', 'Free Trial', 0, 0, 3, 1, 1000, 30, 50, 2, 200, 'off', true, 'off', true, 0, 500, 5, 5),
   ('starter', 'Starter', 699, 599, 10, 1, 50000, 30, 50, 2, 2000, 'off', true, 'off', true, 3, 0, 10, 10),
-  ('growth', 'Growth', 1199, 999, 25, 2, 250000, NULL, 200, 15, 10000, 'on', true, 'read_only', true, 5, 0, 25, 25),
-  ('pro', 'Pro', 1499, 1299, 50, 3, NULL, NULL, NULL, 50, NULL, 'advanced', true, 'full_read_write', true, 8, 0, 100, NULL)
+  ('growth', 'Growth', 1199, 999, 25, 2, 250000, NULL, 200, 15, 10000, 'off', true, 'off', true, 5, 0, 25, 25),
+  ('pro', 'Pro', 1499, 1299, 50, 3, NULL, NULL, NULL, 50, NULL, 'off', true, 'off', true, 8, 0, 100, NULL)
 ON CONFLICT (id) DO UPDATE SET
   name             = EXCLUDED.name,
   monthly_price    = EXCLUDED.monthly_price,

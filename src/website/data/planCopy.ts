@@ -39,16 +39,33 @@ const WHATSAPP_LABEL: Record<PlanDetails['whatsappType'], string> = {
 };
 
 /**
- * The bullet list shown on a pricing card. Numbers come from the config; the
- * qualitative lines are fixed and were checked against the code that
- * implements them (see src/website/data/capabilities.ts).
+ * The bullet list shown on a pricing card.
+ *
+ * Every line here has to name something the product does. Five did not, and
+ * they were the five that made the paid tiers look worth paying for:
+ *
+ *   pipeline stages       no pipeline_stages table; identical on every plan,
+ *                         so the number rose with the price and nothing else
+ *   AI lead scoring       nothing writes leads.neural_score
+ *   REST API              no api_keys table, no authenticated route
+ *   WhatsApp Business API sending was never wired to Meta, and reported success
+ *   365 days of audit logs  audit_logs records no customer action, and pg_cron
+ *                         is not installed to expire anything
+ *
+ * They are gone from src/config/pricing.ts, so four of the five disappear from
+ * this list by themselves -- their flags are false and the `if` never fires.
+ * That is the point of deriving copy from the config: the card cannot claim
+ * what the config does not hold. Only the pipeline-stages line was
+ * unconditional, and it is deleted here.
+ *
+ * src/__tests__/planClaimsAreBuilt.test.ts fails if any of them come back
+ * without the implementation arriving first.
  */
 export const describePlan = (plan: PlanDetails): string[] => {
   const bullets: string[] = [
     `${plan.maxAdmins} admin${plan.maxAdmins === 1 ? '' : 's'}`,
     `Up to ${plan.maxSeats} telecaller seats (from 1 seat)`,
     `${describeLeads(plan)} stored`,
-    `${formatCount(plan.pipelineStages, 'pipeline stage')}`,
     `${formatCount(plan.automationRules, 'automation rule')}`,
   ];
 
@@ -81,16 +98,44 @@ export const describePlan = (plan: PlanDetails): string[] => {
   bullets.push(WHATSAPP_LABEL[plan.whatsappType]);
   bullets.push(`${SUPPORT_LABEL[plan.supportType]} (${plan.supportHours}h response)`);
 
-  if (plan.auditLogDays) bullets.push(`${plan.auditLogDays} days of audit logs`);
   if (plan.onboardingCall) bullets.push('Guided onboarding call');
 
   return bullets;
 };
 
+/**
+ * What `plan` adds over `from` — the bullets that actually changed.
+ *
+ * Every card printing its full list means the reader has to diff three
+ * fourteen-line lists by eye to find out what another ₹500 a seat buys, which
+ * is work nobody does. This computes the difference instead of a copywriter
+ * asserting it, so "Everything in Starter, plus…" stays true when a limit
+ * moves in src/config/pricing.ts.
+ *
+ * Compares rendered strings, so a bullet whose number changed counts as added
+ * and one that is word-for-word identical drops out. That is exactly the
+ * distinction a reader cares about.
+ */
+export const describeUpgrade = (plan: PlanDetails, from: PlanDetails): string[] => {
+  const previous = new Set(describePlan(from));
+  return describePlan(plan).filter((line) => !previous.has(line));
+};
+
+/*
+ * One line saying who each plan is for.
+ *
+ * Growth's said "automation, AI scoring and team targets": AI scoring does not
+ * exist, and team targets are on every plan including the free trial, so one
+ * of the three named things was a reason to pay. Pro's said "multi-team
+ * hierarchy and full API access", and there is no customer-facing API at all.
+ *
+ * What separates the plans is volume -- seats, leads, AI credits, automation
+ * rules, import size, storage. So that is what these say.
+ */
 export const PLAN_DESCRIPTIONS: Record<string, string> = {
   starter: 'For small teams starting with SIM telecalling. Your free trial continues straight into Starter.',
-  growth: 'For growing teams that need automation, AI scoring and team targets.',
-  pro: 'For call centres and high-volume teams needing multi-team hierarchy and full API access.',
+  growth: 'For teams that have outgrown Starter: five times the seats, five times the leads, and enough automation rules to run a real follow-up sequence.',
+  pro: 'For call centres working at volume, with unlimited leads and AI credits and the largest team CallMind supports.',
 };
 
 /** The three purchasable plans, ready to render. */
@@ -105,7 +150,10 @@ export const MARKETING_PLANS = (['starter', 'growth', 'pro'] as const).map((id) 
     leads: describeLeads(plan),
     description: PLAN_DESCRIPTIONS[id],
     highlight: Boolean(plan.highlight),
-    badge: plan.highlight ? 'Most Popular' : undefined,
+    // Was "Most Popular". Nobody has bought a plan yet -- one company exists
+    // and it is on trial -- so that was a fact about customers we do not have.
+    // "Recommended" is our opinion, which we are entitled to.
+    badge: plan.highlight ? 'Recommended' : undefined,
     features: describePlan(plan),
   };
 });

@@ -42,6 +42,7 @@ import {
 } from '@/hooks/useBilling';
 import { useTeamMembers } from '@/hooks/useTeam';
 import { PRICING_PLANS, PURCHASABLE_PLAN_IDS, GST_RATE, ALLOWED_TERM_MONTHS } from '@/config/pricing';
+import { ENTITY, OPERATOR_NAME } from '@/config/legal';
 import { describePlan } from '@/website/data/planCopy';
 
 // --- STYLED ODOMETER COMPONENT ---
@@ -518,7 +519,11 @@ export const BillingPage = () => {
     const invoiceNum = `INV-${Date.now().toString().slice(-6)}`;
     const dateStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     const total = customAmount || totals.grandTotal;
-    const base = Math.round(total / 1.18);
+    // The tax printed has to be the tax charged. This divided by a literal
+    // 1.18, so raising GST_RATE in src/config/pricing.ts would have left every
+    // invoice quietly misstating the tax while the charge itself changed --
+    // the same number in two places, which is what pricing.ts exists to stop.
+    const base = Math.round(total / (1 + GST_RATE));
     const gst = total - base;
     const planName = (customPlan || selectedPlan).toUpperCase();
 
@@ -547,8 +552,29 @@ export const BillingPage = () => {
             <div class="brand">CALLMIND CRM</div>
             <div class="title">GST TAX INVOICE</div>
           </div>
+          <!--
+            Who is selling, then who is buying.
+
+            The seller side was missing entirely -- the invoice named only the
+            customer, and the footer credited a trading name no registration
+            exists under. The operating entity is in src/config/legal.ts and is
+            the one on the Terms and the privacy policy, so it is the one that
+            belongs here.
+
+            An Indian B2B invoice needs the seller's name, address and GSTIN
+            for the buyer to claim input tax credit. ENTITY.gstin is empty
+            until registration, so that line is omitted rather than printed
+            blank -- an invoice showing "GSTIN:" with nothing after it looks
+            like a mistake, and one showing a made-up number would be worse.
+          -->
           <div class="details">
             <div>
+              <strong style="color: #64748b; font-size: 11px; text-transform: uppercase;">Billed By:</strong><br/>
+              <span style="font-size: 15px; font-weight: 800; color: #0f172a;">${OPERATOR_NAME}</span><br/>
+              ${ENTITY.address}<br/>
+              ${ENTITY.gstin ? `GSTIN: ${ENTITY.gstin}<br/>` : ''}
+              ${ENTITY.businessEmail}
+              <br/><br/>
               <strong style="color: #64748b; font-size: 11px; text-transform: uppercase;">Billed To:</strong><br/>
               <span style="font-size: 16px; font-weight: 800; color: #0f172a;">${companyData?.name || 'Company Workspace'}</span><br/>
               Admin: ${user?.displayName || user?.email}<br/>
@@ -587,7 +613,7 @@ export const BillingPage = () => {
             </tbody>
           </table>
           <div class="footer">
-            <p>CallMind Systems India • Computer Generated GST Tax Invoice • No Physical Signature Required</p>
+            <p>${ENTITY.business} • Computer Generated GST Tax Invoice • No Physical Signature Required</p>
           </div>
         </div>
         <script>window.print();</script>

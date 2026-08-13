@@ -53,24 +53,14 @@ export class WhatsAppInboxService {
     statusFilter?: string,
     userRole: string = 'founder'
   ): Promise<WhatsAppConversation[]> {
-    if (isPlaceholder || !companyId) {
-      return [
-        {
-          id: 'conv-mock-1',
-          companyId,
-          customerPhone: '+919876543210',
-          customerName: 'Rajesh Kumar',
-          assignedAgentId: agentId || 'agent-1',
-          status: 'open',
-          unreadCount: 2,
-          lastMessageText: 'Interested in Pro subscription pricing',
-          lastMessageAt: new Date().toISOString(),
-          tags: ['Hot Lead', 'Pricing Query'],
-        },
-      ];
-    }
+    // "Rajesh Kumar, interested in Pro subscription pricing" used to be returned
+    // here whenever the database was unconfigured. A demo conversation in a real
+    // customer's inbox is indistinguishable from a real one, and a telecaller
+    // would have chased it.
+    if (!companyId) throw new Error('companyId is required');
+    if (isPlaceholder) throw new Error('Supabase is not configured');
 
-    try {
+    {
       let query = supabaseAdmin.from('whatsapp_conversations').select('*').eq('company_id', companyId);
 
       // Non-supervisor role filter
@@ -84,9 +74,11 @@ export class WhatsAppInboxService {
 
       const { data, error } = await query.order('last_message_at', { ascending: false });
 
-      if (error || !data) return [];
+      // An empty inbox and a failed query look identical to the person reading
+      // the screen, and only one of them means "nobody has written to you".
+      if (error) throw error;
 
-      return data.map((c) => ({
+      return (data ?? []).map((c) => ({
         id: c.id,
         companyId: c.company_id,
         leadId: c.lead_id,
@@ -100,9 +92,6 @@ export class WhatsAppInboxService {
         tags: c.tags || [],
         notes: c.notes,
       }));
-    } catch (err) {
-      logger.error(`[WhatsAppInboxService.getConversations Error ${companyId}]:`, err);
-      return [];
     }
   }
 
@@ -110,32 +99,10 @@ export class WhatsAppInboxService {
    * Fetch message history for a conversation
    */
   static async getMessages(companyId: string, conversationId: string): Promise<WhatsAppMessage[]> {
-    if (isPlaceholder || !companyId) {
-      return [
-        {
-          id: 'msg-mock-1',
-          conversationId,
-          companyId,
-          direction: 'inbound',
-          senderPhone: '+919876543210',
-          messageText: 'Hello, please send product brochure.',
-          status: 'read',
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-        },
-        {
-          id: 'msg-mock-2',
-          conversationId,
-          companyId,
-          direction: 'outbound',
-          senderPhone: 'Company Desk',
-          messageText: 'Thank you for reaching out! Here is our product overview.',
-          status: 'delivered',
-          createdAt: new Date().toISOString(),
-        },
-      ];
-    }
+    if (!companyId) throw new Error('companyId is required');
+    if (isPlaceholder) throw new Error('Supabase is not configured');
 
-    try {
+    {
       const { data, error } = await supabaseAdmin
         .from('whatsapp_messages')
         .select('*')
@@ -143,9 +110,9 @@ export class WhatsAppInboxService {
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
 
-      if (error || !data) return [];
+      if (error) throw error;
 
-      return data.map((m) => ({
+      return (data ?? []).map((m) => ({
         id: m.id,
         conversationId: m.conversation_id,
         companyId: m.company_id,
@@ -157,65 +124,47 @@ export class WhatsAppInboxService {
         idempotencyKey: m.idempotency_key,
         createdAt: m.created_at,
       }));
-    } catch (err) {
-      logger.error(`[WhatsAppInboxService.getMessages Error ${conversationId}]:`, err);
-      return [];
     }
   }
 
   /**
-   * Send outbound WhatsApp message with idempotency key
+   * Outbound WhatsApp sending. Not connected to Meta, and therefore refused.
+   *
+   * This used to insert a row with status 'sent' and return success: true
+   * without ever contacting Meta's Graph API. The telecaller saw the message
+   * appear in the thread marked sent; the customer received nothing, and
+   * nobody could tell from inside the product that the message had gone
+   * nowhere. A feature that is missing is a smaller problem than one that
+   * reports success -- the first is visible, the second is acted upon.
+   *
+   * The two halves that would make this real are both stubs as well:
+   * supabase/functions/send-whatsapp-message has the Graph API call commented
+   * out, and supabase/functions/receive-whatsapp-webhook stores nothing. Until
+   * those dispatch and store, this refuses, and the refusal reaches the UI.
+   *
+   * Deliberately writes no row. A stored message that was never delivered is a
+   * false record of having contacted a customer, which is worse than no record.
    */
   static async sendMessage(
     companyId: string,
     conversationId: string,
-    senderPhone: string,
+    _senderPhone: string,
     messageText: string,
-    templateName?: string
+    _templateName?: string
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     if (!companyId || !conversationId || !messageText) {
       return { success: false, error: 'Missing mandatory fields' };
     }
 
-    const idempotencyKey = `wa_${companyId}_${conversationId}_${Date.now()}`;
-    const now = new Date().toISOString();
+    logger.warn(
+      `[WhatsAppInboxService.sendMessage] refused for company ${companyId}: no WhatsApp provider is connected`,
+    );
 
-    if (!isPlaceholder) {
-      try {
-        const { data, error } = await supabaseAdmin.from('whatsapp_messages').insert({
-          conversation_id: conversationId,
-          company_id: companyId,
-          direction: 'outbound',
-          sender_phone: senderPhone,
-          message_text: messageText,
-          template_name: templateName || null,
-          status: 'sent',
-          idempotency_key: idempotencyKey,
-          created_at: now,
-        }).select('id').single();
-
-        if (error) {
-          if (error.code === '23505') {
-            return { success: true, messageId: 'duplicate-ignored' };
-          }
-          throw error;
-        }
-
-        // Update conversation last message timestamp & text
-        await supabaseAdmin.from('whatsapp_conversations').update({
-          last_message_text: messageText,
-          last_message_at: now,
-          updated_at: now,
-        }).eq('id', conversationId).eq('company_id', companyId);
-
-        return { success: true, messageId: data.id };
-      } catch (err: any) {
-        logger.error('[WhatsAppInboxService.sendMessage Error]:', err);
-        return { success: false, error: err.message };
-      }
-    }
-
-    return { success: true, messageId: `msg-sent-${Date.now()}` };
+    return {
+      success: false,
+      error:
+        'Sending from CallMind is not available yet — WhatsApp is not connected to this workspace. Message the customer from WhatsApp directly for now.',
+    };
   }
 
   /**

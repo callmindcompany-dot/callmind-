@@ -25,11 +25,31 @@ export interface PlanDetails {
   leadWarning?: number;
   aiDraftLimit: number | "unlimited";
   aiCreditLimit: number | "unlimited";
-  pipelineStages: number | "unlimited";
   automationRules: number;
   bulkImport: number | false | "unlimited";
+  /**
+   * Scoring a lead with AI.
+   *
+   * False on every plan because nothing writes `leads.neural_score`. The
+   * column exists and the leads list can sort and filter by it, which is what
+   * made this look implemented -- but a query of the live database returned
+   * zero scored leads out of every lead in it, and no code path anywhere
+   * assigns a value.
+   *
+   * Growth sold `true` and Pro sold `"advanced"`, so the middle tier's stated
+   * reason to exist was a feature that does not run. Turn this back on in the
+   * same change that starts writing the column, not before.
+   */
   aiLeadScoring: boolean | "advanced";
   teamTargets: boolean;
+  /**
+   * A REST API for the customer's own systems.
+   *
+   * False on every plan: there is no api_keys table, no workspace key issuance
+   * and no route that authenticates one. Every `apiKey` in the codebase is
+   * either our Gemini key or a third-party key the customer pastes *into*
+   * CallMind, which is the opposite direction.
+   */
   apiAccess: boolean | "read_only" | "full_read_write";
   /** Rendering a report as a PDF. Safe to sample: it produces a document, not the data. */
   pdfExport: boolean;
@@ -87,14 +107,24 @@ export interface PlanDetails {
    * silently does nothing, which is what the eight removed add-ons did.
    */
   emailFromOwnDomain: boolean;
+  /**
+   * How the customer reaches a lead on WhatsApp.
+   *
+   * "manual" on every plan, because that is the only one that works: the
+   * telecaller opens WhatsApp themselves. Sending from inside CallMind is not
+   * built -- supabase/functions/send-whatsapp-message never called Meta and
+   * returned an invented message id, and its inbound twin stored nothing.
+   * Growth sold "business_api" and Pro sold "api_templates" on top of that.
+   *
+   * The union keeps the other two members so switching one on is a one-word
+   * change once the functions dispatch. See
+   * src/__tests__/whatsappNoFalseSend.test.ts.
+   */
   whatsappType: "manual" | "business_api" | "api_templates";
   supportType: "email" | "chat" | "whatsapp_priority";
   supportHours: number;
   highlight?: boolean;
-  smsCredits?: number;
-  auditLogDays?: number;
   onboardingCall?: boolean;
-  whiteLabel?: boolean | "addon";
 }
 
 /**
@@ -114,8 +144,18 @@ export const FREE_TRIAL_CONFIG = {
   trialDays: 5,
   includedTelecallers: 2, // 2 Telecallers + 1 Admin = 3 Total Users
   leadLimit: 1000,
-  pipelineStages: 5,
 };
+
+/*
+ * `pipelineStages` used to sit on every plan -- 5, 5, 15 and unlimited -- and
+ * was printed on all three pricing cards as a number that went up with price.
+ *
+ * There is no pipeline_stages table, no column for it in plan_limits, and no
+ * check anywhere. Every tenant has the same stages, so the figure differed on
+ * the card and nowhere in the product. It is deleted rather than left at a
+ * matching value, because a field the code does not read is how the type file
+ * came to declare thirty columns on a table that had eighteen.
+ */
 
 export const PRICING_PLANS: Record<string, PlanDetails> = {
   /**
@@ -156,7 +196,6 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     leadLimit: FREE_TRIAL_CONFIG.leadLimit,
     aiDraftLimit: 30,
     aiCreditLimit: 50,
-    pipelineStages: FREE_TRIAL_CONFIG.pipelineStages,
     automationRules: 2,
     // Enough rows to try an import and see the column mapper work, nowhere
     // near enough to migrate a real book of leads for free.
@@ -190,7 +229,6 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     leadWarning: 40000,
     aiDraftLimit: 30,
     aiCreditLimit: 50,
-    pipelineStages: 5,
     automationRules: 2,
     /*
      * Starter keeps everything the trial sampled, with room to use it.
@@ -230,12 +268,13 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     leadWarning: 200000,
     aiDraftLimit: "unlimited",
     aiCreditLimit: 200,
-    pipelineStages: 15,
     automationRules: 15,
     bulkImport: 10000,
-    aiLeadScoring: true,
+    // Was `true`. Nothing writes neural_score, so this sold nothing.
+    aiLeadScoring: false,
     teamTargets: true,
-    apiAccess: "read_only",
+    // Was "read_only". There is no api_keys table and no authenticated route.
+    apiAccess: false,
     pdfExport: true,
     bulkLeadExport: true,
     storageGbPerSeat: 5,
@@ -245,10 +284,19 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     recycleBinDays: 30,
     leadSources: 5,
     emailFromOwnDomain: false,
-    whatsappType: "business_api",
+    // Was "business_api". Sending from CallMind is not connected to Meta.
+    whatsappType: "manual",
     supportType: "chat",
     supportHours: 8,
-    highlight: true, // Most Popular badge
+    /*
+     * `highlight: true` printed a "Most Popular" badge on this card.
+     *
+     * The database holds one company, on trial, and no completed payment. No
+     * plan has been bought, so none of them is popular -- the same kind of
+     * claim as "500+ businesses". The badge is a recommendation now, which is
+     * an opinion rather than a checkable statement of fact.
+     */
+    highlight: true,
   },
   pro: {
     id: "pro",
@@ -260,12 +308,13 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     leadLimit: "unlimited",
     aiDraftLimit: "unlimited",
     aiCreditLimit: "unlimited",
-    pipelineStages: "unlimited",
     automationRules: 50,
     bulkImport: "unlimited",
-    aiLeadScoring: "advanced",
+    // Was "advanced" -- advanced over a basic version that also did not exist.
+    aiLeadScoring: false,
     teamTargets: true,
-    apiAccess: "full_read_write",
+    // Was "full_read_write".
+    apiAccess: false,
     pdfExport: true,
     bulkLeadExport: true,
     storageGbPerSeat: 8,
@@ -275,13 +324,30 @@ export const PRICING_PLANS: Record<string, PlanDetails> = {
     recycleBinDays: 90,
     leadSources: "unlimited",
     emailFromOwnDomain: false,
-    whatsappType: "api_templates",
+    // Was "api_templates", which additionally implied a Meta template approval
+    // process that nothing in this repository touches.
+    whatsappType: "manual",
     supportType: "whatsapp_priority",
     supportHours: 2,
-    smsCredits: 1000,
-    auditLogDays: 365,
+    /*
+     * Three more fields are gone from this plan.
+     *
+     * `auditLogDays: 365` was printed on the card. audit_logs exists but holds
+     * no rows for anything a customer does -- only inbound webhooks, the
+     * TradeIndia poll and account deletion write to it, and no stage change,
+     * export or telecaller action does. There is also no retention job, and
+     * pg_cron is not installed on this database, so a retention period could
+     * not be enforced even if there were rows to age out.
+     *
+     * `smsCredits: 1000` had no sms_logs table and no sending code.
+     *
+     * `whiteLabel: "addon"` had nothing behind it and was never priced.
+     *
+     * None of the three reached a pricing card except the audit logs, but a
+     * config field nothing reads is the same trap as a type declaring a column
+     * that does not exist.
+     */
     onboardingCall: true,
-    whiteLabel: "addon",
   },
 };
 
