@@ -18,6 +18,7 @@ import { Sentry } from "../_shared/sentry.ts";
 
 import { checkRateLimit, getRateLimitKey } from "../_shared/rateLimit.ts";
 import { startRun, finishRun, type RunTrigger } from "../_shared/runLog.ts";
+import { pickAssignee } from "../_shared/assignLead.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8"
 
@@ -136,6 +137,11 @@ serve(async (req) => {
       // those are the error cases, and they are the ones worth having.
       const run = await startRun(supabase, companyId, "facebook", trigger)
 
+      // Who these leads belong to. This was the literal "unassigned", so a
+      // company with Round Robin switched on still got every marketplace lead
+      // dropped into a pool with nobody's name on it.
+      const assignee = await pickAssignee(supabase, companyId, "facebook")
+
       try {
         // 2. Fetch leads from Graph API
         const apiUrl = `https://graph.facebook.com/v20.0/${config.formId}/leads?access_token=${config.accessToken}&limit=50`
@@ -224,7 +230,7 @@ serve(async (req) => {
             source: "Facebook",
             status: "New Lead",
             company_id: companyId,
-            assigned_to: "unassigned",
+            assigned_to: assignee,
             is_deleted: false,
             is_unseen: true,
             integration_run_id: run.id,

@@ -18,6 +18,7 @@ import { Sentry } from "../_shared/sentry.ts";
 
 import { checkRateLimit, getRateLimitKey } from "../_shared/rateLimit.ts";
 import { startRun, finishRun, type RunTrigger } from "../_shared/runLog.ts";
+import { pickAssignee } from "../_shared/assignLead.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8"
 
@@ -133,6 +134,11 @@ serve(async (req) => {
       // Closed in the finally, which also covers the `continue` paths below.
       const run = await startRun(supabase, companyId, "tradeindia", trigger)
 
+      // Who these leads belong to. This was the literal "unassigned", so a
+      // company with Round Robin switched on still got every marketplace lead
+      // dropped into a pool with nobody's name on it.
+      const assignee = await pickAssignee(supabase, companyId, "tradeindia")
+
       try {
         // 2. Call TradeIndia API
         const useridParam = config.userid ? `&userid=${config.userid}` : ""
@@ -199,7 +205,7 @@ serve(async (req) => {
             source: "TradeIndia",
             status: "New Lead",
             company_id: companyId,
-            assigned_to: "unassigned",
+            assigned_to: assignee,
             is_deleted: false,
             is_unseen: true,
             // AUTO-TAGGING & DETAILS (JSONB custom_data)

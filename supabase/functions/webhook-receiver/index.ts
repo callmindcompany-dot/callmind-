@@ -10,6 +10,7 @@ import { Sentry } from "../_shared/sentry.ts";
 
 import { checkRateLimit, getRateLimitKey } from "../_shared/rateLimit.ts";
 import { startRun, finishRun, type RunHandle, type RunOutcome } from "../_shared/runLog.ts";
+import { pickAssignee } from "../_shared/assignLead.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8"
 
@@ -298,7 +299,9 @@ serve(async (req) => {
         source: source,
         status: "New Lead",
         company_id: companyId,
-        assigned_to: "unassigned",
+        // Was the literal "unassigned". The Routing setting says it circulates
+        // leads among telecallers; this path ignored it entirely.
+        assigned_to: await pickAssignee(supabase, companyId, source),
         is_deleted: false,
         is_unseen: true,
       })

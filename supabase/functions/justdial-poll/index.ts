@@ -17,6 +17,7 @@ import { Sentry } from "../_shared/sentry.ts";
 
 import { checkRateLimit, getRateLimitKey } from "../_shared/rateLimit.ts";
 import { startRun, finishRun, type RunTrigger } from "../_shared/runLog.ts";
+import { pickAssignee } from "../_shared/assignLead.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8"
 
@@ -126,6 +127,11 @@ serve(async (req) => {
       // Closed in the finally, which also covers the `continue` paths below.
       const run = await startRun(supabase, companyId, "justdial", trigger)
 
+      // Who these leads belong to. This was the literal "unassigned", so a
+      // company with Round Robin switched on still got every marketplace lead
+      // dropped into a pool with nobody's name on it.
+      const assignee = await pickAssignee(supabase, companyId, "justdial")
+
       try {
         // 2. Call Justdial API
         const apiUrl = `https://api.justdial.com/v1/enquiries?apikey=${config.apiKey}&listing_id=${config.listingId}`
@@ -191,7 +197,7 @@ serve(async (req) => {
             source: "Justdial",
             status: "New Lead",
             company_id: companyId,
-            assigned_to: "unassigned",
+            assigned_to: assignee,
             is_deleted: false,
             is_unseen: true,
             integration_run_id: run.id,

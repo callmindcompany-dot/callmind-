@@ -571,7 +571,17 @@ export async function processInboundLead(companyId: string, source: string, payl
     // for the day there is somewhere to store the mapping.
     void categoryName;
 
-    if (assignmentMode === 'RoundRobin' && routedAgents.length > 0) {
+    // Spelling has to be forgiving: team_settings.assignment_mode defaults to
+    // 'round_robin' in the schema while the Integrations panel saves
+    // 'RoundRobin'. Comparing exactly meant every company still on the schema
+    // default -- which reads as Round Robin to a person -- fell through to
+    // Manual. The edge functions use the same normalisation in
+    // supabase/functions/_shared/assignLead.ts, so the two paths cannot
+    // disagree about what Round Robin means.
+    const wantsRoundRobin =
+      String(assignmentMode ?? '').replace(/[^a-z]/gi, '').toLowerCase() === 'roundrobin';
+
+    if (wantsRoundRobin && routedAgents.length > 0) {
       let nextIndex = 0;
       if (!isPlaceholder) {
         const { data: indexVal, error: rpcErr } = await supabaseAdmin.rpc('increment_routing_index', {
