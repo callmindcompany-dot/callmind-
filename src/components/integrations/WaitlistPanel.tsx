@@ -15,22 +15,46 @@ export function WaitlistPanel({ companyId, serviceName, serviceIcon, serviceDesc
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  /*
+   * The insert's error used to be ignored entirely.
+   *
+   * supabase-js does not throw on a database error -- it resolves with
+   * { data, error } -- so the catch below never fired for one, and a refused
+   * or failed insert still set submitted and showed "Priority spot reserved!".
+   * Somebody would have been told they were on a list that had no record of
+   * them, which is the same fault as the WhatsApp send reporting a message it
+   * had not sent.
+   *
+   * .select() so a write refused by RLS, which returns no error and no rows,
+   * is caught as well.
+   */
   const handleJoinWaitlist = async () => {
     if (!email.includes('@') || !companyId) return;
     setSubmitting(true);
     try {
-      await supabase.from('audit_logs').insert({
-        company_id: companyId,
-        action: 'WAITLIST_SIGNUP',
-        category: 'integration',
-        target: serviceName,
-        details: `Waitlist signup email: ${email}`,
-      });
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .insert({
+          company_id: companyId,
+          action: 'WAITLIST_SIGNUP',
+          category: 'integration',
+          target: serviceName,
+          details: `Waitlist signup email: ${email}`,
+        })
+        .select('id');
+
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('The request was declined. Ask an admin to add you to this list.');
+      }
+
       setSubmitted(true);
-      toast.success(`🎉 Priority spot reserved for ${serviceName}!`);
+      toast.success(`You are on the list for ${serviceName}.`);
     } catch (err) {
       console.error(err);
-      toast.error('Failed to submit. Please try again.');
+      toast.error(
+        err instanceof Error && err.message ? err.message : 'Could not save that. Please try again.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -52,8 +76,12 @@ export function WaitlistPanel({ companyId, serviceName, serviceIcon, serviceDesc
 
         {submitted ? (
           <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl w-full">
+            {/* Was "Priority spot reserved! We'll notify you when this
+                integration is ready." There is no priority and no queue -- the
+                signup is a row in the audit log, which an admin can read on the
+                Audit Log page. Saying what actually happens. */}
             <p className="text-xs font-bold text-emerald-700 flex items-center justify-center gap-1">
-              <CheckCircle2 size={14} /> Priority spot reserved! We'll notify you when this integration is ready.
+              <CheckCircle2 size={14} /> Saved. Your admins can see this request in the audit log.
             </p>
           </div>
         ) : (

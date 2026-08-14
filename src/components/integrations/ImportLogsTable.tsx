@@ -12,7 +12,11 @@ export function ImportLogsTable({ companyId }: ImportLogsTableProps) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const { data: importLogs = [], isLoading } = useImportLogsQuery(companyId, {
+  // isError matters here: useImportLogsQuery throws on a failed query, and
+  // without this the failure rendered as "No spreadsheet imports matched your
+  // filters" -- telling somebody their imports produced nothing when the
+  // question had not been answered at all.
+  const { data: importLogs = [], isLoading, isError, error } = useImportLogsQuery(companyId, {
     source,
     status,
     startDate,
@@ -119,9 +123,18 @@ export function ImportLogsTable({ companyId }: ImportLogsTableProps) {
         <div className="flex justify-center py-12">
           <div className="animate-spin w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full" />
         </div>
+      ) : isError ? (
+        <div className="text-center py-12 bg-red-50/30 rounded-2xl border border-dashed border-red-200">
+          <AlertTriangle size={36} className="text-red-300 mx-auto mb-3" />
+          <p className="text-sm text-gray-700 font-bold">Could not load the import history.</p>
+          <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
+            {(error as Error)?.message || 'The request failed.'} This is not the same as having no
+            imports — we simply could not ask.
+          </p>
+        </div>
       ) : importLogs.length === 0 ? (
         <div className="text-center py-12 bg-gray-50/20 rounded-2xl border border-dashed border-gray-150">
-          <FileSpreadsheet size={40} className="text-gray-200 mx-auto mb-3 animate-pulse" />
+          <FileSpreadsheet size={40} className="text-gray-200 mx-auto mb-3" />
           <p className="text-sm text-gray-400 font-semibold">No spreadsheet imports matched your filters.</p>
           <p className="text-xs text-gray-300 mt-1">Try updating date ranges or channel selections above.</p>
         </div>
