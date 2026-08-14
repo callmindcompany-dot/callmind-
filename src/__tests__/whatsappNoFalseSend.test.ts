@@ -45,13 +45,57 @@ const SCHEDULERS = [
 ];
 
 describe('no path claims a WhatsApp message was sent', () => {
-  it('the send function refuses instead of inventing a Meta message id', () => {
+  it('never invents a message id', () => {
+    // The original returned a hardcoded "wamid.HBgLOTE5..." for a message it
+    // had not sent. The function may report success now -- it really does
+    // dispatch -- but only ever with the provider's own id, or null.
     const fn = code(SEND_FN);
     expect(fn, 'the fabricated wamid is back').not.toMatch(/wamid\./);
-    expect(fn).toMatch(/success:\s*false/);
+    expect(fn).toMatch(/whatsapp_message_id: result\.providerMessageId/);
+  });
+
+  it('only reports success after a real dispatch', () => {
+    const fn = code(SEND_FN);
+    // Success is set after the adapter call, never before it and never on a
+    // path that skips it.
+    const successAt = fn.indexOf('outcome = "success"');
+    const sendAt = Math.min(
+      ...['sendSession(', 'sendTemplate('].map((s) => {
+        const i = fn.indexOf(s);
+        return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+      }),
+    );
+    expect(sendAt).toBeLessThan(Number.MAX_SAFE_INTEGER);
+    expect(successAt, 'success is declared before anything is sent').toBeGreaterThan(sendAt);
+
+    // And an unconfigured company is still refused rather than humoured.
+    expect(fn).toMatch(/WHATSAPP_NOT_CONNECTED/);
     expect(fn).toMatch(/501/);
-    // And it must not answer success anywhere.
-    expect(fn).not.toMatch(/success:\s*true/);
+  });
+
+  it('sends through the customer own provider, not a key of ours', () => {
+    const fn = code(SEND_FN);
+    const adapter = code('supabase/functions/_shared/whatsapp.ts');
+    // Credentials come from the company's row, so CallMind holds no WhatsApp
+    // account of its own.
+    expect(fn).toMatch(/from\("integration_credentials"\)/);
+    expect(fn).toMatch(/provider", "whatsapp"/);
+    // Every adapter takes the key from the passed config.
+    expect(adapter).not.toMatch(/Deno\.env\.get\(["'].*WHATSAPP/);
+  });
+
+  it('respects the rule that a cold lead can only be sent a template', () => {
+    // Meta forbids free text to someone who has not written first. A plain
+    // text box would have failed on nearly every lead, so the default path is
+    // a template and free text is only used when a session is asserted.
+    const fn = code(SEND_FN);
+    expect(fn).toMatch(/session\s*\n?\s*\?\s*await sendSession/);
+    expect(fn).toMatch(/:\s*await sendTemplate/);
+
+    const adapter = code('supabase/functions/_shared/whatsapp.ts');
+    // And a provider that cannot do free text says so in words.
+    expect(adapter).toMatch(/WhatsAppNotSupported/);
+    expect(adapter).toMatch(/does not offer free-text session messages/);
   });
 
   it('the inbound webhook does not acknowledge messages it cannot store', () => {
@@ -131,6 +175,47 @@ describe('no path claims a WhatsApp message was sent', () => {
         /error_message: 'Internal server error'/,
       );
     }
+  });
+
+  it('asks for the provider the customer already pays for, not Meta', () => {
+    // The panel collected a Meta Developer App ID, a Phone Number ID, a WABA
+    // ID and a System User token -- the raw Cloud API path, which needs
+    // Business verification and template review on Facebook Business Manager.
+    // A six-telecaller business does not finish that, so those were four boxes
+    // nobody could fill.
+    const panel = code('src/components/integrations/WhatsAppConfigPanel.tsx');
+    for (const meta of ['Meta Developer App ID', 'WABA', 'System User access token']) {
+      expect(panel, `"${meta}" is back`).not.toContain(meta);
+    }
+    for (const bsp of ['WATI', 'Interakt', 'AiSensy']) {
+      expect(panel).toContain(bsp);
+    }
+  });
+
+  it('the panel is actually rendered', () => {
+    // It existed and was imported nowhere, so the workspace showed a redirect
+    // card pointing at a "Communication control room" that is not a screen in
+    // this product. Imported-and-never-rendered is this codebase's most
+    // reliable failure, so check the element.
+    const page = code('src/components/IntegrationsPage.tsx');
+    expect(page).toMatch(/<WhatsAppConfigPanel[\s/>]/);
+  });
+
+  it('tells the person configuring it what WhatsApp will not allow', () => {
+    // The template rule decides what the feature can do. Discovering it later,
+    // when a message to a cold lead fails, is the expensive way to learn it.
+    const panel = code('src/components/integrations/WhatsAppConfigPanel.tsx');
+    const flat = panel.replace(/\s+/g, ' ');
+    expect(flat).toMatch(/template you have had approved/i);
+    expect(flat).toMatch(/24 hours/);
+  });
+
+  it('claims no encryption it does not perform', () => {
+    // The old copy said keys were "securely saved via Supabase encrypted
+    // columns". The column is ordinary JSONB.
+    const panel = code('src/components/integrations/WhatsAppConfigPanel.tsx');
+    expect(panel).not.toMatch(/encrypted columns/i);
+    expect(panel.replace(/\s+/g, ' ')).toMatch(/not separately encrypted at column level/i);
   });
 
   it('the shared helper treats a 200 with success:false as a failure', () => {

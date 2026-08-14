@@ -94,20 +94,41 @@ describe('every plan claim has an implementation', () => {
     }
   });
 
-  it('does not sell WhatsApp sending while the send path refuses', () => {
-    const sender = read('supabase/functions/send-whatsapp-message/index.ts');
-    const dispatches = /graph\.facebook\.com/.test(
-      // Ignore the commented-out reference that documents how to build it.
-      sender.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''),
-    );
+  it('does not sell WhatsApp sending until a real send has been seen', () => {
+    /*
+     * This used to look for graph.facebook.com in the sender, because the plan
+     * was to call Meta directly. It sends through the customer's own BSP now
+     * (WATI, Interakt or AiSensy), so that string is the wrong signal.
+     *
+     * Dispatch code existing is also not enough on its own. The request shapes
+     * came from published documentation and have never been run against a live
+     * account -- there is no test account for any of the three -- so "it
+     * compiles and looks right" is exactly the confidence this repository has
+     * been burned by. The gate is a human confirming a message arrived, which
+     * is what flipping this constant records.
+     *
+     * When somebody sends a real WhatsApp message from CallMind and sees it on
+     * a phone, set this to true in the same change that sets whatsappType.
+     */
+    const VERIFIED_AGAINST_A_LIVE_ACCOUNT = false;
 
-    if (!dispatches) {
+    if (!VERIFIED_AGAINST_A_LIVE_ACCOUNT) {
       for (const plan of ALL_PLANS) {
-        expect(plan.whatsappType, `${plan.id} sells WhatsApp sending that cannot send`).toBe(
+        expect(plan.whatsappType, `${plan.id} sells WhatsApp sending nobody has watched work`).toBe(
           'manual',
         );
       }
     }
+
+    // Whatever the flag says, the sender must not be a stub again. Comments
+    // stripped: the file's own docstring quotes the fabricated
+    // "wamid.HBgLOTE5..." it used to return, and matching that would fail the
+    // file for describing the bug it fixed.
+    const sender = read('supabase/functions/send-whatsapp-message/index.ts')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    expect(sender).toContain('sendTemplate');
+    expect(sender).not.toMatch(/wamid\./);
   });
 
   it('prints none of the five removed claims on any card', () => {

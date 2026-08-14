@@ -42,6 +42,7 @@ import { GoogleAdsConfigPanel } from './integrations/GoogleAdsConfigPanel';
 import { WebsiteFormPanel } from './integrations/WebsiteFormPanel';
 import { WebhookConfigPanel } from './integrations/WebhookConfigPanel';
 import { CommunicationRedirectPanel } from './integrations/CommunicationRedirectPanel';
+import { WhatsAppConfigPanel } from './integrations/WhatsAppConfigPanel';
 import { RoutingConfigPanel } from './integrations/RoutingConfigPanel';
 import { FieldAliasesPanel } from './integrations/FieldAliasesPanel';
 import { HealthDashboard } from './integrations/HealthDashboard';
@@ -293,11 +294,21 @@ function IntegrationsPageContent() {
                 />
               )}
 
+              {/* WhatsAppConfigPanel existed in the codebase and was imported
+                  nowhere, so this workspace showed a redirect card pointing at
+                  a "Communication control room" that is not a screen in this
+                  product. The panel is rendered now, and it asks for the BSP
+                  account the customer already has rather than Meta's. */}
               {activeWorkspace === 'whatsapp-api' && (
-                <CommunicationRedirectPanel
-                  serviceName="WhatsApp Business API"
-                  serviceIcon={<MessageSquare size={28} className="text-emerald-600" />}
-                  serviceDescription="Configure your Meta WhatsApp Business API Cloud settings, message templates, verification keys, and webhook endpoints directly from the Communication control room."
+                <WhatsAppConfigPanel
+                  provider={whatsAppHook.provider} setProvider={whatsAppHook.setProvider}
+                  apiKey={whatsAppHook.apiKey} setApiKey={whatsAppHook.setApiKey}
+                  endpoint={whatsAppHook.endpoint} setEndpoint={whatsAppHook.setEndpoint}
+                  campaignName={whatsAppHook.campaignName} setCampaignName={whatsAppHook.setCampaignName}
+                  isActive={whatsAppHook.isActive} setIsActive={whatsAppHook.setIsActive}
+                  showToken={whatsAppHook.showToken} setShowToken={whatsAppHook.setShowToken}
+                  onSave={whatsAppHook.saveConfig}
+                  isSaving={whatsAppHook.isSaving}
                 />
               )}
 

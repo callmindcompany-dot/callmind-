@@ -76,11 +76,24 @@ export interface GoogleAdsConfig {
   lastSyncErrors: string[];
 }
 
+/**
+ * The Indian WhatsApp Business Solution Providers CallMind can send through.
+ *
+ * Not Meta directly: their Cloud API needs Business verification, a Facebook
+ * Business Manager and template review done by the customer, which a
+ * six-telecaller business will not complete. These three have done it already
+ * and are what Indian SMEs actually pay for.
+ */
+export type BspProvider = 'wati' | 'interakt' | 'aisensy';
+
 export interface WhatsAppConfig {
-  appId: string;
-  phoneId: string;
-  wabaId: string;
-  token: string;
+  provider: BspProvider;
+  apiKey: string;
+  /** WATI gives each tenant its own host; copied from their dashboard, never guessed. */
+  endpoint?: string;
+  /** AiSensy requires a campaign per template, set to Live. */
+  campaignName?: string;
+  isActive?: boolean;
 }
 
 export interface EmailConfig {
@@ -184,10 +197,13 @@ export const DEFAULT_GOOGLEADS_CONFIG: GoogleAdsConfig = {
 };
 
 export const DEFAULT_WHATSAPP_CONFIG: WhatsAppConfig = {
-  appId: '',
-  phoneId: '',
-  wabaId: '',
-  token: '',
+  // WATI first because it is the only one of the three whose API offers both
+  // approved templates and 24-hour free-text session replies.
+  provider: 'wati',
+  apiKey: '',
+  endpoint: '',
+  campaignName: '',
+  isActive: false,
 };
 
 export const DEFAULT_EMAIL_CONFIG: EmailConfig = {
