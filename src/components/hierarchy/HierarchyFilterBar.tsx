@@ -22,7 +22,9 @@ export const HierarchyFilterBar: React.FC<HierarchyFilterBarProps> = ({ onFilter
           setBranches(data.branches || []);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('[HierarchyFilterBar] Failed to fetch hierarchy config:', err);
+      });
   }, []);
 
   if (!enabled) return null; // If disabled, render NOTHING (Zero UI disruption)

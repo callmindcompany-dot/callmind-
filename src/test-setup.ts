@@ -37,9 +37,9 @@ vi.mock('react-hot-toast', () => ({
 
 // Mock react-router-dom
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
+  const actual = (await vi.importActual('react-router-dom')) as Record<string, unknown>;
   return {
-    ...actual as any,
+    ...actual,
     useNavigate: () => vi.fn(),
     useLocation: () => ({ pathname: '/' }),
     Navigate: ({ to }: { to: string }) => React.createElement('div', { 'data-testid': 'navigate', 'data-to': to }),
@@ -48,9 +48,9 @@ vi.mock('react-router-dom', async () => {
 
 // Mock TanStack Query
 vi.mock('@tanstack/react-query', async () => {
-  const actual = await vi.importActual('@tanstack/react-query');
+  const actual = (await vi.importActual('@tanstack/react-query')) as Record<string, unknown>;
   return {
-    ...actual as any,
+    ...actual,
     useQueryClient: () => ({
       invalidateQueries: vi.fn(),
     }),

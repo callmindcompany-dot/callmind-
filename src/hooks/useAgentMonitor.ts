@@ -186,7 +186,9 @@ export function useAgentCallsQuery(companyId: string | null, agentId: string | n
         if (c.timestamp) {
           try {
             startTime = new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          } catch {}
+          } catch (err) {
+            console.warn('[useAgentMonitor] Invalid timestamp:', c.timestamp, err);
+          }
         }
 
         const isConnected = c.outcome === 'Answered' || c.outcome === 'Connected';

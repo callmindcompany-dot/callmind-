@@ -677,7 +677,7 @@ export const LeadDetail = React.memo(({
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs font-black text-slate-600 uppercase tracking-wider">{call.is_ai_call ? 'AI Call' : 'Agent Call'}</span>
+                          <span className="text-xs font-black text-slate-600 uppercase tracking-wider">Call</span>
                         </div>
                       </div>
                     ))}

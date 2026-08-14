@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import type { GoogleAdsConfig, IntegrationConfigPayload } from '@/types/integrations';
 import type { UseMutationResult } from '@tanstack/react-query';
+import { inboundWebhookUrl, inboundWebhookExample } from '@/lib/webhookUrl';
 
 interface UseGoogleAdsConfigParams {
   initialConfig: GoogleAdsConfig;
@@ -25,9 +26,11 @@ export function useGoogleAdsConfig({ initialConfig, saveMutation, companyId }: U
   const [lastSyncCount, setLastSyncCount] = useState(initialConfig?.lastSyncCount || null);
   const [lastSyncErrors, setLastSyncErrors] = useState(initialConfig?.lastSyncErrors || []);
 
+  // Was a hardcoded https://api.callmind.app/... -- a guess about production
+  // DNS baked into the client, and a URL a customer pastes into Google.
   const generatedWebhookUrl = companyId
-    ? `https://api.callmind.app/v1/webhooks/googleads/${companyId}`
-    : 'https://api.callmind.app/v1/webhooks/googleads/company_id';
+    ? inboundWebhookUrl(companyId, 'googleads')
+    : inboundWebhookExample('googleads');
 
   const syncFromSettings = useCallback((config: GoogleAdsConfig) => {
     setIsActive(config?.isActive || false);

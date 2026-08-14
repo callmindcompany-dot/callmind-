@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
 import { useCompany } from '@/CompanyContext';
 import { toast } from 'react-hot-toast';
+import { inboundWebhookUrl } from '@/lib/webhookUrl';
 import {
   IntegrationSettings,
   IntegrationConfigPayload,
@@ -114,7 +115,11 @@ export function useIntegrationSettings() {
         emailConfig: read<EmailConfig>('email_config', d.emailConfig),
         webhookConfig: {
           ...wh,
-          url: wh.url || `https://api.callmind.app/v1/webhooks/incoming/${companyId}`,
+          // Was the literal https://api.callmind.app/... -- a guess about
+          // production DNS compiled into the client. It also beat the derived
+          // URL in useWebhookConfig, which reads `initialConfig.url || origin`,
+          // so the hardcoded host always won and the fix there never applied.
+          url: wh.url || inboundWebhookUrl(companyId),
         },
         routingConfig: {
           // assignment_mode, not assignment_rule. The old key had no column and

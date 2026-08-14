@@ -172,16 +172,16 @@ export const TeamAnnouncementsSection = () => {
                 <div className="flex items-center gap-3 justify-between mb-2">
                   <h3 className="font-bold text-gray-900 truncate">{a.title}</h3>
                   <div className="flex items-center gap-3">
-                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg flex items-center gap-1 ${a.status === 'sent' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
-                      {a.status === 'sent' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                      {a.status}
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg flex items-center gap-1 ${a.is_published ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
+                      {a.is_published ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                      {a.is_published ? 'Published' : 'Draft'}
                     </span>
                     <span className="text-xs font-medium text-gray-400 whitespace-nowrap">
                       {a.created_at ? formatDistanceToNow(new Date(a.created_at), { addSuffix: true }) : 'Just now'}
                     </span>
                   </div>
                 </div>
-                <p className="text-gray-500 text-sm line-clamp-2 leading-relaxed">{a.body}</p>
+                <p className="text-gray-500 text-sm line-clamp-2 leading-relaxed">{a.content}</p>
               </div>
               <button 
                 onClick={() => handleDelete(a.id)}

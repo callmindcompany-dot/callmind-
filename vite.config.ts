@@ -12,7 +12,11 @@ export default defineConfig(({ isSsrBuild }) => {
       rollupOptions: {
         output: isSsrBuild ? {} : {
           manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-query': ['@tanstack/react-query'],
+            'vendor-icons': ['lucide-react'],
             'vendor-motion': ['framer-motion'],
+            'vendor-supabase': ['@supabase/supabase-js'],
           },
         },
       },

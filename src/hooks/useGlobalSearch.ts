@@ -103,7 +103,9 @@ export function useGlobalSearch() {
         }
       });
 
-      if (!res.ok) return [];
+      if (!res.ok) {
+        throw new Error(`Failed to fetch recent searches: ${res.status} ${res.statusText}`);
+      }
       const json = await res.json();
       return json.recent || [];
     },

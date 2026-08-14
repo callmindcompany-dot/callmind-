@@ -16,7 +16,6 @@ interface Invite {
   used_count: number;
   max_uses?: number | null;
   expires_at?: string | null;
-  invited_by?: string | null;
 }
 
 interface TeamJoinToolsSectionProps {

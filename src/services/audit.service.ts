@@ -53,7 +53,7 @@ export const AuditService = {
         target_id: params.targetId || null,
         user_id: user.id,
         user_email: user.email || 'unknown',
-        user_name: user.user_metadata?.name || user.email || 'unknown',
+        user_name: String(user.user_metadata?.display_name || user.user_metadata?.name || user.email || 'unknown').replace(/[\r\n]/g, '').trim(),
         actor_id: user.id,
         actor_email: user.email || 'unknown',
         details: params.details ? JSON.stringify(params.details) : null,

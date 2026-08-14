@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, Plus, ChevronRight, User, Phone, Calendar, RefreshCcw } from 'lucide-react';
-// @ts-ignore
-import { FixedSizeList as List } from 'react-window';
+// react-window v2 renamed FixedSizeList to List — see LeadTable.tsx.
+import { List, type RowComponentProps } from 'react-window';
 import { useLeads } from '../../hooks/useLeads';
 import { LeadStatus, Lead, LeadFilters } from '../../types/lead';
 import { SkeletonLoader } from '../../components/SkeletonLoader';
@@ -67,7 +67,7 @@ export const LeadList: React.FC<LeadListProps> = ({
     );
   }, [allLeads, searchTerm]);
 
-  const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
+  const Row = useCallback(({ index, style, ariaAttributes }: RowComponentProps) => {
     const lead = filteredLeads[index];
     if (!lead) return null;
 
@@ -77,7 +77,7 @@ export const LeadList: React.FC<LeadListProps> = ({
     }
 
     return (
-      <div style={{ ...style, paddingBottom: '12px' }}>
+      <div style={{ ...style, paddingBottom: '12px' }} {...ariaAttributes}>
         <motion.div
           layout
           initial={{ opacity: 0, y: 10 }}
@@ -207,14 +207,14 @@ export const LeadList: React.FC<LeadListProps> = ({
           </div>
         ) : (
           <List
-            height={height - 48}
-            itemCount={filteredLeads.length}
-            itemSize={116}
-            width="100%"
+            defaultHeight={500}
+            rowCount={filteredLeads.length}
+            rowHeight={116}
+            rowComponent={Row}
+            rowProps={{}}
             className="custom-scrollbar"
-          >
-            {Row}
-          </List>
+            style={{ height: height - 48 }}
+          />
         )}
       </div>
 

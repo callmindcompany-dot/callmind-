@@ -2,6 +2,18 @@ import { Request, Response, NextFunction } from 'express';
 import { supabaseAdmin, isPlaceholder } from '../lib/dbAdapter';
 import { logger } from '../lib/logger';
 
+export interface AuthenticatedUser {
+  id: string;
+  email?: string;
+  role: string;
+  company_id?: string;
+  app_metadata?: Record<string, unknown>;
+}
+
+export interface AuthenticatedRequest extends Request {
+  user?: AuthenticatedUser;
+}
+
 export async function authGuard(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

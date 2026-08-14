@@ -12,6 +12,7 @@
     "prerender": "node scripts/prerender.mjs",
     "gen:plans": "tsx scripts/gen-plan-limits.mjs",
     "check:r2": "node scripts/check-r2.mjs",
+    "verify:schema": "node scripts/verify-schema.mjs",
     "build:server": "esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "preview": "vite preview",
     "test": "vitest run",

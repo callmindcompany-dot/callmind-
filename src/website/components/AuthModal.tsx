@@ -14,7 +14,7 @@ export const AuthModal = ({
   onClose: () => void;
   initialMode?: 'signin' | 'signup';
 }) => {
-  const { signUp, signIn, signInWithGoogle, checkUserExistsByEmail, updateProfile, sendPasswordResetEmail, sendVerificationEmail, onboardingStatus, hasFounderHubAccess } = useAuth() as any;
+  const { signUp, signIn, signInWithGoogle, checkUserExistsByEmail, updateProfile, sendPasswordResetEmail, sendVerificationEmail, onboardingStatus, hasFounderHubAccess } = useAuth();
   const [mode, setMode] = useState<'email_entry' | 'password_entry' | 'set_password' | 'forgot_password'> (
     'email_entry'
   );

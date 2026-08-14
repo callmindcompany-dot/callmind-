@@ -129,14 +129,16 @@ export interface Database {
           type: string | null;
           interest: string | null;
           created_by: string | null;
+          /** @deprecated Nothing writes this column. Left until migration drops it. */
           recording_url: string | null;
           created_at: string | null;
           updated_at: string | null;
           outcome: string | null;
           timestamp: string | null;
-          is_ai_call: boolean | null;
-          ai_processed: boolean | null;
-          ai_success: boolean | null;
+          notes: string | null;
+          agent_id: string | null;
+          branch_id: string | null;
+          idempotency_key: string | null;
         };
         Insert: Database['public']['Tables']['calls']['Row'];
         Update: Partial<Database['public']['Tables']['calls']['Row']>;
@@ -177,6 +179,8 @@ export interface Database {
           description: string;
           created_by: string | null;
           created_at: string;
+          from_status: string | null;
+          to_status: string | null;
         };
         Insert: Database['public']['Tables']['lead_activity_log']['Row'];
         Update: Partial<Database['public']['Tables']['lead_activity_log']['Row']>;
@@ -241,7 +245,7 @@ export interface Database {
           token: string | null;
           status: string;
           created_at: string;
-          invited_by: string | null;
+          updated_at: string;
           used_count: number;
           max_uses: number | null;
           expires_at: string | null;
@@ -303,6 +307,11 @@ export interface Database {
           plan_expires_at: string | null;
           trial_ends_at: string | null;
           created_at: string | null;
+          domain: string | null;
+          enable_branch_management: boolean | null;
+          storage_used_bytes: number | null;
+          ai_enabled: boolean | null;
+          updated_at: string | null;
         };
         Insert: Database['public']['Tables']['companies']['Row'];
         Update: Partial<Database['public']['Tables']['companies']['Row']>;
@@ -317,6 +326,14 @@ export interface Database {
           timestamp: string;
           location: string | null;
           device_info: string | null;
+          latitude: number | null;
+          longitude: number | null;
+          accuracy: number | null;
+          location_address: string | null;
+          is_within_geofence: boolean | null;
+          is_remote_override: boolean | null;
+          distance_from_office_meters: number | null;
+          idempotency_key: string | null;
         };
         Insert: Database['public']['Tables']['attendance_logs']['Row'];
         Update: Partial<Database['public']['Tables']['attendance_logs']['Row']>;
@@ -326,10 +343,17 @@ export interface Database {
           id: string;
           company_id: string;
           title: string;
-          body: string;
+          content: string;
+          category: string;
+          target_role: string;
+          is_pinned: boolean;
+          is_published: boolean;
+          scheduled_at: string | null;
+          published_at: string | null;
+          author_id: string | null;
           created_at: string;
-          created_by: string;
-          status: string;
+          updated_at: string | null;
+          is_archived: boolean | null;
         };
         Insert: Database['public']['Tables']['announcements']['Row'];
         Update: Partial<Database['public']['Tables']['announcements']['Row']>;
@@ -347,6 +371,118 @@ export interface Database {
         };
         Insert: Database['public']['Tables']['targets']['Row'];
         Update: Partial<Database['public']['Tables']['targets']['Row']>;
+      };
+      notifications: {
+        Row: {
+          id: string;
+          company_id: string;
+          user_id: string;
+          title: string;
+          message: string;
+          type: string | null;
+          read: boolean;
+          link: string | null;
+          created_at: string;
+        };
+        Insert: Database['public']['Tables']['notifications']['Row'];
+        Update: Partial<Database['public']['Tables']['notifications']['Row']>;
+      };
+      whatsapp_messages: {
+        Row: {
+          id: string;
+          company_id: string;
+          lead_id: string | null;
+          phone: string;
+          direction: 'incoming' | 'outgoing';
+          content: string;
+          media_url: string | null;
+          status: string | null;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: Database['public']['Tables']['whatsapp_messages']['Row'];
+        Update: Partial<Database['public']['Tables']['whatsapp_messages']['Row']>;
+      };
+      whatsapp_conversations: {
+        Row: {
+          id: string;
+          company_id: string;
+          lead_id: string | null;
+          phone: string;
+          unread_count: number;
+          last_message: string | null;
+          last_message_at: string | null;
+          updated_at: string;
+        };
+        Insert: Database['public']['Tables']['whatsapp_conversations']['Row'];
+        Update: Partial<Database['public']['Tables']['whatsapp_conversations']['Row']>;
+      };
+      documents: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          file_path: string | null;
+          storage_path: string | null;
+          file_size: number | null;
+          mime_type: string | null;
+          uploaded_by: string | null;
+          category: string | null;
+          status: string | null;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: Database['public']['Tables']['documents']['Row'];
+        Update: Partial<Database['public']['Tables']['documents']['Row']>;
+      };
+      plan_limits: {
+        Row: {
+          id: string;
+          plan_id: string;
+          max_users: number;
+          max_leads: number;
+          max_calls: number;
+          max_storage_bytes: number;
+          created_at: string | null;
+        };
+        Insert: Database['public']['Tables']['plan_limits']['Row'];
+        Update: Partial<Database['public']['Tables']['plan_limits']['Row']>;
+      };
+      lead_sources: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          active: boolean;
+          created_at: string | null;
+        };
+        Insert: Database['public']['Tables']['lead_sources']['Row'];
+      };
+      invoices: {
+        Row: {
+          id: string;
+          company_id: string;
+          amount: number;
+          status: string;
+          pdf_url: string | null;
+          invoice_number: string | null;
+          billing_period_start: string | null;
+          billing_period_end: string | null;
+          created_at: string;
+        };
+        Insert: Database['public']['Tables']['invoices']['Row'];
+        Update: Partial<Database['public']['Tables']['invoices']['Row']>;
+      };
+      role_permissions: {
+        Row: {
+          id: string;
+          company_id: string;
+          role: string;
+          permissions: Record<string, any>;
+          updated_at: string | null;
+        };
+        Insert: Database['public']['Tables']['role_permissions']['Row'];
+        Update: Partial<Database['public']['Tables']['role_permissions']['Row']>;
       };
     };
   };

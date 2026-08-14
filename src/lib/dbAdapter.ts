@@ -370,7 +370,7 @@ export const auth = {
     return {
       uid: user.id,
       email: user.email,
-      name: user.user_metadata?.name || user.email?.split('@')[0]
+      name: String(user.user_metadata?.display_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User').replace(/[\r\n]/g, '').trim()
     };
   },
   revokeRefreshTokens: async (userId: string) => {

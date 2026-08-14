@@ -114,7 +114,7 @@ export function useDashboardStats(
 
       const { data: callsData, error: callsError } = await supabase
         .from('calls')
-        .select('status, timestamp, created_by, outcome, is_ai_call, ai_processed, ai_success')
+        .select('status, timestamp, created_by, outcome')
         .eq('company_id', companyId)
         .gte('timestamp', minDateStr)
         .order('timestamp', { ascending: false })
@@ -285,11 +285,12 @@ export function useDashboardStats(
 
 
       // 9. AI Assist stats
-      const aiCalls = calls.filter(c => c && (c.is_ai_call || c.ai_processed));
-      const aiStats = {
-        total: aiCalls.length,
-        successful: aiCalls.filter(c => c.ai_success).length
-      };
+      // is_ai_call / ai_processed / ai_success never existed in the database;
+      // they were phantom columns in supabase.ts.  Real AI usage lives in the
+      // ai_usage table (per-company daily aggregates).  Until the dashboard is
+      // wired to that table, report zeros so the chart shows the empty state
+      // instead of invented numbers.
+      const aiStats = { total: 0, successful: 0 };
 
       // 10. Analytics timeline chart
 

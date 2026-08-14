@@ -206,42 +206,42 @@ const AppContent = () => {
       case 'Leads': Content = <ErrorBoundary componentName="Leads"><LeadsPage onTabChange={setActiveTab} /></ErrorBoundary>; break;
       case 'Calls': Content = <ErrorBoundary componentName="Calls"><CallsPage onTabChange={setActiveTab} /></ErrorBoundary>; break;
       case 'AI Insights': 
-        Content = enabledSections.sectionKEnabled ? <AIInsightsHub /> : null; 
+        Content = enabledSections.sectionKEnabled ? <ErrorBoundary componentName="AI Insights"><AIInsightsHub /></ErrorBoundary> : null; 
         break;
       case 'Sequences': 
-        Content = enabledSections.sectionDEnabled ? <SequencesPage /> : null; 
+        Content = enabledSections.sectionDEnabled ? <ErrorBoundary componentName="Sequences"><SequencesPage /></ErrorBoundary> : null; 
         break;
       case 'Scheduler': 
-        Content = enabledSections.sectionDEnabled ? <SchedulerPage /> : null; 
+        Content = enabledSections.sectionDEnabled ? <ErrorBoundary componentName="Scheduler"><SchedulerPage /></ErrorBoundary> : null; 
         break;
       case 'Team': Content = <RoleGate requireAdmin={true}><ErrorBoundary componentName="Team"><TeamPage onTabChange={setActiveTab} /></ErrorBoundary></RoleGate>; break;
-      case 'Analytics': Content = <RoleGate requireAdmin={true}><AnalyticsPage /></RoleGate>; break;
+      case 'Analytics': Content = <RoleGate requireAdmin={true}><ErrorBoundary componentName="Analytics"><AnalyticsPage /></ErrorBoundary></RoleGate>; break;
       case 'Automation': 
-        Content = enabledSections.sectionDEnabled ? <RoleGate requireAdmin={true}><AutomationPage /></RoleGate> : null; 
+        Content = enabledSections.sectionDEnabled ? <RoleGate requireAdmin={true}><ErrorBoundary componentName="Automation"><AutomationPage /></ErrorBoundary></RoleGate> : null; 
         break;
-      case 'Documents': Content = <RoleGate requireAdmin={true}><DocumentReviewQueue userEmail={user?.email || ''} userRole={profile?.role || 'admin'} /></RoleGate>; break;
+      case 'Documents': Content = <RoleGate requireAdmin={true}><ErrorBoundary componentName="Documents"><DocumentReviewQueue userEmail={user?.email || ''} userRole={profile?.role || 'admin'} /></ErrorBoundary></RoleGate>; break;
       case 'Reports': Content = <RoleGate requireAdmin={true}><ErrorBoundary componentName="Reports"><ReportsPage /></ErrorBoundary></RoleGate>; break;
       case 'Settings': Content = <ErrorBoundary componentName="Settings"><SettingsPage /></ErrorBoundary>; break;
-      case 'Subscription': Content = <RoleGate requireFounderOnly={true}><BillingPage /></RoleGate>; break;
-      case 'Audit Log': Content = <RoleGate requireAdmin={true}><AuditLogPage /></RoleGate>; break;
-      case 'Announcements': Content = <AnnouncementsPage />; break;
-      case 'Roadmap': Content = <RoadmapPage />; break;
+      case 'Subscription': Content = <RoleGate requireFounderOnly={true}><ErrorBoundary componentName="Subscription"><BillingPage /></ErrorBoundary></RoleGate>; break;
+      case 'Audit Log': Content = <RoleGate requireAdmin={true}><ErrorBoundary componentName="Audit Log"><AuditLogPage /></ErrorBoundary></RoleGate>; break;
+      case 'Announcements': Content = <ErrorBoundary componentName="Announcements"><AnnouncementsPage /></ErrorBoundary>; break;
+      case 'Roadmap': Content = <ErrorBoundary componentName="Roadmap"><RoadmapPage /></ErrorBoundary>; break;
       case 'Integrations': 
-        Content = enabledSections.sectionBEnabled ? <RoleGate requireFounderOnly={true}><IntegrationsPage /></RoleGate> : null; 
+        Content = enabledSections.sectionBEnabled ? <RoleGate requireFounderOnly={true}><ErrorBoundary componentName="Integrations"><IntegrationsPage /></ErrorBoundary></RoleGate> : null; 
         break;
-      case 'Founders Lab': Content = <RoleGate requireFounderOnly={true}><FoundersLab /></RoleGate>; break;
+      case 'Founders Lab': Content = <RoleGate requireFounderOnly={true}><ErrorBoundary componentName="Founders Lab"><FoundersLab /></ErrorBoundary></RoleGate>; break;
       case 'Communication': 
-        Content = enabledSections.sectionBEnabled ? <CommunicationPage /> : null; 
+        Content = enabledSections.sectionBEnabled ? <ErrorBoundary componentName="Communication"><CommunicationPage /></ErrorBoundary> : null; 
         break;
       case 'Support':
       case 'Help Center':
         Content = <Navigate to="/dashboard/settings?tab=support" replace />;
         break;
-      case 'Privacy': Content = <PrivacyPage />; break;
-      case 'Terms': Content = <TermsPage />; break;
-      case 'Refund': Content = <RefundPage />; break;
-      case 'Video Guides': Content = <VideoTutorialsPage />; break;
-      case 'Notifications': Content = <NotificationsPage />; break;
+      case 'Privacy': Content = <ErrorBoundary componentName="Privacy"><PrivacyPage /></ErrorBoundary>; break;
+      case 'Terms': Content = <ErrorBoundary componentName="Terms"><TermsPage /></ErrorBoundary>; break;
+      case 'Refund': Content = <ErrorBoundary componentName="Refund"><RefundPage /></ErrorBoundary>; break;
+      case 'Video Guides': Content = <ErrorBoundary componentName="Video Guides"><VideoTutorialsPage /></ErrorBoundary>; break;
+      case 'Notifications': Content = <ErrorBoundary componentName="Notifications"><NotificationsPage /></ErrorBoundary>; break;
       default: 
         console.warn("[App] Unknown tab requested:", activeTab);
         Content = <Dashboard onTabChange={setActiveTab} />;

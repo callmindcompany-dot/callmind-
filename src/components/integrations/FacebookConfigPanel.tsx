@@ -1,5 +1,6 @@
 import { Eye, EyeOff, AlertTriangle, CheckCircle2, RefreshCw, Power, Clock, Activity, XCircle, Info, Copy, ExternalLink } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { inboundWebhookUrl, inboundWebhookExample } from '@/lib/webhookUrl';
 
 interface FacebookConfigPanelProps {
   pageId: string; setPageId: (v: string) => void;
@@ -43,7 +44,10 @@ export function FacebookConfigPanel({
   onSave, onToggleActive, onPollNow,
   isPolling, isSaving, companyId,
 }: FacebookConfigPanelProps) {
-  const generatedWebhookUrl = `https://api.callmind.app/v1/webhooks/facebook/${companyId || 'company_id'}`;
+  // Was a hardcoded https://api.callmind.app/... See src/lib/webhookUrl.ts.
+  const generatedWebhookUrl = companyId
+    ? inboundWebhookUrl(companyId, 'facebook')
+    : inboundWebhookExample('facebook');
   const verifyToken = companyId ? `fb_verify_${companyId}` : 'fb_verify_token';
   const hasCredentials = appId.trim().length > 0 && pageId.trim().length > 0 && formId.trim().length > 0 && accessToken.trim().length > 0;
   const hasErrors = lastSyncErrors && lastSyncErrors.length > 0;

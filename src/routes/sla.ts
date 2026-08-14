@@ -2,7 +2,7 @@ import express from 'express';
 import { SlaService } from '../services/sla.service';
 import { logger } from '../lib/logger';
 import { rateLimit } from 'express-rate-limit';
-import { authGuard } from '../middleware/authGuard';
+import { authGuard, AuthenticatedRequest } from '../middleware/authGuard';
 
 const router = express.Router();
 
@@ -28,15 +28,15 @@ router.use(slaLimiter);
 router.use(authGuard);
 
 /** The company the caller actually belongs to, per their verified token. */
-function callerCompanyId(req: express.Request): string | undefined {
-  return (req as any).user?.company_id;
+function callerCompanyId(req: AuthenticatedRequest): string | undefined {
+  return req.user?.company_id;
 }
 
 /** Changing SLA policy reassigns other people's leads; keep it to admins. */
 const SLA_ADMIN_ROLES = ['admin', 'sub_admin', 'founder'];
 
-function requireAdmin(req: express.Request, res: express.Response): boolean {
-  const role = String((req as any).user?.role || '').toLowerCase();
+function requireAdmin(req: AuthenticatedRequest, res: express.Response): boolean {
+  const role = String(req.user?.role || '').toLowerCase();
   if (!SLA_ADMIN_ROLES.includes(role)) {
     res.status(403).json({ error: 'Forbidden: only an admin can change SLA settings' });
     return false;

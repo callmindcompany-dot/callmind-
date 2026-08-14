@@ -91,6 +91,13 @@ async function main() {
     process.exit(1);
   }
 
+  if (!process.env.VITE_SUPABASE_URL) {
+    process.env.VITE_SUPABASE_URL = 'https://placeholder.supabase.co';
+  }
+  if (!process.env.VITE_SUPABASE_ANON_KEY) {
+    process.env.VITE_SUPABASE_ANON_KEY = 'placeholder';
+  }
+
   const template = readFileSync(templatePath, 'utf8');
   const { render } = await import(pathToFileURL(ssrEntry).href);
 

@@ -1,13 +1,13 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { WhatsAppInboxService } from '../services/whatsappInbox.service';
-import { authGuard } from '../middleware/authGuard';
+import { authGuard, AuthenticatedRequest } from '../middleware/authGuard';
 
 export const whatsappInboxRouter = Router();
 
 // GET /api/whatsapp/conversations - List conversations
-whatsappInboxRouter.get('/conversations', authGuard, async (req: Request, res: Response): Promise<void> => {
+whatsappInboxRouter.get('/conversations', authGuard, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     // company_id and role come from app_metadata via authGuard. The old
     // user_metadata fallback was writable by the signed-in user, so it would
     // have let anyone move themselves into another tenant or promote their own
@@ -35,9 +35,9 @@ whatsappInboxRouter.get('/conversations', authGuard, async (req: Request, res: R
 });
 
 // GET /api/whatsapp/conversations/:id/messages - List messages for conversation
-whatsappInboxRouter.get('/conversations/:id/messages', authGuard, async (req: Request, res: Response): Promise<void> => {
+whatsappInboxRouter.get('/conversations/:id/messages', authGuard, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const companyId = user?.company_id;
     const conversationId = req.params.id;
 
@@ -54,9 +54,9 @@ whatsappInboxRouter.get('/conversations/:id/messages', authGuard, async (req: Re
 });
 
 // POST /api/whatsapp/conversations/:id/messages - Send outbound message
-whatsappInboxRouter.post('/conversations/:id/messages', authGuard, async (req: Request, res: Response): Promise<void> => {
+whatsappInboxRouter.post('/conversations/:id/messages', authGuard, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const companyId = user?.company_id;
     const conversationId = req.params.id;
     const senderPhone = user?.email || 'System Desk';
@@ -90,9 +90,9 @@ whatsappInboxRouter.post('/conversations/:id/messages', authGuard, async (req: R
 });
 
 // POST /api/whatsapp/conversations/:id/assign - Reassign conversation
-whatsappInboxRouter.post('/conversations/:id/assign', authGuard, async (req: Request, res: Response): Promise<void> => {
+whatsappInboxRouter.post('/conversations/:id/assign', authGuard, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const companyId = user?.company_id;
     const conversationId = req.params.id;
     const { assignedAgentId } = req.body;
@@ -110,9 +110,9 @@ whatsappInboxRouter.post('/conversations/:id/assign', authGuard, async (req: Req
 });
 
 // POST /api/whatsapp/conversations/:id/status - Update conversation status
-whatsappInboxRouter.post('/conversations/:id/status', authGuard, async (req: Request, res: Response): Promise<void> => {
+whatsappInboxRouter.post('/conversations/:id/status', authGuard, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     const companyId = user?.company_id;
     const conversationId = req.params.id;
     const { status } = req.body;

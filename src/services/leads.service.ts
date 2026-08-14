@@ -140,7 +140,7 @@ export const LeadService = {
         state: data.state || null,
         address: data.address || null,
         comment: data.comment || null,
-        custom_data: (data as any).customData || {},
+        custom_data: data.customData || {},
         custom_fields: data.custom_fields || {},
         is_deleted: false,
         created_at: new Date().toISOString(),
@@ -166,7 +166,7 @@ export const LeadService = {
    */
   async updateLead(companyId: string, id: string, data: Partial<Lead>): Promise<void> {
     try {
-      const updatePayload: any = {
+      const updatePayload: Record<string, any> = {
         name: data.name,
         phone: data.phone,
         email: data.email,
@@ -237,7 +237,7 @@ export const LeadService = {
         state: lead.state || null,
         address: lead.address || null,
         comment: lead.comment || null,
-        custom_data: (lead as any).customData || {},
+        custom_data: lead.customData || {},
         is_deleted: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
