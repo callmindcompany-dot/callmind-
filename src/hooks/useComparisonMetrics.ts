@@ -1,78 +1,51 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/supabaseClient';
 import { ComparisonMetrics } from '@/types/reports';
+import { resolveDateWindow, resolvePreviousWindow, type ReportFilters } from '@/lib/reportFilters';
 
+/**
+ * This period against the one before it.
+ *
+ * The previous window is derived from the current one, so the two are always
+ * the same length and always touch without overlapping. The old version worked
+ * both out separately from the period name and disagreed with itself: the
+ * 7 Days and 30 Days branches never set an end at all, so "current" ran to the
+ * moment the page loaded while "previous" ran to a midnight, and the two spans
+ * being compared were different lengths.
+ *
+ * get_comparison_metrics did not exist when this hook was written. It does now
+ * (20260820000200_fix_report_functions.sql).
+ */
 export function useComparisonMetrics(
   companyId: string | null,
-  dateRange: string,
-  customRange?: { start: string; end: string },
-  enabled: boolean = false
+  filters: ReportFilters,
+  enabled: boolean = false,
 ) {
   return useQuery<ComparisonMetrics | null>({
-    queryKey: ['reports', 'comparisonMetrics', companyId, dateRange, customRange],
+    queryKey: ['reports', 'comparisonMetrics', companyId, filters],
     queryFn: async (): Promise<ComparisonMetrics | null> => {
       if (!companyId) return null;
 
-      // 1. Calculate Period Boundaries
-      const now = new Date();
-      let currentStart = new Date();
-      let currentEnd = new Date();
-      let previousStart = new Date();
-      let previousEnd = new Date();
+      const current = resolveDateWindow(filters.dateRange, filters.customRange);
+      const previous = resolvePreviousWindow(current);
 
-      if (dateRange === 'Today') {
-        currentStart.setHours(0, 0, 0, 0);
-        currentEnd.setHours(23, 59, 59, 999);
-        
-        previousStart = new Date(currentStart.getTime() - 24 * 60 * 60 * 1000);
-        previousEnd = new Date(currentEnd.getTime() - 24 * 60 * 60 * 1000);
-      } else if (dateRange === '7 Days') {
-        currentStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        currentStart.setHours(0, 0, 0, 0);
-        
-        previousStart = new Date(currentStart.getTime() - 7 * 24 * 60 * 60 * 1000);
-        previousEnd = new Date(currentStart.getTime() - 1);
-      } else if (dateRange === '30 Days') {
-        currentStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        currentStart.setHours(0, 0, 0, 0);
-        
-        previousStart = new Date(currentStart.getTime() - 30 * 24 * 60 * 60 * 1000);
-        previousEnd = new Date(currentStart.getTime() - 1);
-      } else if (dateRange === 'This Month') {
-        currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-        
-        previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        previousEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-      } else if (dateRange === 'Custom' && customRange?.start && customRange?.end) {
-        currentStart = new Date(customRange.start);
-        currentStart.setHours(0, 0, 0, 0);
-        
-        currentEnd = new Date(customRange.end);
-        currentEnd.setHours(23, 59, 59, 999);
-
-        const durationMs = currentEnd.getTime() - currentStart.getTime();
-        previousStart = new Date(currentStart.getTime() - durationMs - 1);
-        previousEnd = new Date(currentStart.getTime() - 1);
-      } else {
-        // Default to This Month parameters
-        currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      // An open-ended custom range has no length, so there is nothing to
+      // compare it against. Saying so beats inventing a span.
+      if (!current.fromInstant || !current.toInstant || !previous.fromInstant) {
+        return null;
       }
 
       const { data, error } = await supabase.rpc('get_comparison_metrics', {
         p_company_id: companyId,
-        p_current_start: currentStart.toISOString(),
-        p_current_end: currentEnd.toISOString(),
-        p_previous_start: previousStart.toISOString(),
-        p_previous_end: previousEnd.toISOString()
+        p_current_start: current.fromInstant,
+        p_current_end: current.toInstant,
+        p_previous_start: previous.fromInstant,
+        p_previous_end: previous.toInstant,
       });
+      if (error) throw error;
 
-      if (error) {
-        console.error("useComparisonMetrics RPC failed:", error);
-        throw error;
-      }
-      return data || null;
+      // The function returns one row; supabase-js hands back an array.
+      return (Array.isArray(data) ? data[0] : data) ?? null;
     },
     enabled: !!companyId && enabled,
     staleTime: 60000,

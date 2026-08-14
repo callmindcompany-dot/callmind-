@@ -115,7 +115,7 @@ const CRM_FIELD_GROUPS: CrmFieldGroup[] = [
       { key: 'postalCode',        label: 'Pincode / Zip Code'          },
       { key: 'country',           label: 'Country'                      },
       { key: 'assigned_to',       label: 'Assigned Agent / Owner'      },
-      { key: 'last_contacted_at', label: 'Last Contacted Date'          },
+      { key: 'last_contact_at', label: 'Last Contacted Date'          },
       { key: 'created_at',        label: 'Lead Created Date'            },
       { key: 'firstName',         label: 'First Name'                   },
       { key: 'lastName',          label: 'Last Name'                    },
@@ -135,7 +135,7 @@ const DIRECT_DB_COLUMNS = new Set([
   'name', 'phone', 'email', 'status', 'source', 'priority',
   'city', 'state', 'address', 'comment', 'notes', 'language',
   'region', 'dnd_status', 'score', 'score_points', 'sentiment',
-  'assigned_to', 'last_contacted_at', 'created_at',
+  'assigned_to', 'last_contact_at', 'created_at',
 ]);
 
 const ALL_STANDARD_KEYS = CRM_FIELD_GROUPS[0].fields.map(f => f.key);
@@ -174,7 +174,7 @@ function heuristicMap(header: string): string {
   if (/^(score\s*points|points)$/.test(l))                                                                  return 'score_points';
   if (/^(sentiment|mood)$/.test(l))                                                                         return 'sentiment';
   if (/^(assigned|owner|agent|handler|assigned\s*to)$/.test(l))                                             return 'assigned_to';
-  if (/^(last\s*contacted|last\s*contact\s*date|contacted\s*at|last\s*call)$/.test(l))                     return 'last_contacted_at';
+  if (/^(last\s*contacted|last\s*contact\s*date|contacted\s*at|last\s*call)$/.test(l))                     return 'last_contact_at';
 
   if (/^(company|organisation|organization|business\s*name|firm|company\s*name)$/.test(l))                  return 'companyName';
   if (/^(industry|sector|vertical)$/.test(l))                                                               return 'industry';

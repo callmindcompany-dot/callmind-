@@ -4,14 +4,19 @@ import {
   X, Users, PhoneCall, Calendar, Target, Zap, Clock, ShieldCheck, User, AlertCircle
 } from 'lucide-react';
 import { useAgentDrillDown } from '@/hooks/useAgentDrillDown';
+import { describeDateWindow, type ReportFilters } from '@/lib/reportFilters';
 import CallMindLoader from './CallMindLoader';
 
 interface AgentDrillDownSliderProps {
   agentId: string | null;
   agentName: string | null;
   companyId: string | null;
-  dateRange: string;
-  customRange?: { start: string; end: string };
+  /**
+   * The whole filter bar, not just the period. The panel has to answer for the
+   * same slice the chart behind it is showing, or the reader drills into a row
+   * and gets a different set of calls than the one they clicked.
+   */
+  filters: ReportFilters;
   onClose: () => void;
   hidePhoneSetting?: boolean;
 }
@@ -20,13 +25,12 @@ export const AgentDrillDownSlider = React.memo(({
   agentId,
   agentName,
   companyId,
-  dateRange,
-  customRange,
+  filters,
   onClose,
   hidePhoneSetting
 }: AgentDrillDownSliderProps) => {
   const [activeTab, setActiveTab] = useState<'leads' | 'calls' | 'attendance' | 'goals' | 'statusChanges'>('leads');
-  const { data, isLoading } = useAgentDrillDown(agentId, companyId, dateRange, customRange);
+  const { data, isLoading } = useAgentDrillDown(agentId, companyId, filters);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -55,7 +59,11 @@ export const AgentDrillDownSlider = React.memo(({
             </div>
             <div>
               <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">{agentName || 'Agent Performance'}</h3>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Detail Trace | {dateRange}</p>
+              {/* The resolved dates, not the button name. "This Month" does not
+                  tell the reader which days are in front of them. */}
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                Detail Trace | {describeDateWindow(filters.dateRange, filters.customRange)}
+              </p>
             </div>
           </div>
           <button 

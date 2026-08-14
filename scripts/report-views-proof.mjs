@@ -20,7 +20,23 @@ import 'dotenv/config';
 import fs from 'fs';
 import { Client } from 'pg';
 
-const MIGRATION = 'supabase/migrations/20260820000000_report_views.sql';
+/**
+ * Every migration that defines one of these views, in the order Postgres must
+ * see them.
+ *
+ * This used to apply only the first file. Applying one migration in isolation
+ * is not a no-op when a later one redefines the same object: running this
+ * proof silently reverted conversion_funnel and lead_source_yield to their
+ * dateless shapes, and then passed -- including an assertion on a
+ * conversion_rate column that the current schema does not have. The suite went
+ * green by restoring the thing it was meant to be testing.
+ *
+ * Anything added later that touches these views belongs on this list.
+ */
+const MIGRATIONS = [
+  'supabase/migrations/20260820000000_report_views.sql',
+  'supabase/migrations/20260820000300_datable_report_views.sql',
+];
 
 let pass = 0, fail = 0;
 const check = (name, ok, detail = '') => {
@@ -31,8 +47,25 @@ const check = (name, ok, detail = '') => {
 const db = new Client({ connectionString: process.env.DATABASE_URL });
 await db.connect();
 
-await db.query(fs.readFileSync(MIGRATION, 'utf8'));
-console.log(`applied ${MIGRATION}\n`);
+for (const migration of MIGRATIONS) {
+  await db.query(fs.readFileSync(migration, 'utf8'));
+  console.log(`applied ${migration}`);
+}
+console.log('');
+
+// The proof must be checking the schema the app ships, not one it just built
+// out of a stale file. If a later migration adds a column to either view and
+// is missing from MIGRATIONS above, this is what says so.
+for (const [view, column] of [
+  ['conversion_funnel', 'date'],
+  ['lead_source_yield', 'converted_count'],
+  ['lead_source_yield', 'date'],
+]) {
+  const found = await db.query(
+    `SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`, [view, column]);
+  check(`${view} has ${column} after the migrations run`, found.rowCount === 1);
+}
 
 const me = (await db.query(`SELECT id, company_id FROM public.users LIMIT 1;`)).rows[0];
 const CO = me.company_id;
@@ -157,8 +190,11 @@ try {
     hcd.rows.map((r) => `${r.hour}:00=${r.n}`).join(' '));
 
   console.log('\n--- conversion_funnel ---');
+  // The view is one row per (status, day) now, so the days are summed the same
+  // way the hook does it.
   const cf = await db.query(
-    `SELECT status, count FROM public.conversion_funnel WHERE company_id=$1 ORDER BY count DESC;`, [CO]);
+    `SELECT status, SUM(count)::int AS count FROM public.conversion_funnel
+     WHERE company_id=$1 GROUP BY status ORDER BY 2 DESC;`, [CO]);
   const funnelTotal = cf.rows.reduce((s, r) => s + r.count, 0);
   const liveLeads = (await db.query(
     `SELECT count(*)::int AS n FROM public.leads WHERE company_id=$1 AND is_deleted=false;`, [CO])).rows[0].n;
@@ -205,22 +241,68 @@ try {
   check('a duration like "2:35" does not break the view', survived);
 
   console.log('\n--- lead_source_yield ---');
+  // The view returns counts per day and no rate at all. A rate cannot be
+  // summed across days -- 10% and 40% is not 50%, and averaging them is not
+  // 25% unless both days carried the same number of leads -- so the division
+  // happens once, here, exactly as the hook does it.
   const lsy = await db.query(
-    `SELECT source, lead_count, conversion_rate FROM public.lead_source_yield
-     WHERE company_id=$1 ORDER BY lead_count DESC;`, [CO]);
+    `SELECT source,
+            SUM(lead_count)::int      AS lead_count,
+            SUM(converted_count)::int AS converted_count
+     FROM public.lead_source_yield WHERE company_id=$1
+     GROUP BY source ORDER BY 2 DESC;`, [CO]);
+  const rate = (r) => r.lead_count > 0
+    ? Math.round((100 * r.converted_count / r.lead_count) * 10) / 10
+    : 0;
+
   check('every source is listed', lsy.rows.length >= sources.length,
-    lsy.rows.map((r) => `${r.source}=${r.lead_count}(${r.conversion_rate}%)`).join('  '));
+    lsy.rows.map((r) => `${r.source}=${r.lead_count}(${rate(r)}%)`).join('  '));
 
   const loud = lsy.rows.find((r) => r.source === 'IndiaMart');
   const quiet = lsy.rows.find((r) => r.source === 'TradeIndia');
   check('the biggest source is not the best one',
-    loud.lead_count > quiet.lead_count && Number(loud.conversion_rate) < Number(quiet.conversion_rate),
-    `IndiaMart ${loud.lead_count} @ ${loud.conversion_rate}%  vs  TradeIndia ${quiet.lead_count} @ ${quiet.conversion_rate}%`);
+    loud.lead_count > quiet.lead_count && rate(loud) < rate(quiet),
+    `IndiaMart ${loud.lead_count} @ ${rate(loud)}%  vs  TradeIndia ${quiet.lead_count} @ ${rate(quiet)}%`);
 
   // The rate has to be arithmetic, not a vibe.
   const expected = Math.round((100 * seededValued.TradeIndia / perSource.TradeIndia) * 10) / 10;
-  check('the rate matches the seeded truth', Number(quiet.conversion_rate) === expected,
-    `view says ${quiet.conversion_rate}%, seed says ${expected}%`);
+  check('the rate matches the seeded truth', rate(quiet) === expected,
+    `computed ${rate(quiet)}%, seed says ${expected}%`);
+
+  // Summing per-day rates instead of per-day counts is the mistake this shape
+  // exists to prevent. If the two ever agree here, the seed has stopped
+  // spanning multiple days and this check has gone quiet.
+  const perDay = await db.query(
+    `SELECT lead_count, converted_count FROM public.lead_source_yield
+     WHERE company_id=$1 AND source='TradeIndia';`, [CO]);
+  if (perDay.rows.length > 1) {
+    const avgOfRates = perDay.rows.reduce((s, r) =>
+      s + (r.lead_count > 0 ? 100 * r.converted_count / r.lead_count : 0), 0) / perDay.rows.length;
+    check('averaging the daily rates gives a different, wrong answer',
+      Math.round(avgOfRates * 10) / 10 !== rate(quiet),
+      `average of daily rates ${Math.round(avgOfRates * 10) / 10}% vs correct ${rate(quiet)}%`);
+  } else {
+    check('the seed spans more than one day, so the rate check means something', false,
+      'only one day of TradeIndia leads was seeded');
+  }
+
+  // Printed because the chart designs quote rupee figures, and a demo that
+  // quotes money nobody computed is the thing this codebase keeps removing.
+  console.log('\n--- money, per source ---');
+  const money = await db.query(`
+    SELECT COALESCE(NULLIF(TRIM(source),''),'Unknown') AS source,
+           COUNT(*) FILTER (WHERE COALESCE(deal_value,0) > 0)::int AS won,
+           COALESCE(SUM(deal_value) FILTER (WHERE deal_value > 0),0)::bigint AS value,
+           COUNT(*) FILTER (WHERE first_contact_at IS NOT NULL)::int AS contacted,
+           ROUND(AVG(EXTRACT(EPOCH FROM (first_contact_at - created_at))/60)
+                 FILTER (WHERE first_contact_at IS NOT NULL))::int AS avg_first_min
+    FROM public.leads WHERE company_id=$1 AND is_deleted=false
+    GROUP BY 1 ORDER BY value DESC;`, [CO]);
+  for (const r of money.rows) {
+    console.log(`        ${String(r.source).padEnd(14)} won=${String(r.won).padStart(2)}  value=Rs${String(r.value).padStart(7)}  contacted=${String(r.contacted).padStart(3)}  first call avg=${r.avg_first_min}min`);
+  }
+  const grand = money.rows.reduce((s, r) => s + Number(r.value), 0);
+  console.log(`        TOTAL value Rs${grand}`);
 
   console.log('\n--- tenancy ---');
   const inv = await db.query(`

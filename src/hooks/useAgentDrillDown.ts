@@ -1,22 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/supabaseClient';
 import { AgentDrillDownData } from '@/types/reports';
+import { applyDateWindow, type ReportFilters } from '@/lib/reportFilters';
 
 export function useAgentDrillDown(
   agentId: string | null,
   companyId: string | null,
-  dateRange: string,
-  customRange?: { start: string; end: string }
+  filters: ReportFilters,
 ) {
   return useQuery<AgentDrillDownData | null>({
-    queryKey: ['reports', 'agentDrillDown', agentId, companyId, dateRange, customRange],
+    queryKey: ['reports', 'agentDrillDown', agentId, companyId, filters],
     queryFn: async (): Promise<AgentDrillDownData | null> => {
       if (!agentId || !companyId) return null;
 
       // 1. Fetch Assigned Leads
       const { data: leadsData, error: leadsError } = await supabase
         .from('leads')
-        .select('id, name, status, last_contacted_at, created_at')
+        .select('id, name, status, last_contact_at, created_at')
         .eq('company_id', companyId)
         .eq('assigned_to', agentId);
       if (leadsError) throw leadsError;
@@ -26,26 +26,13 @@ export function useAgentDrillDown(
         .from('calls')
         .select('id, timestamp, duration, outcome, lead_id')
         .eq('company_id', companyId)
-        .eq('created_by', agentId);
+        // agent_id, not created_by: every other report keys off agent_id, and
+        // the two only agree because both apps happen to write both columns.
+        .eq('agent_id', agentId);
 
-      const now = new Date();
-      if (dateRange === 'Today') {
-        callsQuery = callsQuery.gte('timestamp', now.toISOString().split('T')[0]);
-      } else if (dateRange === '7 Days') {
-        const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        callsQuery = callsQuery.gte('timestamp', start);
-      } else if (dateRange === '30 Days') {
-        const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        callsQuery = callsQuery.gte('timestamp', start);
-      } else if (dateRange === 'This Month') {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        callsQuery = callsQuery.gte('timestamp', start);
-      } else if (dateRange === 'Custom' && customRange?.start) {
-        callsQuery = callsQuery.gte('timestamp', customRange.start);
-        if (customRange.end) {
-          callsQuery = callsQuery.lte('timestamp', customRange.end);
-        }
-      }
+      callsQuery = applyDateWindow(
+        callsQuery, 'timestamp', 'timestamp', filters.dateRange, filters.customRange,
+      );
 
       const { data: callsData, error: callsError } = await callsQuery;
       if (callsError) throw callsError;
@@ -59,16 +46,25 @@ export function useAgentDrillDown(
         .order('timestamp', { ascending: false });
       if (attendanceError) throw attendanceError;
 
-      // 4. Fetch Goals and Targets (Fallback to settings default)
+      // 4. The company's own targets, if it has set any.
+      //
+      // maybeSingle, not single: a company that has never opened team settings
+      // has no row, and single() treats that as an error. The targets used to
+      // fall back to 50 calls and 5 conversions -- numbers nobody chose, shown
+      // as "target" next to a real figure, so every company that had not
+      // configured targets was being measured against an invented one.
       const { data: settingsData, error: settingsError } = await supabase
         .from('team_settings')
         .select('settings')
         .eq('company_id', companyId)
-        .single();
-      
-      const settings = settingsData?.settings || {};
-      const targetCalls = settings.target_calls || 50;
-      const targetConversions = settings.target_conversions || 5;
+        .maybeSingle();
+      if (settingsError) throw settingsError;
+
+      const settings = (settingsData?.settings ?? {}) as Record<string, unknown>;
+      const asTarget = (v: unknown) =>
+        typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+      const targetCalls = asTarget(settings.target_calls);
+      const targetConversions = asTarget(settings.target_conversions);
 
       const actualCalls = callsData?.length || 0;
       const actualConversions = (leadsData || []).filter(l => l.status?.toLowerCase() === 'converted').length;
@@ -96,25 +92,15 @@ export function useAgentDrillDown(
         // query would have errored with "column does not exist".
         .eq('activity_type', 'status_change');
 
-      if (dateRange === 'Today') {
-        activityQuery = activityQuery.gte('created_at', now.toISOString().split('T')[0]);
-      } else if (dateRange === '7 Days') {
-        const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        activityQuery = activityQuery.gte('created_at', start);
-      } else if (dateRange === '30 Days') {
-        const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        activityQuery = activityQuery.gte('created_at', start);
-      } else if (dateRange === 'This Month') {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        activityQuery = activityQuery.gte('created_at', start);
-      } else if (dateRange === 'Custom' && customRange?.start) {
-        activityQuery = activityQuery.gte('created_at', customRange.start);
-        if (customRange.end) {
-          activityQuery = activityQuery.lte('created_at', customRange.end);
-        }
-      }
+      activityQuery = applyDateWindow(
+        activityQuery, 'created_at', 'timestamp', filters.dateRange, filters.customRange,
+      );
 
-      const { data: activityData } = await activityQuery;
+      // The error used to be discarded here, so a failed query left the status
+      // movement panel empty and indistinguishable from an agent who moved
+      // nothing.
+      const { data: activityData, error: activityError } = await activityQuery;
+      if (activityError) throw activityError;
 
       const statusChangeCounts: Record<string, number> = {};
       (activityData || []).forEach((act: any) => {
@@ -134,7 +120,7 @@ export function useAgentDrillDown(
           id: l.id,
           name: l.name,
           status: l.status,
-          last_contacted_at: l.last_contacted_at,
+          last_contact_at: l.last_contact_at,
           created_at: l.created_at
         })),
         calls: resolvedCalls,

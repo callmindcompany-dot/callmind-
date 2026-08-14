@@ -1,19 +1,37 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/supabaseClient';
 import { CallDispositionRecord } from '@/types/reports';
+import {
+  applyDateWindow,
+  applyDimensionFilters,
+  type ReportFilters,
+} from '@/lib/reportFilters';
+import { NOT_RECORDED } from '@/lib/callOutcomes';
 
 /**
- * Fetches call outcome disposition breakdown (Answered, Busy, No Answer, etc.)
- * filtered by date range and optionally by agent.
+ * How calls ended, for the disposition donut.
+ *
+ * This used to fold everything through a CANONICAL_OUTCOMES list of
+ * Answered / Busy / Wrong Number / Not Interested / Callback / No Answer, and
+ * anything absent from it became "Other". The mobile app writes 'Connected',
+ * which was not on that list -- so every single answered call in the product
+ * was being drawn as "Other", and the one slice a manager most wants to see was
+ * the one slice that did not exist.
+ *
+ * There is no CHECK constraint on calls.outcome, so no list written here can
+ * stay true. It now groups by the value actually stored. A new outcome appears
+ * as itself rather than disappearing into a bucket, which is the point: an
+ * unexpected value is information, not noise to be swept up.
+ *
+ * A missing outcome used to be relabelled 'No Answer'. Nobody knows that. It is
+ * reported as not recorded.
  */
 export function useCallDisposition(
   companyId: string | null,
-  dateRange: string,
-  selectedAgent?: string,
-  customRange?: { start: string; end: string }
+  filters: ReportFilters,
 ) {
   return useQuery<CallDispositionRecord[]>({
-    queryKey: ['reports', 'callDisposition', companyId, dateRange, selectedAgent, customRange],
+    queryKey: ['reports', 'callDisposition', companyId, filters],
     queryFn: async (): Promise<CallDispositionRecord[]> => {
       if (!companyId) return [];
 
@@ -22,44 +40,21 @@ export function useCallDisposition(
         .select('outcome')
         .eq('company_id', companyId);
 
-      // Date range filtering
-      const now = new Date();
-      if (dateRange === 'Today') {
-        query = query.gte('timestamp', now.toISOString().split('T')[0]);
-      } else if (dateRange === '7 Days') {
-        const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        query = query.gte('timestamp', start);
-      } else if (dateRange === '30 Days') {
-        const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        query = query.gte('timestamp', start);
-      } else if (dateRange === 'This Month') {
-        const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        query = query.gte('timestamp', start);
-      } else if (dateRange === 'Custom' && customRange?.start) {
-        query = query.gte('timestamp', customRange.start);
-        if (customRange.end) {
-          query = query.lte('timestamp', customRange.end);
-        }
-      }
-
-      if (selectedAgent && selectedAgent !== 'All Agents') {
-        query = query.eq('created_by', selectedAgent);
-      }
+      query = applyDateWindow(query, 'timestamp', 'timestamp', filters.dateRange, filters.customRange);
+      query = applyDimensionFilters(query, filters, { agent: 'agent_id' });
 
       const { data, error } = await query;
       if (error) throw error;
 
-      // Aggregate outcome counts client-side
-      const counts: Record<string, number> = {};
-      const CANONICAL_OUTCOMES = ['Answered', 'Busy', 'Wrong Number', 'Not Interested', 'Callback', 'No Answer'];
+      const counts = new Map<string, number>();
+      for (const row of (data ?? []) as Array<{ outcome: string | null }>) {
+        const key = row.outcome?.trim() || NOT_RECORDED;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
 
-      (data || []).forEach((row: { outcome: string | null }) => {
-        const outcome = row.outcome || 'No Answer';
-        const key = CANONICAL_OUTCOMES.includes(outcome) ? outcome : 'Other';
-        counts[key] = (counts[key] || 0) + 1;
-      });
-
-      return Object.entries(counts).map(([outcome, count]) => ({ outcome, count }));
+      return [...counts.entries()]
+        .map(([outcome, count]) => ({ outcome, count }))
+        .sort((a, b) => b.count - a.count);
     },
     enabled: !!companyId,
     staleTime: 60000,

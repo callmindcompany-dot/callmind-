@@ -1,176 +1,144 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/supabaseClient';
 import { TelecallerMetrics } from '@/types/reports';
+import { applyDateWindow, applyDimensionFilters, type ReportFilters } from '@/lib/reportFilters';
+import { parseDurationSeconds } from '@/lib/callDuration';
 
 /**
- * Fetches telecaller-specific metrics per agent:
- * - First/Last call timestamps
- * - Average call duration
- * - Notes added count
- * - Login/Logout times and active/idle durations
+ * Per-telecaller activity: first and last call, talk time, notes written, and
+ * the shift they were logged in for.
+ *
+ * Three faults fixed while moving this onto the shared filter resolver.
+ *
+ * The users query selected `displayName`. The column is `display_name`, so
+ * PostgREST rejected the whole select and the hook threw on every render --
+ * and ReportsPage drops hook errors, so the module simply showed nothing.
+ *
+ * The notes and attendance queries destructured only `data` and discarded
+ * `error`. A failure there left notes_count at 0 and the shift blank, which
+ * reads as an agent who wrote no notes rather than a query that did not run.
+ *
+ * idle_minutes was 0 whenever login or logout was missing. Zero idle is a
+ * flattering number and it was being shown for agents nobody had any
+ * attendance data for at all. It is null now, and the screen has to say
+ * unknown.
  */
-export function useTelecallerMetrics(
-  companyId: string | null,
-  dateRange: string,
-  customRange?: { start: string; end: string }
-) {
+export function useTelecallerMetrics(companyId: string | null, filters: ReportFilters) {
   return useQuery<TelecallerMetrics[]>({
-    queryKey: ['reports', 'telecallerMetrics', companyId, dateRange, customRange],
+    queryKey: ['reports', 'telecallerMetrics', companyId, filters],
     queryFn: async (): Promise<TelecallerMetrics[]> => {
       if (!companyId) return [];
 
-      // Build date filter
-      const now = new Date();
-      let dateStart: string | null = null;
-      let dateEnd: string | null = null;
-
-      if (dateRange === 'Today') {
-        dateStart = now.toISOString().split('T')[0];
-      } else if (dateRange === '7 Days') {
-        dateStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      } else if (dateRange === '30 Days') {
-        dateStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      } else if (dateRange === 'This Month') {
-        dateStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      } else if (dateRange === 'Custom' && customRange?.start) {
-        dateStart = customRange.start;
-        dateEnd = customRange.end || null;
-      }
-
-      // 1. Fetch all calls in range
       let callsQuery = supabase
         .from('calls')
-        .select('created_by, timestamp, duration, outcome')
+        .select('agent_id, timestamp, duration, outcome')
         .eq('company_id', companyId);
-
-      if (dateStart) callsQuery = callsQuery.gte('timestamp', dateStart);
-      if (dateEnd) callsQuery = callsQuery.lte('timestamp', dateEnd);
-
+      callsQuery = applyDateWindow(callsQuery, 'timestamp', 'timestamp', filters.dateRange, filters.customRange);
+      callsQuery = applyDimensionFilters(callsQuery, filters, { agent: 'agent_id' });
       const { data: callsData, error: callsError } = await callsQuery;
       if (callsError) throw callsError;
 
-      // 2. Fetch agents list
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('id, name, displayName')
+        .select('id, name, display_name, email')
         .eq('company_id', companyId);
       if (usersError) throw usersError;
 
-      // 3. Fetch notes count per agent
       let notesQuery = supabase
         .from('lead_activity_log')
         .select('created_by')
         .eq('company_id', companyId)
-        // activity_type, not type — see useAgentDrillDown for the same fix.
         .eq('activity_type', 'note');
+      notesQuery = applyDateWindow(notesQuery, 'created_at', 'timestamp', filters.dateRange, filters.customRange);
+      const { data: notesData, error: notesError } = await notesQuery;
+      if (notesError) throw notesError;
 
-      if (dateStart) notesQuery = notesQuery.gte('created_at', dateStart);
-      if (dateEnd) notesQuery = notesQuery.lte('created_at', dateEnd);
-
-      const { data: notesData } = await notesQuery;
-
-      // 4. Fetch attendance logs for login/logout times
       let attQuery = supabase
         .from('attendance_logs')
         .select('user_id, type, timestamp')
-        .eq('company_id', companyId)
-        .order('timestamp', { ascending: true });
+        .eq('company_id', companyId);
+      attQuery = applyDateWindow(attQuery, 'timestamp', 'timestamp', filters.dateRange, filters.customRange);
+      const { data: attData, error: attError } = await attQuery.order('timestamp', { ascending: true });
+      if (attError) throw attError;
 
-      if (dateStart) attQuery = attQuery.gte('timestamp', dateStart);
-      if (dateEnd) attQuery = attQuery.lte('timestamp', dateEnd);
-
-      const { data: attData } = await attQuery;
-
-      // Aggregate per agent
-      const agentMap: Record<string, TelecallerMetrics> = {};
-
-      // Initialize agents
-      (usersData || []).forEach((u: { id: string; name: string | null; displayName: string | null }) => {
-        agentMap[u.id] = {
+      const agents = new Map<string, TelecallerMetrics>();
+      for (const u of usersData ?? []) {
+        agents.set(u.id, {
           agent_id: u.id,
-          agent_name: u.displayName || u.name || 'Unknown',
+          agent_name: u.display_name || u.name || u.email || 'Unknown',
           first_call_at: null,
           last_call_at: null,
           total_calls: 0,
           total_talk_seconds: 0,
-          avg_talk_seconds: 0,
+          avg_talk_seconds: null,
+          unreadable_durations: 0,
           notes_count: 0,
           login_time: null,
           logout_time: null,
-          active_duration_minutes: 0,
-          idle_minutes: 0,
-        };
-      });
+          active_duration_minutes: null,
+          idle_minutes: null,
+        });
+      }
 
-      // Process calls
-      (callsData || []).forEach((call: { created_by: string; timestamp: string; duration: string | null; outcome: string | null }) => {
-        const agentId = call.created_by;
-        if (!agentMap[agentId]) return;
+      const readable = new Map<string, number>();
 
-        const agent = agentMap[agentId];
+      for (const call of (callsData ?? []) as Array<{
+        agent_id: string | null; timestamp: string | null;
+        duration: string | null; outcome: string | null;
+      }>) {
+        if (!call.agent_id || !call.timestamp) continue;
+        const agent = agents.get(call.agent_id);
+        if (!agent) continue;
+
         agent.total_calls++;
 
-        // Parse duration string (e.g., "3:42" or "222") to seconds
-        let durationSec = 0;
-        if (call.duration) {
-          if (call.duration.includes(':')) {
-            const parts = call.duration.split(':').map(Number);
-            durationSec = parts.length === 3
-              ? parts[0] * 3600 + parts[1] * 60 + parts[2]
-              : parts[0] * 60 + (parts[1] || 0);
-          } else {
-            durationSec = parseInt(call.duration, 10) || 0;
-          }
+        const seconds = parseDurationSeconds(call.duration);
+        if (seconds === null) {
+          agent.unreadable_durations++;
+        } else {
+          agent.total_talk_seconds += seconds;
+          readable.set(call.agent_id, (readable.get(call.agent_id) ?? 0) + 1);
         }
-        agent.total_talk_seconds += durationSec;
 
-        // Track first/last call
         if (!agent.first_call_at || call.timestamp < agent.first_call_at) {
           agent.first_call_at = call.timestamp;
         }
         if (!agent.last_call_at || call.timestamp > agent.last_call_at) {
           agent.last_call_at = call.timestamp;
         }
-      });
+      }
 
-      // Process notes counts
-      (notesData || []).forEach((note: { created_by: string }) => {
-        if (agentMap[note.created_by]) {
-          agentMap[note.created_by].notes_count++;
-        }
-      });
+      for (const note of (notesData ?? []) as Array<{ created_by: string | null }>) {
+        const agent = note.created_by ? agents.get(note.created_by) : undefined;
+        if (agent) agent.notes_count++;
+      }
 
-      // Process attendance for login/logout
-      (attData || []).forEach((att: { user_id: string; type: string; timestamp: string }) => {
-        if (!agentMap[att.user_id]) return;
-        const agent = agentMap[att.user_id];
+      for (const att of (attData ?? []) as Array<{
+        user_id: string | null; type: string | null; timestamp: string | null;
+      }>) {
+        const agent = att.user_id ? agents.get(att.user_id) : undefined;
+        if (!agent || !att.timestamp) continue;
+        if (att.type === 'check_in' && !agent.login_time) agent.login_time = att.timestamp;
+        if (att.type === 'check_out') agent.logout_time = att.timestamp;
+      }
 
-        if (att.type === 'check_in' && !agent.login_time) {
-          agent.login_time = att.timestamp;
-        }
-        if (att.type === 'check_out') {
-          agent.logout_time = att.timestamp;
-        }
-      });
-
-      // Calculate averages and active/idle durations
-      Object.values(agentMap).forEach(agent => {
-        agent.avg_talk_seconds = agent.total_calls > 0
-          ? Math.round(agent.total_talk_seconds / agent.total_calls)
-          : 0;
+      for (const agent of agents.values()) {
+        const n = readable.get(agent.agent_id) ?? 0;
+        agent.avg_talk_seconds = n > 0 ? Math.round(agent.total_talk_seconds / n) : null;
 
         if (agent.login_time && agent.logout_time) {
-          const loginMs = new Date(agent.login_time).getTime();
-          const logoutMs = new Date(agent.logout_time).getTime();
-          const totalMinutes = Math.round((logoutMs - loginMs) / 60000);
-          const talkMinutes = Math.round(agent.total_talk_seconds / 60);
-          agent.active_duration_minutes = totalMinutes;
-          agent.idle_minutes = Math.max(0, totalMinutes - talkMinutes);
+          const minutes = Math.round(
+            (new Date(agent.logout_time).getTime() - new Date(agent.login_time).getTime()) / 60_000,
+          );
+          // A logout before the login is a sync fault, not a negative shift.
+          if (minutes > 0) {
+            agent.active_duration_minutes = minutes;
+            agent.idle_minutes = Math.max(0, minutes - Math.round(agent.total_talk_seconds / 60));
+          }
         }
-      });
+      }
 
-      // Only return agents with activity
-      return Object.values(agentMap).filter(a => a.total_calls > 0 || a.login_time);
+      return [...agents.values()].filter(a => a.total_calls > 0 || a.login_time !== null);
     },
     enabled: !!companyId,
     staleTime: 60000,

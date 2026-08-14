@@ -40,6 +40,15 @@ import { useConversionFunnelReport } from '@/hooks/useConversionFunnelReport';
 import { useAgentPerformanceReport } from '@/hooks/useAgentPerformanceReport';
 import { useLeadSourceYieldReport } from '@/hooks/useLeadSourceYieldReport';
 import { useComparisonMetrics } from '@/hooks/useComparisonMetrics';
+import {
+  DATE_RANGES,
+  describeDateWindow,
+  ALL_AGENTS,
+  ALL_SOURCES,
+  ALL_STATUSES,
+  type DateRangeId,
+  type ReportFilters,
+} from '@/lib/reportFilters';
 import { useReportsData } from '@/hooks/useReportsData';
 import { useTeamSettingsQuery } from '@/hooks/useTeamSettingsQuery';
 import { useAttendanceSummary } from '@/hooks/useAttendanceSummary';
@@ -199,49 +208,51 @@ export const ReportsPage = () => {
   // Raw fallback query hook (migrated to Supabase) for secondary components
   const rawData = useReportsData(companyId);
 
+  /**
+   * The filter bar, as one value.
+   *
+   * Every report hook takes this object, so a period or dropdown that is on
+   * screen is applied by all of them or by none. Passing the pieces separately
+   * is how five reports came to ignore the period button entirely while the
+   * button still looked lit.
+   */
+  const filters: ReportFilters = useMemo(() => ({
+    dateRange: dateRange as DateRangeId,
+    customRange: dateRange === 'Custom' ? customRange : undefined,
+    agentId: selectedAgent,
+    source: selectedSource,
+    status: selectedStatus,
+  }), [dateRange, customRange, selectedAgent, selectedSource, selectedStatus]);
+
+  /** What the period button actually resolves to, for the subtitles. */
+  const periodLabel = useMemo(
+    () => describeDateWindow(filters.dateRange, filters.customRange),
+    [filters.dateRange, filters.customRange],
+  );
+
   // Pre-aggregated Database View Queries (Lazy loaded based on activeReport)
-  const { data: hourlyCalls = [], isLoading: loadingHourly } = useHourlyCallsReport(
-    companyId,
-    dateRange,
-    dateRange === 'Custom' ? customRange : undefined
-  );
+  const hourlyCallsQ = useHourlyCallsReport(companyId, filters);
+  const funnelQ = useConversionFunnelReport(companyId, filters);
+  const agentPerfQ = useAgentPerformanceReport(companyId, filters);
+  const sourceYieldQ = useLeadSourceYieldReport(companyId, filters);
+  const comparisonQ = useComparisonMetrics(companyId, filters, compareMode);
+  const attendanceQ = useAttendanceSummary(companyId, filters);
+  const callsReportQ = useCallsReport(companyId, filters);
+  const dispositionQ = useCallDisposition(companyId, filters);
+  const telecallerQ = useTelecallerMetrics(companyId, filters);
 
-  const { data: funnelSteps = [], isLoading: loadingFunnel } = useConversionFunnelReport(companyId);
+  const { data: hourlyCalls = [], isLoading: loadingHourly } = hourlyCallsQ;
+  const { data: funnelSteps = [], isLoading: loadingFunnel } = funnelQ;
+  const { data: agentPerf = [], isLoading: loadingAgent } = agentPerfQ;
+  const { data: sourceYield = [], isLoading: loadingSource } = sourceYieldQ;
+  const { data: comparisonData, isLoading: loadingCompare } = comparisonQ;
+  const { data: attendanceSummary = [], isLoading: loadingAttendance } = attendanceQ;
+  const { data: callsReport = [], isLoading: loadingCallsList } = callsReportQ;
+  const { data: callDispositions = [] } = dispositionQ;
+  const { data: telecallerMetrics = [] } = telecallerQ;
 
-  const { data: agentPerf = [], isLoading: loadingAgent } = useAgentPerformanceReport(
-    companyId,
-    dateRange,
-    selectedAgent,
-    dateRange === 'Custom' ? customRange : undefined
-  );
-
-  const { data: sourceYield = [], isLoading: loadingSource } = useLeadSourceYieldReport(companyId);
-
-  const { data: comparisonData, isLoading: loadingCompare } = useComparisonMetrics(
-    companyId,
-    dateRange,
-    dateRange === 'Custom' ? customRange : undefined,
-    compareMode
-  );
-
-  // New Insight queries
-  const { data: attendanceSummary = [], isLoading: loadingAttendance } = useAttendanceSummary(companyId, dateRange);
-  const { data: callsReport = [], isLoading: loadingCallsList } = useCallsReport(companyId, dateRange, selectedAgent, dateRange === 'Custom' ? customRange : undefined);
   const { data: whatsappSummary = [] } = useWhatsAppReport(companyId);
   const { schedules = [] } = useReportSchedules(companyId);
-
-  const { data: callDispositions = [] } = useCallDisposition(
-    companyId,
-    dateRange,
-    selectedAgent,
-    dateRange === 'Custom' ? customRange : undefined
-  );
-
-  const { data: telecallerMetrics = [] } = useTelecallerMetrics(
-    companyId,
-    dateRange,
-    dateRange === 'Custom' ? customRange : undefined
-  );
 
   const { data: dashboardSummary } = useDashboardSummary(companyId);
   const { data: staleLeadsQuery = [], isLoading: isLoadingStaleQuery, refetch: refetchStaleLeads } = useStaleLeads(companyId);
@@ -1241,7 +1252,7 @@ export const ReportsPage = () => {
                               <td className="py-3">{lead.name || 'Anonymous'}</td>
                               <td className="py-3 font-mono">{teamSettings?.hidePhoneNumbers ? '********' + (lead.phone?.slice(-4) || '****') : (lead.phone || 'N/A')}</td>
                               <td className="py-3">{lead.source || 'Direct'}</td>
-                              <td className="py-3 text-right">{lead.last_contacted_at ? new Date(lead.last_contacted_at).toLocaleDateString() : 'Never'}</td>
+                              <td className="py-3 text-right">{lead.last_contact_at ? new Date(lead.last_contact_at).toLocaleDateString() : 'Never'}</td>
                             </tr>
                           ))}
                           {staleLeads.length === 0 && (
@@ -1393,8 +1404,7 @@ export const ReportsPage = () => {
             agentId={selectedDrillDownAgentId}
             agentName={selectedDrillDownAgentName}
             companyId={companyId}
-            dateRange={dateRange}
-            customRange={dateRange === 'Custom' ? customRange : undefined}
+            filters={filters}
             onClose={() => setSelectedDrillDownAgentId(null)}
           />
         )}

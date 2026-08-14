@@ -46,7 +46,7 @@ export function useReportsData(companyId: string | null): ReportsData {
         ...l,
         assignedTo: l.assigned_to,
         createdAt: l.created_at,
-        lastContactedAt: l.last_contacted_at
+        lastContactedAt: l.last_contact_at
       }));
     },
     enabled: !!companyId,
