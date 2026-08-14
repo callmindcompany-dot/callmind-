@@ -105,6 +105,53 @@ describe('source performance', () => {
   });
 });
 
+describe('the inbound webhook', () => {
+  it('checks the secret where the UI saves it', () => {
+    // The server read lead_sources.credentials.webhookSecret. Nothing writes to
+    // lead_sources -- zero rows, no UI path -- so the fail-closed branch fired
+    // on every request and the advertised webhook URL rejected everything with
+    // 403 "Webhook not configured for this company".
+    const route = code('src/routes/leads.ts');
+    const inbound = route.slice(route.indexOf("'/webhooks/incoming/:companyId'"));
+    const handler = inbound.slice(0, inbound.indexOf('router.post', 1));
+
+    expect(handler, 'still checking the table nothing writes to').not.toMatch(
+      /from\('lead_sources'\)/,
+    );
+    expect(handler).toMatch(/from\('integration_credentials'\)/);
+    expect(handler).toMatch(/provider', 'webhook'/);
+    // Still fails closed.
+    expect(handler).toMatch(/if \(!storedSecret/);
+  });
+
+  it('separates a lookup failure from a missing secret', () => {
+    // 403 tells the sender to stop trying. A database blip is not that.
+    const route = code('src/routes/leads.ts');
+    expect(route).toMatch(/503/);
+  });
+
+  it('tests the webhook rather than faking a lead', () => {
+    const hook = code('src/hooks/useWebhookConfig.ts');
+    // It inserted straight into `leads` with an invented "₹2.5 Cr+" budget and
+    // reported success without ever calling the endpoint.
+    expect(hook, 'the test writes a lead directly again').not.toMatch(/from\('leads'\)\s*\.insert/);
+    expect(hook).not.toMatch(/2\.5 Cr/);
+    expect(hook).not.toMatch(/Mock payload/i);
+    // It must actually post to the URL it shows the customer.
+    expect(hook).toMatch(/fetch\(webhookUrl/);
+    expect(hook).toMatch(/'x-webhook-secret'/);
+    // And report the server's own reason, since "not configured" and "invalid
+    // secret" have different fixes.
+    expect(hook).toMatch(/body\.error/);
+  });
+
+  it('derives the webhook URL instead of hardcoding a hostname', () => {
+    const hook = code('src/hooks/useWebhookConfig.ts');
+    expect(hook, 'the guessed production hostname is back').not.toMatch(/api\.callmind\.app/);
+    expect(hook).toMatch(/window\.location\.origin/);
+  });
+});
+
 describe('sourceChipClass', () => {
   it('gives each known vendor its own colour', () => {
     const indiamart = sourceChipClass('IndiaMart');

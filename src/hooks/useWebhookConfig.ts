@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { supabase } from '../supabaseClient';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import type { WebhookConfig, IntegrationConfigPayload } from '@/types/integrations';
 import type { UseMutationResult } from '@tanstack/react-query';
@@ -12,15 +11,31 @@ interface UseWebhookConfigParams {
 }
 
 /**
- * useWebhookConfig
+ * The inbound webhook: its URL, its secret, and a test that actually tests it.
  *
- * Manages webhook URL, secret generation, and test webhook trigger.
+ * The URL was the literal https://api.callmind.app/v1/webhooks/incoming/<id>,
+ * which is a guess about production DNS baked into the client. SettingsPage
+ * built the same URL from window.location.origin, so the two disagreed and one
+ * of them was wrong wherever the product was deployed. It is derived here too.
+ *
+ * The test did not test anything. It inserted a row straight into `leads`
+ * through supabase-js -- never touching the webhook endpoint -- with a made-up
+ * name and a made-up "₹2.5 Cr+" budget, then reported "Mock payload ingested!".
+ * So the one button whose entire job is to prove the integration works passed
+ * while the endpoint rejected every real request with 403, which it did: the
+ * server checked the secret against lead_sources, a table nothing writes to.
+ *
+ * It now posts a real payload to the real URL with the real secret header, and
+ * reports what came back. That is the only version of this button worth having.
  */
 export function useWebhookConfig({ companyId, initialConfig, saveMutation }: UseWebhookConfigParams) {
   const [webhookSecret, setWebhookSecret] = useState(initialConfig.secret);
-  const webhookUrl = initialConfig.url || `https://api.callmind.app/v1/webhooks/incoming/${companyId}`;
+  const queryClient = useQueryClient();
 
-  // Sync when parent settings reload
+  const webhookUrl =
+    initialConfig.url ||
+    (companyId ? `${window.location.origin}/v1/webhooks/incoming/${companyId}` : '');
+
   const syncFromSettings = useCallback((config: WebhookConfig) => {
     setWebhookSecret(config.secret || generateSecret());
   }, []);
@@ -29,43 +44,46 @@ export function useWebhookConfig({ companyId, initialConfig, saveMutation }: Use
     const newKey = generateSecret();
     setWebhookSecret(newKey);
     saveMutation.mutate({ webhook_config: { secret: newKey, url: webhookUrl } });
-    toast.success('🔑 Webhook signing key regenerated.');
+    toast.success('🔑 Webhook signing key regenerated. Save before testing.');
   }, [saveMutation, webhookUrl]);
 
   const testWebhookMutation = useMutation({
     mutationFn: async () => {
       if (!companyId) throw new Error('Company ID is required');
+      if (!webhookSecret) throw new Error('Set and save a signing secret first.');
 
-      const { error } = await supabase.from('leads').insert({
-        name: 'API Test — Webhook Prospect',
-        phone: '919000100001',
-        email: 'webhook.test@example.com',
-        notes: 'Lead pushed via internal webhooks console test.',
-        estimated_budget: '₹2.5 Cr+',
-        status: 'New Lead',
-        source: 'Inbound API / Webhook',
-        company_id: companyId,
-        assigned_to: 'unassigned',
-        is_deleted: false,
-        is_unseen: true,
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-webhook-secret': webhookSecret,
+        },
+        body: JSON.stringify({
+          name: 'CallMind webhook test',
+          phone: '+919000100001',
+          email: 'webhook.test@example.invalid',
+          comment: 'Sent by the Test Webhook button in Integrations.',
+        }),
       });
 
-      if (error) throw error;
+      const body = await res.json().catch(() => ({}));
 
-      await supabase.from('audit_logs').insert({
-        company_id: companyId,
-        action: 'WEBHOOK_PAYLOAD_RECEIVED',
-        category: 'config',
-        target: 'Webhook Source Ingestion',
-        details: 'Test webhook payload ingested. Mock lead created.',
-      });
+      if (!res.ok) {
+        // The server's own words. "Webhook not configured for this company"
+        // and "Invalid webhook secret" are different problems with different
+        // fixes, and flattening them into "test failed" helps nobody.
+        throw new Error(body.error || `The endpoint answered ${res.status}.`);
+      }
+
+      return body;
     },
     onSuccess: () => {
-      toast.success('🎉 Mock payload ingested! Test lead created.');
+      toast.success('Webhook accepted the payload — check your leads for the test lead.');
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
     },
     onError: (err: Error) => {
       console.error(err);
-      toast.error('Webhook ingestion simulation failed.');
+      toast.error(err.message || 'The webhook did not accept the payload.');
     },
   });
 

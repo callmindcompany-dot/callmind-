@@ -34,19 +34,38 @@ router.post('/webhooks/incoming/:companyId', inboundWebhookLimiter, async (req, 
   }
 
   try {
-    // Verify the secret against stored credentials for this company
+    // Verify the secret against stored credentials for this company.
+    //
+    // This read lead_sources.credentials.webhookSecret. Nothing in the product
+    // has ever written to lead_sources -- the table holds zero rows and only
+    // server code reads it -- while the Integrations screen saves the webhook
+    // secret through useWebhookConfig. So storedSecret was always undefined,
+    // the fail-closed branch below fired every time, and every inbound webhook
+    // was answered "Webhook not configured for this company". This is the URL
+    // the product actually advertises, so that was the whole custom-webhook
+    // integration, rejected at the door.
+    //
+    // It now reads where the UI writes: integration_credentials, provider
+    // 'webhook' (20260819000100_integration_credentials.sql).
     if (!isPlaceholder) {
-      const { data: sourceConfig } = await supabaseAdmin
-        .from('lead_sources')
-        .select('credentials')
+      const { data: sourceConfig, error: configError } = await supabaseAdmin
+        .from('integration_credentials')
+        .select('config, is_active')
         .eq('company_id', companyId)
-        .eq('is_active', true)
-        .limit(1)
+        .eq('provider', 'webhook')
         .maybeSingle();
 
-      const storedSecret = sourceConfig?.credentials?.webhookSecret;
-      // F-14 FIX: Fail closed — if no source config or no secret configured, reject
-      if (!storedSecret) {
+      // A failed lookup is not the same as "no secret set", and answering 403
+      // to the second when it was the first sends the sender away for good.
+      if (configError) {
+        logger.error('[Webhook] could not read integration_credentials:', configError);
+        return res.status(503).json({ error: 'Could not verify the webhook secret. Try again.' });
+      }
+
+      const storedSecret = (sourceConfig?.config as { secret?: string } | null)?.secret;
+
+      // Fail closed: no secret configured means nobody may post.
+      if (!storedSecret || sourceConfig?.is_active === false) {
         return res.status(403).json({ error: 'Webhook not configured for this company or secret not set' });
       }
       if (storedSecret !== webhookSecret) {
