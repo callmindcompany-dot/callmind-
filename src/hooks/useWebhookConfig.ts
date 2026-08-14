@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
+import { inboundWebhookUrl } from '@/lib/webhookUrl';
 import type { WebhookConfig, IntegrationConfigPayload } from '@/types/integrations';
 import type { UseMutationResult } from '@tanstack/react-query';
 
@@ -32,9 +33,7 @@ export function useWebhookConfig({ companyId, initialConfig, saveMutation }: Use
   const [webhookSecret, setWebhookSecret] = useState(initialConfig.secret);
   const queryClient = useQueryClient();
 
-  const webhookUrl =
-    initialConfig.url ||
-    (companyId ? `${window.location.origin}/v1/webhooks/incoming/${companyId}` : '');
+  const webhookUrl = initialConfig.url || inboundWebhookUrl(companyId);
 
   const syncFromSettings = useCallback((config: WebhookConfig) => {
     setWebhookSecret(config.secret || generateSecret());

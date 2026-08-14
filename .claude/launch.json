@@ -2,14 +2,18 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "callmind-dev",
+      "name": "altieus-website",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
+        "--prefix",
+        "D:\\Alitius Acadamy\\altiues acadamy website",
         "run",
-        "dev"
+        "dev",
+        "--",
+        "--port",
+        "3111"
       ],
-      "port": 3000,
-      "autoPort": true
+      "port": 3111
     }
   ]
 }

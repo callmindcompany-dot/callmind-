@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
+import { inboundWebhookUrl, inboundWebhookExample } from '@/lib/webhookUrl';
 import type { GoogleAdsConfig, IntegrationConfigPayload } from '@/types/integrations';
 import type { UseMutationResult } from '@tanstack/react-query';
-import { inboundWebhookUrl, inboundWebhookExample } from '@/lib/webhookUrl';
 
 interface UseGoogleAdsConfigParams {
   initialConfig: GoogleAdsConfig;

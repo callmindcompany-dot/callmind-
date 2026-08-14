@@ -148,7 +148,12 @@ describe('the inbound webhook', () => {
   it('derives the webhook URL instead of hardcoding a hostname', () => {
     const hook = code('src/hooks/useWebhookConfig.ts');
     expect(hook, 'the guessed production hostname is back').not.toMatch(/api\.callmind\.app/);
-    expect(hook).toMatch(/window\.location\.origin/);
+    // Checked window.location.origin here until the derivation moved into
+    // src/lib/webhookUrl.ts -- which it had to, because three other files were
+    // still hardcoding the host and one of them fed this one. Asserting the
+    // property rather than the mechanism: it goes through the one helper.
+    // src/__tests__/webhookUrl.test.ts covers the helper itself.
+    expect(hook).toMatch(/inboundWebhookUrl\(/);
   });
 });
 
