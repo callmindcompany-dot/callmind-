@@ -15,7 +15,7 @@ import {
   XCircle, PlayCircle, Edit3,
   ShieldAlert, RefreshCw, Activity,
   FileSpreadsheet, ChevronDown, Bug, Send,
-  Sparkles, Copy, Network
+  Sparkles, Copy, Network, PhoneOff
 } from 'lucide-react';
 import { useAuth } from '@/AuthContext';
 import { useCompany } from '@/CompanyContext';
@@ -25,6 +25,7 @@ import CallMindLoader from './CallMindLoader';
 import { CleanupWidget } from './CleanupWidget';
 import { SubAdminManagementTab } from './SubAdminManagementTab';
 import { OrganizationHierarchySettings } from './settings/OrganizationHierarchySettings';
+import { PostCallFormSettings } from './settings/PostCallFormSettings';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -2276,6 +2277,13 @@ export const SettingsPage = () => {
       case 'organization':
         return <OrganizationHierarchySettings />;
 
+      case 'post_call':
+        // canEdit mirrors the RLS policy on post_call_form_options rather than
+        // guessing: a telecaller who reaches this screen sees it read-only, and
+        // the mutation hooks still check the row count, because a write refused
+        // by RLS comes back with no error and no rows.
+        return <PostCallFormSettings companyId={companyId} canEdit={isFounderOrGod} />;
+
       default:
         return (
           <div className="bg-white border border-gray-100 rounded-2xl p-8 text-center text-gray-500">
@@ -2292,6 +2300,10 @@ export const SettingsPage = () => {
     ...(isFounderOrGod ? [{ id: 'company', icon: Building2, label: 'Company', desc: 'Corporate identity', textColorActive: 'text-brand-600' }] : []),
     ...(isFounderOrGod ? [{ id: 'organization', icon: Network, label: 'Organization & Structure', desc: 'Branches & regions', textColorActive: 'text-brand-600' }] : []),
     { id: 'leads', icon: Target, label: 'Lead Workflow', desc: 'Pipeline & stages', textColorActive: 'text-emerald-600' },
+    // Beside Lead Workflow deliberately: the interest options here decide which
+    // of those stages a finished call moves the lead to, and the two are read
+    // together or neither makes sense.
+    { id: 'post_call', icon: PhoneOff, label: 'Post-Call Form', desc: 'What agents fill in', textColorActive: 'text-emerald-600' },
     { id: 'privacy', icon: ShieldCheck, label: 'Privacy & Security', desc: 'Masking & MFA', textColorActive: 'text-amber-600' },
     { id: 'ai', icon: Bot, label: 'AI & Comms', desc: 'Twilio & chatbot', textColorActive: 'text-violet-600' },
     { id: 'notifications', icon: Bell, label: 'Notifications', desc: 'Alert channels', textColorActive: 'text-cyan-600' },

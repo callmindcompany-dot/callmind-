@@ -49,24 +49,69 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['leads']['Row']>;
       };
+      /**
+       * Checked against information_schema, not against the previous version
+       * of this file. It declared team_name, field_labels, custom_fields,
+       * allow_qr, allow_code and gemini_keys -- six columns the table does not
+       * have -- and omitted leads_statuses, default_stage, assignment_mode and
+       * field_aliases, which it does. TypeScript approved inserts Postgres
+       * would have rejected, and blocked reads of columns that exist.
+       */
       team_settings: {
         Row: {
           company_id: string;
-          team_name?: string | null;
-          field_labels: Record<string, string> | null;
-          hide_phone_numbers: boolean;
+          require_approval: boolean | null;
+          assignment_mode: string | null;
           rotting_threshold: number;
-          custom_fields: any[] | null;
+          hide_phone_numbers: boolean;
+          device_limit: number | null;
+          /**
+           * Both shown on the Team page and neither enforced anywhere: no join
+           * path consults them, so turning QR joining off does not stop a QR
+           * join. Added to the live table by 20260821000100 because the UI was
+           * reading and writing columns that did not exist.
+           */
+          allow_qr: boolean;
+          allow_code: boolean;
+          /** The company's own pipeline stages, in order. */
+          leads_statuses: string[] | null;
+          default_stage: string | null;
+          field_aliases: Record<string, string> | null;
           created_at: string | null;
           updated_at: string | null;
-          require_approval: boolean | null;
-          allow_qr: boolean | null;
-          allow_code: boolean | null;
-          device_limit: number | null;
-          gemini_keys: any[] | null;
         };
         Insert: Database['public']['Tables']['team_settings']['Row'];
         Update: Partial<Database['public']['Tables']['team_settings']['Row']>;
+      };
+      post_call_form_options: {
+        Row: {
+          id: string;
+          company_id: string;
+          kind: 'outcome' | 'interest' | 'followup';
+          /** Written to calls.outcome / calls.interest. Immutable in Postgres. */
+          value: string;
+          /** Shown to the telecaller. Free to change, in any language. */
+          label: string;
+          color: string | null;
+          sort_order: number;
+          is_active: boolean;
+          /** kind='interest' only: which of the company's stages to move to. */
+          maps_to_stage: string | null;
+          /** kind='followup' only: minutes from the end of the call. */
+          offset_minutes: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database['public']['Tables']['post_call_form_options']['Row'],
+          'id' | 'created_at' | 'updated_at'
+        > & { id?: string };
+        // value and kind are absent: Postgres refuses to change either, so
+        // offering them here would be a type that approves a failing write.
+        Update: Partial<Omit<
+          Database['public']['Tables']['post_call_form_options']['Row'],
+          'id' | 'company_id' | 'value' | 'kind' | 'created_at'
+        >>;
       };
       import_logs: {
         Row: {
