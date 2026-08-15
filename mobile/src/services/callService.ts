@@ -134,18 +134,16 @@ export const callService = {
 
       console.log('[callService] Call logged successfully to Supabase:', data?.id);
 
-      // 4. Update lead status if leadId is present
-      if (leadId) {
-        let newLeadStatus = 'Contacted';
-        if (interest === 'Interested') {
-          newLeadStatus = 'Interested';
-        } else if (interest === 'Call Back Later' || outcome === 'Call Back') {
-          newLeadStatus = 'Call Back';
-        } else if (interest === 'Not Interested' || outcome === 'Wrong Number') {
-          newLeadStatus = 'Not Interested';
-        }
-        await leadService.updateLeadStatus(companyId, agentId, leadId, newLeadStatus);
-      }
+      // The lead's stage is deliberately not written here.
+      //
+      // It used to be, from four names in this file -- Interested, Call Back,
+      // Not Interested, Contacted -- while App.tsx wrote it a second time on
+      // the same submit from resolveOutcome's own separate list. Two mappings,
+      // two writes, last one wins, and the two did not agree: a Wrong Number
+      // was 'Not Interested' here and 'Invalid' there.
+      //
+      // App.tsx now owns the decision, once, via resolveOutcome + decideStage
+      // against the company's own stages.
 
       return { success: true, queued: false };
     } catch (err) {

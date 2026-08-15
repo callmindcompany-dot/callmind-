@@ -17,6 +17,8 @@ import { appLockService, IDLE_LOCK_MS } from './src/services/appLockService';
 import { reminderService } from './src/services/reminderService';
 import { orderQueue, isClosed } from './src/services/priorityQueue';
 import { resolveOutcome, describeOutcome } from './src/services/callOutcome';
+import { decideStage } from './src/services/leadStageMapping';
+import { getLeadStages } from './src/services/workspaceStages';
 import { planStatusService, type PlanStatus } from './src/services/planStatusService';
 import { agentStatusService } from './src/services/agentStatusService';
 import { GlobalSearchScreen } from './src/screens/GlobalSearchScreen';
@@ -504,17 +506,40 @@ function MainAppContent() {
     // and it held its place in the queue. An agent worked down the list past
     // people they had already spoken to, and a day's work left no mark on the
     // screen they were looking at.
+    // The stage is resolved in two steps on purpose. resolveOutcome says what
+    // the call meant; decideStage turns that into one of *this company's* own
+    // stages, read from team_settings.leads_statuses.
+    //
+    // Until now both halves were hardcoded, in two different files, and both
+    // ran on every submit: this line wrote 'Invalid' for a wrong number while
+    // callService wrote 'Not Interested' for the same call a moment earlier.
+    // Neither name exists in the live company's pipeline, which is New, In
+    // Progress, Closed, Hot, Cold.
+    //
+    // decideStage returns null when no stage can be justified, and null leaves
+    // the lead exactly where it is. A lead in the wrong real stage can be moved
+    // back; a pipeline full of stages that do not exist corrupts the funnel and
+    // every pipeline figure at once.
     const resolved = resolveOutcome(feedback.outcome, feedback.interest);
     let leadMoved = true;
     if (activeCallingLead?.id) {
       try {
-        await leadService.recordCallOutcome(
-          profile.companyId,
-          profile.uid,
-          activeCallingLead.id,
-          resolved.status,
-          activeCallingLead.status,
-        );
+        const { stages } = await getLeadStages(profile.companyId);
+        const decision = decideStage(resolved.intent, stages);
+        if (decision.status) {
+          await leadService.recordCallOutcome(
+            profile.companyId,
+            profile.uid,
+            activeCallingLead.id,
+            decision.status,
+            activeCallingLead.status,
+          );
+        } else {
+          leadMoved = false;
+          // Said out loud rather than logged. An agent who believes a lead
+          // moved and finds it unchanged tomorrow calls the same person twice.
+          toastInfo('Lead stage unchanged', decision.reason);
+        }
       } catch (e) {
         leadMoved = false;
         toastError(

@@ -27,24 +27,31 @@ export type CallOutcome =
 /** The three values it offers for `interest`. */
 export type CallInterest = 'Interested' | 'Not Interested' | 'Call Back Later';
 
+import type { CallIntent } from './leadStageMapping';
+
 export interface OutcomeResult {
   /**
-   * The status to write to leads.status.
+   * What the call meant, independent of what any company calls its stages.
    *
-   * There is no CHECK constraint on that column -- queried, not assumed -- so
-   * anything would be accepted. These strings are chosen to match what
-   * leadService.getStatusBadgeStyle already renders and what
-   * priorityQueue.CLOSED already recognises, because a status neither of them
-   * knows shows up as a grey chip with the raw value in it.
+   * This used to be a `status` string -- 'Interested', 'Call Back',
+   * 'Not Interested', 'Contacted', 'Invalid' -- written straight to
+   * leads.status. There is no CHECK constraint on that column, so Postgres
+   * accepted them, and the live company's stages are New, In Progress, Closed,
+   * Hot and Cold. Every completed call filed its lead under a stage that
+   * company does not have.
+   *
+   * The stage is now decided by leadStageMapping.decideStage against
+   * team_settings.leads_statuses, which is the only list that is true for a
+   * given company. This function answers the part that is the same everywhere.
    */
-  status: string;
+  intent: CallIntent;
   /**
    * Whether the lead leaves the working queue.
    *
    * Keep this in step with CLOSED in priorityQueue.ts. The test in
    * src/__tests__/callOutcome.test.ts fails if the two disagree, because a
-   * status that closes a lead here but is not recognised there would leave it
-   * sorted last forever instead of removed.
+   * lead that closes here but is not recognised there would sort last forever
+   * instead of being removed.
    */
   closes: boolean;
 }
@@ -63,27 +70,27 @@ export function resolveOutcome(outcome: string, interest: string): OutcomeResult
     case 'Wrong Number':
       // The number is wrong, so no amount of calling helps. Closed, and the
       // admin needs to see it to fix the data.
-      return { status: 'Invalid', closes: true };
+      return { intent: 'invalid', closes: true };
 
     case 'No Answer':
     case 'Busy':
-      // Still worth calling. 'Contacted' records that an attempt was made,
-      // which is what separates a lead nobody has tried from one on its fourth
-      // ring-out.
-      return { status: 'Contacted', closes: false };
+      // Still worth calling. Recording that an attempt was made is what
+      // separates a lead nobody has tried from one on its fourth ring-out --
+      // so this is 'contacted', not 'unreachable'.
+      return { intent: 'contacted', closes: false };
 
     case 'Connected':
     default:
       switch (interest) {
         case 'Not Interested':
-          return { status: 'Not Interested', closes: true };
+          return { intent: 'not_interested', closes: true };
         case 'Call Back Later':
           // Stays open. The follow-up row in `callbacks` is what brings it back
           // up the list when its time comes.
-          return { status: 'Call Back', closes: false };
+          return { intent: 'callback', closes: false };
         case 'Interested':
         default:
-          return { status: 'Interested', closes: false };
+          return { intent: 'interested', closes: false };
       }
   }
 }
@@ -95,8 +102,12 @@ export function resolveOutcome(outcome: string, interest: string): OutcomeResult
  * thing the app previously answered by doing nothing visible at all.
  */
 export function describeOutcome(result: OutcomeResult, followUpAt: string | null): string {
+  // Written from the intent, not from a stage name. The sentence has to make
+  // sense to a company whose stages are called Hot and Cold as much as to one
+  // using Interested and Not Interested, so it describes what happens to the
+  // lead rather than naming the column it landed in.
   if (result.closes) {
-    return result.status === 'Invalid'
+    return result.intent === 'invalid'
       ? 'Closed and flagged for your admin — the number is wrong.'
       : 'Closed. It will not come back up in your list.';
   }
@@ -105,7 +116,7 @@ export function describeOutcome(result: OutcomeResult, followUpAt: string | null
       day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
     })}.`;
   }
-  if (result.status === 'Interested') return 'Marked interested and kept near the top of your list.';
-  if (result.status === 'Call Back') return 'Kept open — set a follow-up time so it comes back up.';
+  if (result.intent === 'interested') return 'Marked interested and kept near the top of your list.';
+  if (result.intent === 'callback') return 'Kept open — set a follow-up time so it comes back up.';
   return 'Attempt recorded. It moves below the leads you have not tried yet.';
 }

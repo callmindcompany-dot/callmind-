@@ -1,4 +1,5 @@
 import type { LeadItem } from '../screens/LeadListScreen';
+import { decideStage, CLOSING_INTENTS } from './leadStageMapping';
 
 /**
  * The order a telecaller should work their leads in.
@@ -40,11 +41,49 @@ const BAND: Record<Priority | 'unset', number> = {
 };
 const BAND_CLOSED = 5;
 
-/** Statuses that mean the lead is finished, whatever its priority says. */
-const CLOSED = new Set(['converted', 'rejected', 'not interested', 'invalid', 'dnc']);
+// Imported rather than duplicated: the queue and the post-call form have to
+// agree about which of a company's stages mean "finished", and a second list
+// of words here is exactly how they would drift apart.
 
-export function isClosed(lead: LeadItem): boolean {
-  return CLOSED.has((lead.status ?? '').trim().toLowerCase());
+/**
+ * Statuses that mean the lead is finished, whatever its priority says.
+ *
+ * This list is a fallback, not the answer. It was the only answer until the
+ * post-call form started writing the company's own stage names: the live
+ * company closes leads into "Cold" and "Closed", and neither word is here, so
+ * a finished lead would sit in the working queue for ever — sorted by priority
+ * as though somebody still had to ring it.
+ *
+ * `closedStagesFor` below asks the same mapping the form uses, so the two can
+ * never disagree. These words remain for a company whose stages match none of
+ * the intents, and for a lead whose status predates the mapping.
+ */
+const CLOSED = new Set([
+  'converted', 'rejected', 'not interested', 'invalid', 'dnc', 'dnd',
+  'closed', 'lost', 'dead', 'cold',
+]);
+
+/**
+ * The company's own stages that mean finished, derived from the same mapping
+ * the post-call form writes through.
+ *
+ * Pass the company's stages and this answers for that company. Called without
+ * them it falls back to the word list, which is what every caller did before
+ * stages existed.
+ */
+export function closedStagesFor(stages: string[] = []): Set<string> {
+  const closed = new Set(CLOSED);
+  for (const intent of CLOSING_INTENTS) {
+    const decision = decideStage(intent, stages);
+    if (decision.status) closed.add(decision.status.trim().toLowerCase());
+  }
+  return closed;
+}
+
+export function isClosed(lead: LeadItem, stages: string[] = []): boolean {
+  const status = (lead.status ?? '').trim().toLowerCase();
+  if (status === '') return false;
+  return closedStagesFor(stages).has(status);
 }
 
 export interface QueueOptions {
