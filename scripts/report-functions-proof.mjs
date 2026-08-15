@@ -120,8 +120,79 @@ try {
   check('a window with no calls reports zero rather than null',
     Number(empty.rows[0].current_connect_rate), 0);
 
+  // ---- the six advanced report functions ---------------------------------
+  //
+  // All six raised 42883 on every call before 20260820000400 -- p_company_id
+  // was UUID against a TEXT column. They also counted deleted leads, guessed
+  // that "converted" meant the literal status 'converted', and took no date
+  // window at all. Each of those is checked here, not just that they run.
+  await db.query(`INSERT INTO leads (id, company_id, name, phone, status, source, city,
+                                     deal_value, estimated_budget, lost_reason, is_deleted, created_at)
+    VALUES
+      ('fnproof-g1', $1, 'G1', '7710001', 'Won',  'IndiaMart', 'Pune',   50000, 0,     NULL,          false, now() - interval '2 days'),
+      ('fnproof-g2', $1, 'G2', '7710002', 'New',  'IndiaMart', 'Pune',   0,     20000, NULL,          false, now() - interval '2 days'),
+      ('fnproof-g3', $1, 'G3', '7710003', 'Lost', 'Justdial',  'Mumbai', 0,     30000, 'Too costly',  false, now() - interval '3 days'),
+      ('fnproof-g4', $1, 'G4', '7710004', 'Lost', 'Justdial',  'Mumbai', 0,     10000, NULL,          false, now() - interval '3 days'),
+      -- deleted, and stale-dated so the window checks below can tell the two
+      -- exclusions apart
+      ('fnproof-g5', $1, 'G5', '7710005', 'Won',  'Justdial',  'Nagpur', 99999, 0,     NULL,          true,  now() - interval '3 days'),
+      -- outside the 7-day window
+      ('fnproof-g6', $1, 'G6', '7710006', 'Won',  'Facebook',  'Nashik', 77777, 0,     NULL,          false, now() - interval '90 days')`,
+    [CO]);
+
+  const win = [CO, '7 days'];
+  const q = async (sql, params = [CO]) => (await db.query(sql, params)).rows;
+
+  const geo = await q(`SELECT city, lead_count, conversions, deal_value::int AS v
+                       FROM get_geographic_distribution($1, now()-interval '7 days', now())
+                       ORDER BY city`);
+  check('geography counts by city inside the window',
+    geo.map(r => [r.city, r.lead_count, r.conversions, r.v]),
+    [['Mumbai', 2, 0, 0], ['Pune', 2, 1, 50000]]);
+  check('the deleted lead is not in the geography chart',
+    geo.some(r => r.city === 'Nagpur'), false);
+  check('the 90-day-old lead is outside the 7-day window',
+    geo.some(r => r.city === 'Nashik'), false);
+
+  const geoAll = await q(`SELECT city FROM get_geographic_distribution($1) ORDER BY city`);
+  check('an unbounded call still reaches the older lead',
+    geoAll.some(r => r.city === 'Nashik'), true);
+  check('but never the deleted one, whatever the window',
+    geoAll.some(r => r.city === 'Nagpur'), false);
+
+  // "Converted" must follow deal_value, not the word in status. G1 is 'Won',
+  // which the old lower(status)='converted' test would have scored as zero.
+  const src = await q(`SELECT source, lead_count, conversions
+                       FROM get_source_conversions($1, now()-interval '7 days', now())
+                       ORDER BY source`);
+  check('conversions follow deal value, not the word in status',
+    src.map(r => [r.source, r.lead_count, r.conversions]),
+    [['IndiaMart', 2, 1], ['Justdial', 2, 0]]);
+
+  const lost = await q(`SELECT reason, count FROM get_lost_reasons($1, now()-interval '7 days', now())`);
+  check('lost reasons come from lost_reason, not from a stage name',
+    lost.map(r => [r.reason, r.count]), [['Too costly', 1]]);
+
+  const churn = await q(`SELECT reason, count, lost_value::int AS v
+                         FROM get_detailed_churn($1, now()-interval '7 days', now())`);
+  check('churn agrees with lost reasons and carries the budget',
+    churn.map(r => [r.reason, r.count, r.v]), [['Too costly', 1, 30000]]);
+
+  const pipe = await q(`SELECT status, total_value::int AS committed, estimated_value::int AS est, lead_count
+                        FROM get_revenue_pipeline($1, now()-interval '7 days', now()) ORDER BY status`);
+  check('revenue pipeline keeps committed and estimated apart',
+    pipe.map(r => [r.status, r.committed, r.est, r.lead_count]),
+    [['Lost', 0, 40000, 2], ['New', 0, 20000, 1], ['Won', 50000, 0, 1]]);
+
+  const stages = await q(`SELECT status, count FROM get_lead_status_pipeline($1, now()-interval '7 days', now())
+                          ORDER BY status`);
+  check('stage counts exclude the deleted lead',
+    stages.map(r => [r.status, r.count]), [['Lost', 2], ['New', 1], ['Won', 1]]);
+
   // ---- tenancy ------------------------------------------------------------
-  for (const fn of ['get_stale_leads', 'get_agent_tat', 'get_comparison_metrics']) {
+  for (const fn of ['get_stale_leads', 'get_agent_tat', 'get_comparison_metrics',
+                    'get_geographic_distribution', 'get_lost_reasons', 'get_detailed_churn',
+                    'get_lead_status_pipeline', 'get_source_conversions', 'get_revenue_pipeline']) {
     const sec = await db.query(
       `SELECT prosecdef, proconfig FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
        WHERE n.nspname = 'public' AND proname = $1`, [fn]);

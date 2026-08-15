@@ -40,6 +40,13 @@ import { useConversionFunnelReport } from '@/hooks/useConversionFunnelReport';
 import { useAgentPerformanceReport } from '@/hooks/useAgentPerformanceReport';
 import { useLeadSourceYieldReport } from '@/hooks/useLeadSourceYieldReport';
 import { useComparisonMetrics } from '@/hooks/useComparisonMetrics';
+import { ReportState, stateOf, emptyArray } from './reports/ReportState';
+import { formatRupees, formatRupeesShort } from '@/lib/formatRupees';
+import { outcomeColor } from '@/lib/callOutcomes';
+import { formatDuration, parseDurationSeconds } from '@/lib/callDuration';
+import { CALLS_REPORT_LIMIT } from '@/hooks/useCallsReport';
+import { downloadCsv } from '@/lib/downloadCsv';
+import { sumByHour } from '@/hooks/useHourlyCallsReport';
 import {
   DATE_RANGES,
   describeDateWindow,
@@ -58,7 +65,7 @@ import { useReportSchedules } from '@/hooks/useReportSchedules';
 import { useCallDisposition } from '@/hooks/useCallDisposition';
 import { useTelecallerMetrics } from '@/hooks/useTelecallerMetrics';
 import { useDashboardSummary } from '@/hooks/useDashboardSummary';
-import { useStaleLeads } from '@/hooks/useStaleLeads';
+import { useStaleLeads, STALE_AFTER_DAYS } from '@/hooks/useStaleLeads';
 import { supabase } from '@/supabaseClient';
 
 // Drill Down & Custom reporting Components
@@ -187,8 +194,9 @@ export const ReportsPage = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Stale Leads reactbot state
-  const [staleLeads, setStaleLeads] = useState<any[]>([]);
-  const [isLoadingStale, setIsLoadingStale] = useState(false);
+  // The stale-lead list used to be mirrored into local state here. React Query
+  // already holds it, and the copy was always one scan behind — see
+  // handleRunReactivation.
 
   // Custom Report Builder & Templates state
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
@@ -230,6 +238,7 @@ export const ReportsPage = () => {
     [filters.dateRange, filters.customRange],
   );
 
+
   // Pre-aggregated Database View Queries (Lazy loaded based on activeReport)
   const hourlyCallsQ = useHourlyCallsReport(companyId, filters);
   const funnelQ = useConversionFunnelReport(companyId, filters);
@@ -251,20 +260,71 @@ export const ReportsPage = () => {
   const { data: callDispositions = [] } = dispositionQ;
   const { data: telecallerMetrics = [] } = telecallerQ;
 
+  /**
+   * Hourly rows arrive per (hour, day) because the heat map needs the date to
+   * tell a Monday from a Friday. The hour-of-day chart wants them summed.
+   */
+  const hourlyByHour = useMemo(() => sumByHour(hourlyCalls), [hourlyCalls]);
+
+  /**
+   * agent_performance is one row per agent per day. Fed to the leaderboard
+   * raw, a thirty-day range drew each telecaller thirty times, as thirty short
+   * bars sharing one name — so the chart understated everybody and the person
+   * with the most working days looked busiest.
+   *
+   * Talk time is re-averaged by weighting each day by its dials. Averaging the
+   * daily averages would count a day with two calls the same as a day with
+   * eighty.
+   */
+  const agentTotals = useMemo(() => {
+    const byAgent = new Map<string, {
+      agent_id: string; agent_name: string;
+      total_dials: number; connected: number; conversions: number; talkWeighted: number;
+    }>();
+    for (const row of agentPerf) {
+      const key = row.agent_id ?? 'unassigned';
+      const acc = byAgent.get(key) ?? {
+        agent_id: key,
+        agent_name: row.agent_name || 'Unassigned',
+        total_dials: 0, connected: 0, conversions: 0, talkWeighted: 0,
+      };
+      acc.total_dials += row.total_dials ?? 0;
+      acc.connected += row.connected ?? 0;
+      acc.conversions += row.conversions ?? 0;
+      acc.talkWeighted += Number(row.talk_time_avg ?? 0) * (row.total_dials ?? 0);
+      if (row.agent_name) acc.agent_name = row.agent_name;
+      byAgent.set(key, acc);
+    }
+    return [...byAgent.values()]
+      .map(a => ({
+        ...a,
+        talk_time_avg: a.total_dials > 0 ? Math.round(a.talkWeighted / a.total_dials) : null,
+      }))
+      .sort((a, b) => b.total_dials - a.total_dials);
+  }, [agentPerf]);
+
   const { data: whatsappSummary = [] } = useWhatsAppReport(companyId);
   const { schedules = [] } = useReportSchedules(companyId);
 
   const { data: dashboardSummary } = useDashboardSummary(companyId);
-  const { data: staleLeadsQuery = [], isLoading: isLoadingStaleQuery, refetch: refetchStaleLeads } = useStaleLeads(companyId);
+  const staleLeadsQ = useStaleLeads(companyId);
+  const { data: staleLeadsQuery = [], refetch: refetchStaleLeads } = staleLeadsQ;
 
-  const { data: geoData = [] } = useGeographicDistribution(companyId);
-  const { data: lostReasonsData = [] } = useLostReasons(companyId);
-  const { data: pipelineData = [] } = useLeadStatusPipeline(companyId);
-  const { data: sourceConversionsData = [] } = useSourceConversions(companyId);
-  
-  const { data: agentTAT = [] } = useAgentTAT(companyId);
-  const { data: revenuePipeline = [] } = useRevenuePipeline(companyId);
-  const { data: detailedChurn = [] } = useDetailedChurn(companyId);
+  const geoQ = useGeographicDistribution(companyId, filters);
+  const lostReasonsQ = useLostReasons(companyId, filters);
+  const pipelineQ = useLeadStatusPipeline(companyId, filters);
+  const sourceConversionsQ = useSourceConversions(companyId, filters);
+  const revenuePipelineQ = useRevenuePipeline(companyId, filters);
+  const detailedChurnQ = useDetailedChurn(companyId, filters);
+  const agentTATQ = useAgentTAT(companyId);
+
+  const { data: geoData = [] } = geoQ;
+  const { data: lostReasonsData = [] } = lostReasonsQ;
+  const { data: pipelineData = [] } = pipelineQ;
+  const { data: sourceConversionsData = [] } = sourceConversionsQ;
+  const { data: revenuePipeline = [] } = revenuePipelineQ;
+  const { data: detailedChurn = [] } = detailedChurnQ;
+  const { data: agentTAT = [] } = agentTATQ;
 
   // Cohort Analytics helper
   const cohortData = useMemo<UICohortRow[]>(() => {
@@ -321,21 +381,33 @@ export const ReportsPage = () => {
     const connects = dashboardSummary?.connects || 0;
     const connectRate = totalCalls > 0 ? Math.round((connects / totalCalls) * 100) : 0;
 
-    // Linear Revenue Forecasting projection
-    const daysElapsed = new Date().getDate();
-    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-    const estMonthlyConversions = daysElapsed > 0 ? (conversions / daysElapsed) * daysInMonth : conversions;
-    const avgDealValue = 10000;
-    const revenueProjection = Math.round(estMonthlyConversions * avgDealValue);
+    /*
+     * Money booked in the selected period, from leads.deal_value.
+     *
+     * This used to be a forecast: conversions extrapolated to a full month and
+     * multiplied by `const avgDealValue = 10000`, a number nobody entered,
+     * printed as "Estimated monthly revenue" with a dollar sign in a product
+     * sold in rupees. A company with three ₹2,000 deals was shown a six-figure
+     * projection. It is the same mistake as the `parseFloat(...) || 500` line
+     * that was removed from this codebase, wearing a forecast as a disguise.
+     *
+     * What is shown now is what somebody actually typed into deal_value. If no
+     * lead carries one, the figure is null and the card says so -- a company
+     * that does not record deal values has no revenue figure, and inventing one
+     * for them is worse than admitting it.
+     */
+    const dealValue = sourceYield.reduce((sum, s) => sum + (s.deal_value_total || 0), 0);
+    const leadsWithValue = sourceYield.reduce((sum, s) => sum + (s.converted_count || 0), 0);
 
     return {
       totalLeads,
       totalCalls,
       conversions,
       connectRate,
-      revenueProjection
+      dealValue: leadsWithValue > 0 ? dealValue : null,
+      leadsWithValue,
     };
-  }, [dashboardSummary, teamSettings]);
+  }, [dashboardSummary, sourceYield]);
 
   // Comparison metrics UI helper
   const getComparisonChange = (current: number, previous: number) => {
@@ -348,21 +420,33 @@ export const ReportsPage = () => {
     };
   };
 
-  // Run Reactivation Bot (Supabase query)
+  /**
+   * Rescan for leads nobody has gone back to.
+   *
+   * This used to copy the query's data into a second piece of state right
+   * after refetching: `await refetchStaleLeads(); setStaleLeads(staleLeadsQuery)`.
+   * staleLeadsQuery there is the value captured when the callback was created,
+   * so the panel always showed the *previous* scan -- empty the first time, and
+   * one run stale for ever after. The duplicate state is gone; the panel reads
+   * the query directly, and the query is the only copy.
+   *
+   * The toast no longer claims success unconditionally. The function behind
+   * this raised on every call until 20260820000200, and "Bot scan complete"
+   * was printed each time.
+   */
   const handleRunReactivation = useCallback(async () => {
     if (!companyId) return;
-    setIsLoadingStale(true);
-    try {
-      await refetchStaleLeads();
-      setStaleLeads(staleLeadsQuery);
-      setActiveReport('Reactivation Bot');
-      toast.success('Bot scan complete. Check active workspace panel.');
-    } catch (e: any) {
-      toast.error('Scan failed');
-    } finally {
-      setIsLoadingStale(false);
+    setActiveReport('Reactivation Bot');
+    const result = await refetchStaleLeads();
+    if (result.isError) {
+      toast.error(`Scan failed: ${(result.error as Error)?.message ?? 'unknown error'}`);
+      return;
     }
-  }, [companyId, staleLeadsQuery, refetchStaleLeads]);
+    const found = result.data?.length ?? 0;
+    toast.success(found === 0
+      ? `No lead has gone ${STALE_AFTER_DAYS} days without contact.`
+      : `${found} lead${found === 1 ? '' : 's'} with no contact in ${STALE_AFTER_DAYS} days.`);
+  }, [companyId, refetchStaleLeads]);
 
   // Custom Report Generator (Server-Side Paginated)
   const fetchCustomReportData = useCallback(async () => {
@@ -426,28 +510,24 @@ export const ReportsPage = () => {
       }
 
       const headers = ["Name", "Phone", "Email", "Status", "Source", "Assigned To", "Created At"];
-      const rows = data.map(l => {
-        const name = l.name || 'N/A';
-        const phone = teamSettings?.hidePhoneNumbers 
-          ? '********' + (l.phone?.slice(-4) || '****')
-          : (l.phone || 'N/A');
-        const email = l.email || 'N/A';
-        const status = l.status || 'New';
-        const source = l.source || 'Direct';
-        const agent = l.assignedTo || 'Unassigned';
-        const createdAt = l.created_at ? new Date(l.created_at).toLocaleString() : 'N/A';
+      const rows = data.map(l => [
+        // A blank cell stays blank. This used to write 'New' into an empty
+        // status and 'Direct' into an empty source, so the exported file
+        // asserted a stage and an acquisition channel that nobody had
+        // recorded -- and a spreadsheet is exactly where an invented value
+        // stops being questioned.
+        l.name ?? '',
+        teamSettings?.hidePhoneNumbers
+          ? (l.phone ? '********' + l.phone.slice(-4) : '')
+          : (l.phone ?? ''),
+        l.email ?? '',
+        l.status ?? '',
+        l.source ?? '',
+        l.assignedTo ?? '',
+        l.created_at ? new Date(l.created_at).toLocaleString('en-IN') : '',
+      ]);
 
-        return [name, phone, email, status, source, agent, createdAt].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
-      });
-
-      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `crm_report_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadCsv(`leads_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
       toast.success(`CSV download complete! (${data.length} records)`, { id: toastId });
     } catch (err: any) {
       console.error("Export Error:", err);
@@ -599,10 +679,10 @@ export const ReportsPage = () => {
 
               <button 
                 onClick={handleRunReactivation}
-                disabled={isLoadingStale}
-                className="px-4 py-2 bg-rose-50 border border-rose-150 text-rose-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all flex items-center gap-1.5 shadow-sm"
+                disabled={staleLeadsQ.isFetching}
+                className="px-4 py-2 bg-rose-50 border border-rose-150 text-rose-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-60"
               >
-                {isLoadingStale ? <Loader2 size={12} className="animate-spin" /> : <ShieldAlert size={12} />} Reactivate Bot
+                {staleLeadsQ.isFetching ? <Loader2 size={12} className="animate-spin" /> : <ShieldAlert size={12} />} Find Neglected Leads
               </button>
             </div>
           </div>
@@ -687,12 +767,18 @@ export const ReportsPage = () => {
                   isPositive={compareMode && comparisonData ? getComparisonChange(summaryMetrics.connectRate, comparisonData.previous_connect_rate).isPositive : true}
                   icon={PhoneCall} 
                 />
-                <PerformanceCard 
-                  title="Projected Sales Value" 
-                  value={`$${summaryMetrics.revenueProjection.toLocaleString()}`} 
-                  change="Forecasting" 
+                {/* Booked, not projected. See summaryMetrics for why the
+                    forecast this replaced could not be trusted. */}
+                <PerformanceCard
+                  title="Deal Value Recorded"
+                  value={summaryMetrics.dealValue === null
+                    ? '—'
+                    : formatRupees(summaryMetrics.dealValue)}
+                  change={summaryMetrics.dealValue === null
+                    ? 'No deal values entered'
+                    : `${summaryMetrics.leadsWithValue} lead${summaryMetrics.leadsWithValue === 1 ? '' : 's'}`}
                   isPositive={true}
-                  icon={TrendingUp} 
+                  icon={TrendingUp}
                 />
               </div>
 
@@ -746,30 +832,55 @@ export const ReportsPage = () => {
                 {activeReport === 'Executive Summary' && (
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 bg-slate-50 p-6 rounded-3xl border border-gray-100">
-                      <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Pipeline Funnel Distribution</h3>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={funnelSteps}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                            <XAxis dataKey="status" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }} />
-                            <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} />
-                            <Tooltip />
-                            <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                              {funnelSteps.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
+                      {/* Stages, not a funnel shape. leads.status has no CHECK
+                          constraint and the names are per company, so nothing
+                          here knows that Contacted follows New — drawing a
+                          tapering funnel would assert an order the data does
+                          not carry. */}
+                      <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">Leads by Stage</h3>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-300 mb-5">{periodLabel}</p>
+                      <ReportState {...stateOf(funnelQ, emptyArray)} minHeight={256}
+                        emptyMessage="No leads arrived in this period.">
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={funnelSteps}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                              <XAxis dataKey="status" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }} />
+                              <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} allowDecimals={false} />
+                              <Tooltip />
+                              <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                                {funnelSteps.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </ReportState>
                     </div>
 
                     <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 space-y-6">
                       <h3 className="text-xs font-black uppercase text-brand-400 tracking-wider">Operational Insights</h3>
                       <div className="space-y-4 text-xs font-medium text-slate-300">
-                        <p>• Estimated monthly revenue is projected at <span className="text-emerald-400 font-bold">${summaryMetrics.revenueProjection.toLocaleString()}</span> based on conversions velocity.</p>
+                        {/* Each line states a figure that exists, or is not
+                            written at all. The previous version asserted a
+                            revenue projection, and named "Direct" as the best
+                            channel whenever the source query returned nothing —
+                            a channel this company may never have used. */}
+                        <p>
+                          • Deal value recorded in this period:{' '}
+                          <span className="text-emerald-400 font-bold">
+                            {summaryMetrics.dealValue === null
+                              ? 'none entered'
+                              : formatRupees(summaryMetrics.dealValue)}
+                          </span>
+                          {summaryMetrics.dealValue !== null &&
+                            ` across ${summaryMetrics.leadsWithValue} lead${summaryMetrics.leadsWithValue === 1 ? '' : 's'}`}.
+                        </p>
                         <p>• Average call connect rate stands at <span className="text-brand-400 font-bold">{summaryMetrics.connectRate}%</span>.</p>
-                        <p>• Acquisition source yield indicates <span className="text-white font-bold">{sourceYield[0]?.source || 'Direct'}</span> is the highest-performing channel.</p>
+                        {sourceYield.length > 0 && (
+                          <p>• Highest-volume channel is <span className="text-white font-bold">{sourceYield[0].source}</span> at {sourceYield[0].lead_count} leads, converting {sourceYield[0].conversion_rate}%.</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -779,8 +890,15 @@ export const ReportsPage = () => {
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monthly Run-rate Projection</h4>
-                        <p className="text-2xl font-black text-slate-955">${summaryMetrics.revenueProjection.toLocaleString()}</p>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Deal Value Recorded</h4>
+                        <p className="text-2xl font-black text-slate-955">
+                          {summaryMetrics.dealValue === null ? '—' : formatRupees(summaryMetrics.dealValue)}
+                        </p>
+                        {summaryMetrics.dealValue === null && (
+                          <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                            No lead has a deal value
+                          </p>
+                        )}
                       </div>
                       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Converted Accounts</h4>
@@ -794,28 +912,40 @@ export const ReportsPage = () => {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                       <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
-                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">True Revenue Pipeline</h3>
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={revenuePipeline} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                              <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={(val) => `₹${val}`} />
-                              <YAxis dataKey="status" type="category" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }} width={80} />
-                              <Tooltip formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Pipeline Value']} />
-                              <Bar dataKey="total_value" radius={[0, 8, 8, 0]}>
-                                {revenuePipeline.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                              </Bar>
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
+                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">Pipeline Value by Stage</h3>
+                        {/* Two bars, never one. Committed is money somebody
+                            entered; estimated is what the caller guessed. A
+                            single "pipeline value" made of both is a forecast
+                            resting on a hope. */}
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-300 mb-5">
+                          {periodLabel} · committed vs estimated
+                        </p>
+                        <ReportState {...stateOf(revenuePipelineQ, emptyArray)} minHeight={256}
+                          emptyMessage="No lead in this period has a value recorded.">
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={revenuePipeline} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                                <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={formatRupeesShort} />
+                                <YAxis dataKey="status" type="category" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }} width={80} />
+                                <Tooltip formatter={(value: number, name: string) => [formatRupees(value), name]} />
+                                <Legend wrapperStyle={{ fontSize: 9, fontWeight: 700 }} />
+                                <Bar dataKey="total_value" name="Committed" fill="#0d9488" radius={[0, 8, 8, 0]} />
+                                <Bar dataKey="estimated_value" name="Estimated" fill="#94a3b8" radius={[0, 8, 8, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </ReportState>
                       </div>
 
                       <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
-                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Detailed Lost Reasons (Churn)</h3>
-                        <div className="h-64">
-                          {detailedChurn.length > 0 ? (
+                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">Why Leads Were Lost</h3>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-300 mb-5">{periodLabel}</p>
+                        {/* The old empty state said "No churn data available"
+                            for a query that raised on every call. */}
+                        <ReportState {...stateOf(detailedChurnQ, emptyArray)} minHeight={256}
+                          emptyMessage="No lead in this period was marked lost with a reason.">
+                          <div className="h-64">
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
                                 <Pie
@@ -827,18 +957,18 @@ export const ReportsPage = () => {
                                   label={true}
                                 >
                                   {detailedChurn.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={['#ef4444', '#f97316', '#f59e0b', '#eab308'][index % 4]} />
+                                    <Cell key={`cell-${index}`} fill={['#e11d48', '#b45309', '#9333ea', '#2563eb'][index % 4]} />
                                   ))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip formatter={(value: number, name: string, item) => [
+                                  `${value} lead${value === 1 ? '' : 's'}` +
+                                  (item?.payload?.lost_value ? ` · ${formatRupees(item.payload.lost_value)} budget` : ''),
+                                  name,
+                                ]} />
                               </PieChart>
                             </ResponsiveContainer>
-                          ) : (
-                            <div className="h-full flex items-center justify-center text-xs font-bold text-gray-400 uppercase">
-                              No churn data available
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        </ReportState>
                       </div>
                     </div>
                   </div>
@@ -850,48 +980,58 @@ export const ReportsPage = () => {
                       <div className="lg:col-span-2 bg-slate-50 p-6 rounded-3xl border border-gray-100">
                         <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Hourly Call Volume temporal Distribution</h3>
                         <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={hourlyCalls}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                              <XAxis dataKey="hour" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }} />
-                              <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} />
-                              <Tooltip />
-                              <Area type="monotone" dataKey="call_count" stroke="#6366f1" fill="#818cf8" fillOpacity={0.1} strokeWidth={3} />
-                            </AreaChart>
-                          </ResponsiveContainer>
+                          <ReportState {...stateOf(hourlyCallsQ, emptyArray)} minHeight={256}
+                            emptyMessage="No calls logged in this period.">
+                            <ResponsiveContainer width="100%" height="100%">
+                              {/* The days in the window are summed per hour;
+                                  drawn raw, a 30-day range puts thirty points
+                                  at every hour and reads as noise. */}
+                              <AreaChart data={hourlyByHour}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="hour" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }}
+                                  tickFormatter={(h: number) => `${String(h).padStart(2, '0')}:00`} />
+                                <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} allowDecimals={false} />
+                                <Tooltip labelFormatter={(h) => `${String(h).padStart(2, '0')}:00`} />
+                                <Area type="monotone" dataKey="call_count" name="Calls" stroke="#2563eb" fill="#2563eb" fillOpacity={0.12} strokeWidth={3} />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </ReportState>
                         </div>
                       </div>
 
                       <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
-                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Call Disposition Breakdown</h3>
-                        <div className="h-64">
-                          {callDispositions.length > 0 ? (
+                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">How Calls Ended</h3>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-300 mb-5">{periodLabel}</p>
+                        <ReportState {...stateOf(dispositionQ, emptyArray)} minHeight={256}
+                          emptyMessage="No calls logged in this period.">
+                          <div className="h-64">
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
                                 <Pie
                                   data={callDispositions}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={60}
-                                  outerRadius={85}
+                                  cx="50%" cy="50%"
+                                  innerRadius={60} outerRadius={85}
                                   paddingAngle={5}
-                                  dataKey="count"
-                                  nameKey="outcome"
+                                  dataKey="count" nameKey="outcome"
                                   label={true}
                                 >
-                                  {callDispositions.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  {/* Coloured by what the outcome means, not by
+                                      position: Connected keeps the same colour
+                                      whether it is the biggest slice or the
+                                      smallest. An outcome this build has not
+                                      seen shows grey rather than borrowing
+                                      another one's colour. */}
+                                  {callDispositions.map((entry) => (
+                                    <Cell key={entry.outcome} fill={outcomeColor(entry.outcome)} />
                                   ))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip formatter={(value: number, name: string) => [
+                                  `${value} call${value === 1 ? '' : 's'}`, name,
+                                ]} />
                               </PieChart>
                             </ResponsiveContainer>
-                          ) : (
-                            <div className="h-full flex items-center justify-center text-xs font-bold text-gray-400 uppercase">
-                              No data available
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        </ReportState>
                       </div>
                     </div>
 
@@ -902,40 +1042,68 @@ export const ReportsPage = () => {
 
                     {/* Recent Calls List drill-down */}
                     <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100 space-y-4">
-                      <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">Historical Logs Drill-Down</h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                          <thead>
-                            <tr className="border-b border-gray-200 text-[9px] font-black text-slate-400 uppercase">
-                              <th className="pb-2">Lead</th>
-                              <th className="pb-2">Agent</th>
-                              <th className="pb-2">Phone</th>
-                              <th className="pb-2 text-center">Duration</th>
-                              <th className="pb-2 text-center">Outcome</th>
-                              <th className="pb-2 text-right">Time</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100 text-xs font-bold text-slate-800">
-                            {callsReport.slice(0, 50).map((call, i) => (
-                              <tr key={call.id || i} className="hover:bg-white transition-all">
-                                <td className="py-3">{call.lead_name || 'Anonymous'}</td>
-                                <td className="py-3">{call.agent_name || 'System'}</td>
-                                <td className="py-3 font-mono">{teamSettings?.hidePhoneNumbers ? '********' + (call.phone?.slice(-4) || '****') : (call.phone || 'N/A')}</td>
-                                <td className="py-3 text-center font-mono">{call.duration}</td>
-                                <td className="py-3 text-center">
-                                  <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-black
-                                    ${call.outcome === 'Answered' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                    {call.outcome}
-                                  </span>
-                                </td>
-                                <td className="py-3 text-right font-mono text-gray-400">
-                                  {new Date(call.timestamp).toLocaleString()}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div className="flex items-baseline justify-between">
+                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">Call Log</h3>
+                        {/* The cap is stated. Showing the newest 200 without
+                            saying so reads as the complete list. */}
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-300">
+                          {periodLabel}
+                          {callsReport.length >= CALLS_REPORT_LIMIT && ` · newest ${CALLS_REPORT_LIMIT}`}
+                        </p>
                       </div>
+                      <ReportState {...stateOf(callsReportQ, emptyArray)} minHeight={200}
+                        emptyMessage="No calls logged in this period.">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="border-b border-gray-200 text-[9px] font-black text-slate-400 uppercase">
+                                <th className="pb-2">Lead</th>
+                                <th className="pb-2">Telecaller</th>
+                                <th className="pb-2">Phone</th>
+                                <th className="pb-2 text-center">Duration</th>
+                                <th className="pb-2 text-center">Outcome</th>
+                                <th className="pb-2 text-center">Interest</th>
+                                <th className="pb-2 text-right">Time</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 text-xs font-bold text-slate-800">
+                              {callsReport.map((call) => (
+                                <tr key={call.id} className="hover:bg-white transition-all">
+                                  <td className="py-3">{call.lead_name || 'Unknown lead'}</td>
+                                  <td className="py-3">{call.agent_name || 'Unassigned'}</td>
+                                  <td className="py-3 font-mono">
+                                    {teamSettings?.hidePhoneNumbers
+                                      ? '********' + (call.phone?.slice(-4) || '****')
+                                      : (call.phone || '—')}
+                                  </td>
+                                  <td className="py-3 text-center font-mono">
+                                    {formatDuration(parseDurationSeconds(call.duration))}
+                                  </td>
+                                  <td className="py-3 text-center">
+                                    {/* Coloured from the outcome's own meaning.
+                                        This used to test `=== 'Answered'`, a
+                                        value the app never writes, so every
+                                        connected call was painted red. */}
+                                    <span
+                                      className="px-2 py-0.5 rounded text-[9px] uppercase font-black"
+                                      style={{
+                                        color: outcomeColor(call.outcome || ''),
+                                        backgroundColor: `${outcomeColor(call.outcome || '')}1a`,
+                                      }}
+                                    >
+                                      {call.outcome || 'Not recorded'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 text-center text-slate-500">{call.interest || '—'}</td>
+                                  <td className="py-3 text-right font-mono text-gray-400">
+                                    {new Date(call.timestamp).toLocaleString('en-IN')}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </ReportState>
                     </div>
                   </div>
                 )}
@@ -943,19 +1111,30 @@ export const ReportsPage = () => {
                 {activeReport === 'Agent Performance' && (
                   <div className="space-y-6">
                     <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
-                      <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Top Performers Leaderboard</h3>
-                      <div className="h-80 overflow-y-auto custom-scrollbar">
-                        <ResponsiveContainer width="100%" height={Math.max(320, agentPerf.length * 40)}>
-                          <BarChart data={agentPerf} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                            <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} />
-                            <YAxis dataKey="agent_name" type="category" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} width={120} />
-                            <Tooltip />
-                            <Bar dataKey="conversions" fill="#10b981" radius={[0, 4, 4, 0]} name="Conversions" />
-                            <Bar dataKey="total_dials" fill="#6366f1" radius={[0, 4, 4, 0]} name="Total Calls" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
+                      <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">Calls per Telecaller</h3>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-300 mb-5">{periodLabel}</p>
+                      <ReportState {...stateOf(agentPerfQ, emptyArray)} minHeight={320}
+                        emptyMessage="No calls logged in this period.">
+                        <div className="h-80 overflow-y-auto custom-scrollbar">
+                          <ResponsiveContainer width="100%" height={Math.max(320, agentTotals.length * 44)}>
+                            <BarChart data={agentTotals} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                              <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} allowDecimals={false} />
+                              <YAxis dataKey="agent_name" type="category" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} width={120} />
+                              <Tooltip />
+                              <Legend wrapperStyle={{ fontSize: 9, fontWeight: 700 }} />
+                              {/* Dials, then how many of them connected, then
+                                  how many of those said yes — three nested
+                                  facts about the same calls, so they are drawn
+                                  darkest to lightest rather than as unrelated
+                                  colours. */}
+                              <Bar dataKey="total_dials" name="Dialled" fill="#93c5fd" radius={[0, 4, 4, 0]} />
+                              <Bar dataKey="connected" name="Connected" fill="#2563eb" radius={[0, 4, 4, 0]} />
+                              <Bar dataKey="conversions" name="Interested" fill="#0d9488" radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </ReportState>
                     </div>
 
                     <div className="overflow-x-auto bg-white border border-gray-100 rounded-3xl">
@@ -976,70 +1155,68 @@ export const ReportsPage = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50 text-xs font-bold text-slate-800">
-                        {agentPerf.map((agent, idx) => {
-                          const target = 50;
-                          const actual = agent.total_dials || 0;
-                          const pct = Math.min(100, Math.round((actual / target) * 100));
+                        {/*
+                          agentTotals, not agentPerf: the view is one row per
+                          agent per day, so iterating it raw listed every
+                          telecaller once for each day they worked.
 
-                          // Match telecaller metrics
-                          const tcMetric = telecallerMetrics.find(m => m.agent_id === agent.agent_id);
-                          const avgMinutes = tcMetric ? Math.floor(tcMetric.avg_talk_seconds / 60) : 0;
-                          const avgSeconds = tcMetric ? tcMetric.avg_talk_seconds % 60 : 0;
-                          const avgStr = tcMetric ? `Avg: ${avgMinutes}m ${avgSeconds}s` : 'N/A';
+                          Unknown is written as an em dash throughout. This
+                          table used to print 'N/A' for a missing measurement
+                          and 0 for a missing one — 0h 0m idle time for an agent
+                          with no attendance record at all, which reads as an
+                          agent who never stopped working.
+                        */}
+                        {agentTotals.map((agent) => {
+                          const tc = telecallerMetrics.find(m => m.agent_id === agent.agent_id);
+                          const tat = agentTAT.find(t => t.agent_id === agent.agent_id);
 
-                          const firstCallStr = tcMetric && tcMetric.first_call_at 
-                            ? new Date(tcMetric.first_call_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-                            : 'N/A';
-                          
-                          const lastCallStr = tcMetric && tcMetric.last_call_at 
-                            ? new Date(tcMetric.last_call_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-                            : 'N/A';
-
-                          const activeHoursStr = tcMetric && tcMetric.login_time 
-                            ? `${Math.floor(tcMetric.active_duration_minutes / 60)}h ${tcMetric.active_duration_minutes % 60}m` 
-                            : 'N/A';
-
-                          const idleStr = tcMetric && tcMetric.login_time 
-                            ? `${Math.floor(tcMetric.idle_minutes / 60)}h ${tcMetric.idle_minutes % 60}m` 
-                            : 'N/A';
-
-                          const notesCount = tcMetric ? tcMetric.notes_count : 0;
-                          
-                          const tatMetric = agentTAT.find(t => t.agent_id === agent.agent_id);
-                          const tatMinutes = tatMetric ? tatMetric.avg_tat_minutes : 0;
-                          const tatStr = tatMinutes ? (tatMinutes > 60 ? `${Math.floor(tatMinutes/60)}h ${Math.floor(tatMinutes%60)}m` : `${tatMinutes}m`) : 'N/A';
+                          const hhmm = (mins: number | null | undefined) =>
+                            mins === null || mins === undefined
+                              ? '—'
+                              : mins >= 60 ? `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m` : `${Math.round(mins)}m`;
+                          const clock = (iso: string | null | undefined) =>
+                            iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
 
                           return (
-                            <tr 
-                              key={agent.agent_id || idx} 
+                            <tr
+                              key={agent.agent_id}
                               className="hover:bg-slate-50 cursor-pointer transition-all"
                               onClick={() => {
                                 setSelectedDrillDownAgentId(agent.agent_id);
-                                setSelectedDrillDownAgentName(agent.agent_name || 'Agent');
+                                setSelectedDrillDownAgentName(agent.agent_name);
                               }}
                             >
                               <td className="py-3.5 flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-[10px]">
                                   {agent.agent_name ? agent.agent_name[0] : 'A'}
                                 </div>
-                                <span className="underline hover:text-brand-600 transition-colors">{agent.agent_name || 'System / Unassigned'}</span>
+                                <span className="underline hover:text-brand-600 transition-colors">{agent.agent_name}</span>
                               </td>
                               <td className="py-3.5 text-center">{agent.total_dials}</td>
                               <td className="py-3.5 text-center text-emerald-600">{agent.conversions}</td>
-                              <td className="py-3.5 text-center font-mono text-[11px]">{avgStr}</td>
-                              <td className="py-3.5 text-center font-mono text-[11px] text-brand-600">{tatStr}</td>
-                              <td className="py-3.5 text-center font-mono text-[11px] text-gray-500">{firstCallStr}</td>
-                              <td className="py-3.5 text-center font-mono text-[11px] text-gray-500">{lastCallStr}</td>
-                              <td className="py-3.5 text-center text-slate-600">{activeHoursStr}</td>
-                              <td className="py-3.5 text-center text-amber-600">{idleStr}</td>
-                              <td className="py-3.5 text-center text-indigo-600">{notesCount}</td>
-                              <td className="py-3.5 text-right font-mono">{agent.talk_time_avg}s</td>
+                              <td className="py-3.5 text-center font-mono text-[11px]">
+                                {formatDuration(tc?.avg_talk_seconds ?? null)}
+                                {tc && tc.unreadable_durations > 0 && (
+                                  <span className="ml-1 text-[9px] text-amber-600" title="Calls whose duration could not be read are excluded">
+                                    ({tc.unreadable_durations} skipped)
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3.5 text-center font-mono text-[11px] text-brand-600">{hhmm(tat?.avg_tat_minutes)}</td>
+                              <td className="py-3.5 text-center font-mono text-[11px] text-gray-500">{clock(tc?.first_call_at)}</td>
+                              <td className="py-3.5 text-center font-mono text-[11px] text-gray-500">{clock(tc?.last_call_at)}</td>
+                              <td className="py-3.5 text-center text-slate-600">{hhmm(tc?.active_duration_minutes)}</td>
+                              <td className="py-3.5 text-center text-amber-600">{hhmm(tc?.idle_minutes)}</td>
+                              <td className="py-3.5 text-center text-indigo-600">{tc?.notes_count ?? '—'}</td>
+                              <td className="py-3.5 text-right font-mono">{formatDuration(agent.talk_time_avg)}</td>
                             </tr>
                           );
                         })}
-                        {agentPerf.length === 0 && (
+                        {agentTotals.length === 0 && (
                           <tr>
-                            <td colSpan={10} className="py-10 text-center text-gray-400 font-bold uppercase tracking-widest">No agent records logged</td>
+                            <td colSpan={11} className="py-10 text-center text-gray-400 font-bold uppercase tracking-widest">
+                              {agentPerfQ.isError ? 'This table could not load' : 'No calls logged in this period'}
+                            </td>
                           </tr>
                         )}
                       </tbody>
@@ -1052,42 +1229,59 @@ export const ReportsPage = () => {
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
-                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Leads Count by Source Channel</h3>
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={sourceYield}
-                                cx="50%" cy="50%"
-                                innerRadius={70} outerRadius={100}
-                                paddingAngle={6}
-                                dataKey="lead_count"
-                                nameKey="source"
-                              >
-                                {sourceYield.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                              </Pie>
-                              <Tooltip />
-                              <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        </div>
+                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">Leads by Channel</h3>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-300 mb-5">{periodLabel}</p>
+                        <ReportState {...stateOf(sourceYieldQ, emptyArray)} minHeight={256}
+                          emptyMessage="No leads arrived in this period.">
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={sourceYield}
+                                  cx="50%" cy="50%"
+                                  innerRadius={70} outerRadius={100}
+                                  paddingAngle={6}
+                                  dataKey="lead_count"
+                                  nameKey="source"
+                                >
+                                  {sourceYield.map((entry, index) => (
+                                    <Cell key={entry.source} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip formatter={(value: number, name: string, item) => [
+                                  `${value} lead${value === 1 ? '' : 's'} · ${item?.payload?.conversion_rate ?? 0}% converted`,
+                                  name,
+                                ]} />
+                                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </ReportState>
                       </div>
 
                       <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
-                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Conversions by Source (Yield)</h3>
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={sourceConversionsData} layout="vertical" margin={{ top: 0, right: 30, left: 30, bottom: 0 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                              <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} />
-                              <YAxis dataKey="source" type="category" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} width={80} />
-                              <Tooltip />
-                              <Bar dataKey="conversions" fill="#8b5cf6" radius={[0, 4, 4, 0]} name="Conversions" />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
+                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">Volume vs Conversions by Channel</h3>
+                        {/* Both bars, because the point of this chart is that
+                            the channel sending the most leads is usually not
+                            the one converting best — and a conversions-only
+                            bar hides exactly that. */}
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-300 mb-5">{periodLabel}</p>
+                        <ReportState {...stateOf(sourceConversionsQ, emptyArray)} minHeight={256}
+                          emptyMessage="No leads arrived in this period.">
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={sourceConversionsData} layout="vertical" margin={{ top: 0, right: 30, left: 30, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                                <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} allowDecimals={false} />
+                                <YAxis dataKey="source" type="category" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} width={80} />
+                                <Tooltip />
+                                <Legend wrapperStyle={{ fontSize: 9, fontWeight: 700 }} />
+                                <Bar dataKey="lead_count" name="Leads" fill="#93c5fd" radius={[0, 4, 4, 0]} />
+                                <Bar dataKey="conversions" name="With a deal value" fill="#0d9488" radius={[0, 4, 4, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </ReportState>
                       </div>
                     </div>
                   </div>
@@ -1096,19 +1290,28 @@ export const ReportsPage = () => {
                 {activeReport === 'Geographical Analytics' && (
                   <div className="space-y-6">
                     <div className="bg-slate-50 p-6 rounded-3xl border border-gray-100">
-                      <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-6">Top Cities by Lead Volume</h3>
+                      <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">Top Cities by Lead Volume</h3>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-slate-300 mb-5">{periodLabel} · top 20</p>
+                      <ReportState {...stateOf(geoQ, emptyArray)} minHeight={320}
+                        emptyMessage="No lead in this period has a city recorded.">
                       <div className="h-80 overflow-y-auto custom-scrollbar">
-                        <ResponsiveContainer width="100%" height={Math.max(320, geoData.length * 40)}>
+                        <ResponsiveContainer width="100%" height={Math.max(320, geoData.length * 44)}>
                           <BarChart data={geoData} layout="vertical" margin={{ top: 0, right: 30, left: 60, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                            <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} />
+                            <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} allowDecimals={false} />
                             <YAxis dataKey="city" type="category" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} width={120} />
-                            <Tooltip />
-                            <Bar dataKey="lead_count" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Leads" />
-                            <Bar dataKey="conversions" fill="#10b981" radius={[0, 4, 4, 0]} name="Conversions" />
+                            <Tooltip formatter={(value: number, name: string, item) =>
+                              name === 'Leads'
+                                ? [`${value}`, name]
+                                : [`${value}${item?.payload?.deal_value ? ` · ${formatRupees(item.payload.deal_value)}` : ''}`, name]
+                            } />
+                            <Legend wrapperStyle={{ fontSize: 9, fontWeight: 700 }} />
+                            <Bar dataKey="lead_count" fill="#93c5fd" radius={[0, 4, 4, 0]} name="Leads" />
+                            <Bar dataKey="conversions" fill="#0d9488" radius={[0, 4, 4, 0]} name="With a deal value" />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
+                      </ReportState>
                     </div>
                   </div>
                 )}
@@ -1178,18 +1381,33 @@ export const ReportsPage = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50 text-xs font-bold text-slate-800">
-                        {attendanceSummary.map((row, idx) => (
-                          <tr key={row.agent_id || idx} className="hover:bg-slate-50">
+                        {attendanceSummary.map((row) => (
+                          <tr key={row.agent_id} className="hover:bg-slate-50">
                             <td className="py-3.5">{row.agent_name}</td>
                             <td className="py-3.5 text-center">{row.days_present} days</td>
-                            <td className="py-3.5 text-center font-mono">{row.hours_worked} hrs</td>
+                            <td className="py-3.5 text-center font-mono">
+                              {/* Real check_in-to-check_out time. This used to
+                                  be days_present * 8.5, so an agent who left
+                                  after twenty minutes scored the same as one
+                                  who stayed till nine. A day with no check_out
+                                  is unknown, not zero. */}
+                              {row.hours_worked === null ? '—' : `${row.hours_worked} hrs`}
+                              {row.open_days > 0 && (
+                                <span className="ml-1 text-[9px] text-amber-600"
+                                  title="Days checked in but never checked out, so hours cannot be known">
+                                  ({row.open_days} open)
+                                </span>
+                              )}
+                            </td>
                             <td className="py-3.5 text-center text-amber-500 font-black">{row.late_count} times</td>
-                            <td className="py-3.5 text-right font-mono text-slate-500">{row.avg_check_in || 'N/A'}</td>
+                            <td className="py-3.5 text-right font-mono text-slate-500">{row.avg_check_in || '—'}</td>
                           </tr>
                         ))}
                         {attendanceSummary.length === 0 && (
                           <tr>
-                            <td colSpan={5} className="py-10 text-center text-gray-400 font-bold uppercase tracking-widest">No attendance records logged</td>
+                            <td colSpan={5} className="py-10 text-center text-gray-400 font-bold uppercase tracking-widest">
+                              {attendanceQ.isError ? 'This table could not load' : 'No attendance recorded in this period'}
+                            </td>
                           </tr>
                         )}
                       </tbody>
@@ -1202,8 +1420,16 @@ export const ReportsPage = () => {
                     <div className="bg-brand-50 border border-brand-100 p-5 rounded-2xl flex items-start gap-4">
                       <Sparkles size={20} className="text-brand-600 shrink-0 mt-0.5" />
                       <div>
-                        <h4 className="text-xs font-black uppercase text-brand-700 tracking-wider">WhatsApp sequence dispatcher Cloud Gateway</h4>
-                        <p className="text-[11px] text-brand-600 font-medium leading-relaxed mt-1">Automatically generates message logs matching conversions lifecycle activity.</p>
+                        {/* The old copy said this "automatically generates
+                            message logs matching conversions lifecycle
+                            activity", which describes nothing that exists and
+                            reads as a working automation. */}
+                        <h4 className="text-xs font-black uppercase text-brand-700 tracking-wider">WhatsApp messages</h4>
+                        <p className="text-[11px] text-brand-600 font-medium leading-relaxed mt-1">
+                          Counted from messages this workspace actually sent. Delivery and read
+                          receipts come from the provider, so a blank column means the provider
+                          did not report one.
+                        </p>
                       </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -1235,34 +1461,53 @@ export const ReportsPage = () => {
 
                 {activeReport === 'Reactivation Bot' && (
                   <div className="space-y-4">
-                    <p className="text-xs font-bold text-rose-600 uppercase tracking-widest mb-4">Neglected leads identified with no active logs within 7 days</p>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="border-b border-gray-100">
-                            <th className="py-3 text-[10px] font-black text-slate-400 uppercase">Lead Identity</th>
-                            <th className="py-3 text-[10px] font-black text-slate-400 uppercase">Contact Number</th>
-                            <th className="py-3 text-[10px] font-black text-slate-400 uppercase">Acquisition Source</th>
-                            <th className="py-3 text-[10px] font-black text-slate-400 uppercase text-right">Last Action Date</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50 text-xs font-bold text-slate-800">
-                          {staleLeads.map((lead, idx) => (
-                            <tr key={lead.id || idx}>
-                              <td className="py-3">{lead.name || 'Anonymous'}</td>
-                              <td className="py-3 font-mono">{teamSettings?.hidePhoneNumbers ? '********' + (lead.phone?.slice(-4) || '****') : (lead.phone || 'N/A')}</td>
-                              <td className="py-3">{lead.source || 'Direct'}</td>
-                              <td className="py-3 text-right">{lead.last_contact_at ? new Date(lead.last_contact_at).toLocaleDateString() : 'Never'}</td>
+                    {/* The number comes from the constant the query is given,
+                        so the sentence cannot drift from the cutoff actually
+                        used. It read "within 7 days" beside a function that
+                        raised on every call. */}
+                    <p className="text-xs font-bold text-rose-600 uppercase tracking-widest mb-4">
+                      Leads with no contact in the last {STALE_AFTER_DAYS} days
+                    </p>
+                    <ReportState {...stateOf(staleLeadsQ, emptyArray)} minHeight={200}
+                      emptyMessage={`No lead has gone ${STALE_AFTER_DAYS} days without contact.`}>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-gray-100">
+                              <th className="py-3 text-[10px] font-black text-slate-400 uppercase">Lead</th>
+                              <th className="py-3 text-[10px] font-black text-slate-400 uppercase">Phone</th>
+                              <th className="py-3 text-[10px] font-black text-slate-400 uppercase">Source</th>
+                              <th className="py-3 text-[10px] font-black text-slate-400 uppercase">Stage</th>
+                              <th className="py-3 text-[10px] font-black text-slate-400 uppercase text-right">Last contacted</th>
                             </tr>
-                          ))}
-                          {staleLeads.length === 0 && (
-                            <tr>
-                              <td colSpan={4} className="py-10 text-center text-emerald-600 font-bold uppercase tracking-widest">All caught up! No stale records detected.</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50 text-xs font-bold text-slate-800">
+                            {staleLeadsQuery.map((lead) => (
+                              <tr key={lead.id}>
+                                {/* Unnamed, unknown source and no stage are all
+                                    written as unknown rather than given a
+                                    plausible-looking default — 'Direct' in
+                                    particular named a channel the company may
+                                    never have used. */}
+                                <td className="py-3">{lead.name || 'Unnamed lead'}</td>
+                                <td className="py-3 font-mono">
+                                  {teamSettings?.hidePhoneNumbers
+                                    ? '********' + (lead.phone?.slice(-4) || '****')
+                                    : (lead.phone || '—')}
+                                </td>
+                                <td className="py-3">{lead.source || 'Unknown'}</td>
+                                <td className="py-3">{lead.status || 'Unknown'}</td>
+                                <td className="py-3 text-right">
+                                  {lead.last_contact_at
+                                    ? new Date(lead.last_contact_at).toLocaleDateString('en-IN')
+                                    : <span className="text-rose-600">Never contacted</span>}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </ReportState>
                   </div>
                 )}
 
