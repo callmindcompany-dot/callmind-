@@ -41,6 +41,8 @@ import { useAgentPerformanceReport } from '@/hooks/useAgentPerformanceReport';
 import { useLeadSourceYieldReport } from '@/hooks/useLeadSourceYieldReport';
 import { useComparisonMetrics } from '@/hooks/useComparisonMetrics';
 import { ReportState, stateOf, emptyArray } from './reports/ReportState';
+import { DrillDownPanel } from './reports/DrillDownPanel';
+import { leadDrill, callDrill, type DrillDown } from '@/lib/drillDown';
 import { formatRupees, formatRupeesShort } from '@/lib/formatRupees';
 import { outcomeColor } from '@/lib/callOutcomes';
 import { formatDuration, parseDurationSeconds } from '@/lib/callDuration';
@@ -188,6 +190,22 @@ export const ReportsPage = () => {
   const [showCustomPicker, setShowCustomPicker] = useState(false);
 
   // Drill-down states
+  /**
+   * The chart segment the reader clicked, or null.
+   *
+   * One piece of state for every chart on the page. Each chart builds a
+   * descriptor carrying its own dimension plus the current filter bar, so the
+   * panel can only narrow what was on screen — see src/lib/drillDown.ts.
+   */
+  const [drill, setDrill] = useState<DrillDown | null>(null);
+
+  /** Recharts hands the clicked datum to onClick; this reads its label. */
+  const barLabel = (payload: unknown, key: string): string | null => {
+    const p = payload as { activePayload?: Array<{ payload?: Record<string, unknown> }> } | undefined;
+    const value = p?.activePayload?.[0]?.payload?.[key];
+    return typeof value === 'string' && value !== '' ? value : null;
+  };
+
   const [selectedDrillDownAgentId, setSelectedDrillDownAgentId] = useState<string | null>(null);
   const [selectedDrillDownAgentName, setSelectedDrillDownAgentName] = useState<string | null>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -843,14 +861,23 @@ export const ReportsPage = () => {
                         emptyMessage="No leads arrived in this period.">
                         <div className="h-64">
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={funnelSteps}>
+                            <BarChart
+                              data={funnelSteps}
+                              className="cursor-pointer"
+                              onClick={(e) => {
+                                const status = barLabel(e, 'status');
+                                if (status) setDrill(leadDrill(
+                                  `Leads at ${status}`, `Stage: ${status}`, filters, { status },
+                                ));
+                              }}
+                            >
                               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                               <XAxis dataKey="status" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }} />
                               <YAxis tick={{ fontSize: 9, fill: '#94a3b8' }} allowDecimals={false} />
-                              <Tooltip />
+                              <Tooltip cursor={{ fill: '#f8fafc' }} />
                               <Bar dataKey="count" radius={[8, 8, 0, 0]}>
                                 {funnelSteps.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  <Cell key={entry.status} fill={COLORS[index % COLORS.length]} />
                                 ))}
                               </Bar>
                             </BarChart>
@@ -924,7 +951,16 @@ export const ReportsPage = () => {
                           emptyMessage="No lead in this period has a value recorded.">
                           <div className="h-64">
                             <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={revenuePipeline} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
+                              <BarChart
+                                data={revenuePipeline} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}
+                                className="cursor-pointer"
+                                onClick={(e) => {
+                                  const status = barLabel(e, 'status');
+                                  if (status) setDrill(leadDrill(
+                                    `Pipeline at ${status}`, `Stage: ${status}`, filters, { status },
+                                  ));
+                                }}
+                              >
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                                 <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} tickFormatter={formatRupeesShort} />
                                 <YAxis dataKey="status" type="category" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }} width={80} />
@@ -955,6 +991,20 @@ export const ReportsPage = () => {
                                   paddingAngle={5}
                                   dataKey="count" nameKey="reason"
                                   label={true}
+                                  className="cursor-pointer"
+                                  onClick={(slice) => {
+                                    const reason = (slice as { reason?: string })?.reason;
+                                    if (!reason) return;
+                                    // 'No reason recorded' is the view's label
+                                    // for a blank, so it drills on "lost at
+                                    // all" rather than on that literal string.
+                                    setDrill(leadDrill(
+                                      `Lost — ${reason}`, `Reason: ${reason}`, filters,
+                                      reason === 'No reason recorded'
+                                        ? { isLost: true }
+                                        : { lostReason: reason },
+                                    ));
+                                  }}
                                 >
                                   {detailedChurn.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={['#e11d48', '#b45309', '#9333ea', '#2563eb'][index % 4]} />
@@ -986,7 +1036,19 @@ export const ReportsPage = () => {
                               {/* The days in the window are summed per hour;
                                   drawn raw, a 30-day range puts thirty points
                                   at every hour and reads as noise. */}
-                              <AreaChart data={hourlyByHour}>
+                              <AreaChart
+                                data={hourlyByHour}
+                                className="cursor-pointer"
+                                onClick={(e) => {
+                                  const p = (e as { activePayload?: Array<{ payload?: { hour?: number } }> })
+                                    ?.activePayload?.[0]?.payload;
+                                  if (p?.hour === undefined) return;
+                                  const label = `${String(p.hour).padStart(2, '0')}:00`;
+                                  setDrill(callDrill(
+                                    `Calls at ${label}`, `Hour: ${label}`, filters, { hour: p.hour },
+                                  ));
+                                }}
+                              >
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                 <XAxis dataKey="hour" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }}
                                   tickFormatter={(h: number) => `${String(h).padStart(2, '0')}:00`} />
@@ -1014,6 +1076,14 @@ export const ReportsPage = () => {
                                   paddingAngle={5}
                                   dataKey="count" nameKey="outcome"
                                   label={true}
+                                  className="cursor-pointer"
+                                  onClick={(slice) => {
+                                    const outcome = (slice as { outcome?: string })?.outcome;
+                                    if (!outcome || outcome === 'Not recorded') return;
+                                    setDrill(callDrill(
+                                      `Calls — ${outcome}`, `Outcome: ${outcome}`, filters, { outcome },
+                                    ));
+                                  }}
                                 >
                                   {/* Coloured by what the outcome means, not by
                                       position: Connected keeps the same colour
@@ -1117,7 +1187,20 @@ export const ReportsPage = () => {
                         emptyMessage="No calls logged in this period.">
                         <div className="h-80 overflow-y-auto custom-scrollbar">
                           <ResponsiveContainer width="100%" height={Math.max(320, agentTotals.length * 44)}>
-                            <BarChart data={agentTotals} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
+                            <BarChart
+                              data={agentTotals} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}
+                              className="cursor-pointer"
+                              onClick={(e) => {
+                                const p = (e as { activePayload?: Array<{ payload?: { agent_id?: string; agent_name?: string } }> })
+                                  ?.activePayload?.[0]?.payload;
+                                if (!p?.agent_id) return;
+                                setDrill(callDrill(
+                                  `Calls by ${p.agent_name ?? 'this telecaller'}`,
+                                  `Telecaller: ${p.agent_name ?? p.agent_id}`,
+                                  filters, { agentId: p.agent_id },
+                                ));
+                              }}
+                            >
                               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                               <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} allowDecimals={false} />
                               <YAxis dataKey="agent_name" type="category" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} width={120} />
@@ -1243,6 +1326,14 @@ export const ReportsPage = () => {
                                   paddingAngle={6}
                                   dataKey="lead_count"
                                   nameKey="source"
+                                  className="cursor-pointer"
+                                  onClick={(slice) => {
+                                    const source = (slice as { source?: string })?.source;
+                                    if (!source || source === 'Unknown') return;
+                                    setDrill(leadDrill(
+                                      `Leads from ${source}`, `Source: ${source}`, filters, { source },
+                                    ));
+                                  }}
                                 >
                                   {sourceYield.map((entry, index) => (
                                     <Cell key={entry.source} fill={COLORS[index % COLORS.length]} />
@@ -1270,7 +1361,16 @@ export const ReportsPage = () => {
                           emptyMessage="No leads arrived in this period.">
                           <div className="h-64">
                             <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={sourceConversionsData} layout="vertical" margin={{ top: 0, right: 30, left: 30, bottom: 0 }}>
+                              <BarChart
+                                data={sourceConversionsData} layout="vertical" margin={{ top: 0, right: 30, left: 30, bottom: 0 }}
+                                className="cursor-pointer"
+                                onClick={(e) => {
+                                  const source = barLabel(e, 'source');
+                                  if (source) setDrill(leadDrill(
+                                    `Leads from ${source}`, `Source: ${source}`, filters, { source },
+                                  ));
+                                }}
+                              >
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                                 <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} allowDecimals={false} />
                                 <YAxis dataKey="source" type="category" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} width={80} />
@@ -1296,7 +1396,16 @@ export const ReportsPage = () => {
                         emptyMessage="No lead in this period has a city recorded.">
                       <div className="h-80 overflow-y-auto custom-scrollbar">
                         <ResponsiveContainer width="100%" height={Math.max(320, geoData.length * 44)}>
-                          <BarChart data={geoData} layout="vertical" margin={{ top: 0, right: 30, left: 60, bottom: 0 }}>
+                          <BarChart
+                            data={geoData} layout="vertical" margin={{ top: 0, right: 30, left: 60, bottom: 0 }}
+                            className="cursor-pointer"
+                            onClick={(e) => {
+                              const city = barLabel(e, 'city');
+                              if (city && city !== 'Unknown') setDrill(leadDrill(
+                                `Leads in ${city}`, `City: ${city}`, filters, { city },
+                              ));
+                            }}
+                          >
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                             <XAxis type="number" tick={{ fontSize: 9, fill: '#94a3b8' }} allowDecimals={false} />
                             <YAxis dataKey="city" type="category" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} width={120} />
@@ -1651,6 +1760,22 @@ export const ReportsPage = () => {
             companyId={companyId}
             filters={filters}
             onClose={() => setSelectedDrillDownAgentId(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* The rows behind whichever chart segment was clicked. One panel serves
+          every chart on the page — the descriptor carries the dimension and
+          the filter bar, so the panel can only narrow what was on screen. */}
+      <AnimatePresence>
+        {drill && (
+          <DrillDownPanel
+            companyId={companyId}
+            drill={drill}
+            onClose={() => setDrill(null)}
+            hidePhoneNumbers={teamSettings?.hidePhoneNumbers}
+            canExport={plan.can('exports')}
+            onExportBlocked={() => setShowExportUpgrade(true)}
           />
         )}
       </AnimatePresence>
