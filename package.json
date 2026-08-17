@@ -71,8 +71,7 @@
   },
   "overrides": {
     "react-router-dom": "7.18.2",
-    "react-router": "7.18.2",
-    "esbuild": "0.25.0"
+    "react-router": "7.18.2"
   },
   "devDependencies": {
     "@firebase/eslint-plugin-security-rules": "^0.0.2",
