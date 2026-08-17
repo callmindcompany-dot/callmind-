@@ -24,6 +24,8 @@ interface CallCompletedCardProps {
   summary: string;
   /** Closed leads leave the queue, so the card offers no follow-up for them. */
   closed: boolean;
+  nextLeadName?: string;
+  onDialNext?: () => void;
   onLogFeedback: () => void;
   onScheduleCallback: () => void;
   onDone: () => void;
@@ -35,6 +37,8 @@ export const CallCompletedCard: React.FC<CallCompletedCardProps> = ({
   duration,
   summary,
   closed,
+  nextLeadName,
+  onDialNext,
   onLogFeedback,
   onScheduleCallback,
   onDone,
@@ -60,9 +64,20 @@ export const CallCompletedCard: React.FC<CallCompletedCardProps> = ({
         <Text style={styles.summaryText}>{summary}</Text>
 
         <View style={styles.btnStack}>
-          <TouchableOpacity style={styles.primaryBtn} onPress={onDone}>
-            <Text style={styles.primaryBtnText}>Next lead</Text>
-          </TouchableOpacity>
+          {nextLeadName && onDialNext ? (
+            <>
+              <TouchableOpacity style={styles.primaryBtn} onPress={onDialNext}>
+                <Text style={styles.primaryBtnText}>Dial Next: {nextLeadName} ⚡</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.secondaryBtn} onPress={onDone}>
+                <Text style={styles.secondaryBtnText}>Back to Queue</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity style={styles.primaryBtn} onPress={onDone}>
+              <Text style={styles.primaryBtnText}>Next lead</Text>
+            </TouchableOpacity>
+          )}
 
           {/*
             No point offering a follow-up on a lead that has just been closed --

@@ -11,10 +11,47 @@ export interface WhatsAppTemplate {
   id: string;
   name: string;
   category: string;
-  language: string;
   bodyText: string;
-  headerType?: 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'VIDEO' | 'NONE';
+  icon?: string;
 }
+
+export const DEFAULT_WHATSAPP_TEMPLATES: WhatsAppTemplate[] = [
+  {
+    id: 'intro_greeting',
+    name: 'Introduction & Thanks',
+    category: 'Greeting',
+    icon: '👋',
+    bodyText: 'Hello {{lead_name}}, thank you for speaking with us today regarding our services. Please let us know if you have any questions or need further details.',
+  },
+  {
+    id: 'send_brochure',
+    name: 'Brochure & Catalog',
+    category: 'Product Details',
+    icon: '📄',
+    bodyText: 'Hi {{lead_name}}, as discussed on our call, here are our product details and catalog. Feel free to review and let me know your thoughts.',
+  },
+  {
+    id: 'quotation_followup',
+    name: 'Quotation / Pricing',
+    category: 'Sales',
+    icon: '💰',
+    bodyText: 'Dear {{lead_name}}, sharing our formal proposal and special pricing as discussed. Please review and confirm your requirement.',
+  },
+  {
+    id: 'meeting_confirm',
+    name: 'Meeting / Visit Confirmation',
+    category: 'Meeting',
+    icon: '📅',
+    bodyText: 'Hello {{lead_name}}, confirming our upcoming scheduled follow-up / site visit for {{follow_up_time}}. Our team looks forward to connecting with you.',
+  },
+  {
+    id: 'missed_call_callback',
+    name: 'Tried Calling / Callback',
+    category: 'Follow-up',
+    icon: '📞',
+    bodyText: 'Hi {{lead_name}}, I tried reaching you earlier regarding your inquiry. Please let me know a convenient time to reconnect.',
+  },
+];
 
 export const whatsappReachoutService = {
   /**
@@ -64,7 +101,7 @@ export const whatsappReachoutService = {
   },
 
   /**
-   * Substitute template placeholders (e.g. {{lead_name}}, {{company_name}})
+   * Substitute template placeholders (e.g. {{lead_name}}, {{follow_up_time}})
    */
   renderTemplate(templateBody: string, variables: Record<string, string>): string {
     let rendered = templateBody;
@@ -90,6 +127,33 @@ export const whatsappReachoutService = {
       return false;
     } catch {
       return false;
+    }
+  },
+
+  /**
+   * Fetch company templates from database with local defaults fallback
+   */
+  async getTemplates(companyId?: string | null): Promise<WhatsAppTemplate[]> {
+    if (!companyId) return DEFAULT_WHATSAPP_TEMPLATES;
+    try {
+      const { data, error } = await supabase
+        .from('whatsapp_templates')
+        .select('id, name, category, body_text')
+        .eq('company_id', companyId);
+
+      if (error || !data || data.length === 0) {
+        return DEFAULT_WHATSAPP_TEMPLATES;
+      }
+
+      return data.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        category: t.category || 'General',
+        bodyText: t.body_text,
+        icon: '💬',
+      }));
+    } catch {
+      return DEFAULT_WHATSAPP_TEMPLATES;
     }
   },
 };

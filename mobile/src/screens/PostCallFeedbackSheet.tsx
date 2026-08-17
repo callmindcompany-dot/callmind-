@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal, Linking } from 'react-native';
-import { ArrowLeft, CheckCircle2, Calendar, Clock, WifiOff, MessageSquare, Plus, X } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle2, Calendar, Clock, WifiOff, MessageSquare, Plus, X, Zap, Send } from 'lucide-react-native';
 import { followUpAt, type PostCallForm, type FormOption } from '../services/postCallForm';
-import { whatsappReachoutService } from '../services/whatsappReachout';
+import { whatsappReachoutService, DEFAULT_WHATSAPP_TEMPLATES, type WhatsAppTemplate } from '../services/whatsappReachout';
 
 export interface PostCallFeedback {
   outcome: string;
@@ -18,20 +18,33 @@ interface PostCallFeedbackSheetProps {
   leadName?: string;
   leadPhone?: string;
   leadId?: string;
+  nextLeadName?: string;
   callDuration?: string;
+  companyId?: string | null;
   /** The company's own form. Falls back to the built-in defaults upstream. */
   form: PostCallForm;
-  onSubmit: (feedback: PostCallFeedback) => void;
+  onSubmit: (feedback: PostCallFeedback, dialNext?: boolean) => void;
   onDismiss: () => void;
 }
 
 const CONNECTED = 'Connected';
 
+const DEFAULT_NOTE_CHIPS = [
+  'Interested in Pricing',
+  'Requested Callback',
+  'Send Details on WhatsApp',
+  'Decision Maker Busy',
+  'Budget Issue',
+  'Meeting Confirmed',
+];
+
 export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
   leadName = 'Lead',
   leadPhone,
   leadId,
+  nextLeadName,
   callDuration = '00:00',
+  companyId,
   form,
   onSubmit,
   onDismiss,
@@ -45,6 +58,12 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
   const [notes, setNotes] = useState('');
   const [followUp, setFollowUp] = useState<string | null>(null);
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [templates, setTemplates] = useState<WhatsAppTemplate[]>(DEFAULT_WHATSAPP_TEMPLATES);
+
+  useEffect(() => {
+    whatsappReachoutService.getTemplates(companyId).then(setTemplates);
+  }, [companyId]);
 
   // Custom date picker temporary selection states
   const [selectedDayOffset, setSelectedDayOffset] = useState(1); // 1 = Tomorrow
@@ -61,15 +80,18 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
     });
   }, [followUp]);
 
-  const submit = (withOutcome: string) => {
-    onSubmit({
-      outcome: withOutcome,
-      interest: withOutcome === CONNECTED ? (interest ?? '') : '',
-      notes,
-      followUpAt: followUp,
-      leadPhone,
-      leadId,
-    });
+  const submit = (withOutcome: string, dialNext: boolean = false) => {
+    onSubmit(
+      {
+        outcome: withOutcome,
+        interest: withOutcome === CONNECTED ? (interest ?? '') : '',
+        notes,
+        followUpAt: followUp,
+        leadPhone,
+        leadId,
+      },
+      dialNext,
+    );
   };
 
   const handleApplyCustomDate = () => {
@@ -80,11 +102,26 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
     setShowDatePickerModal(false);
   };
 
-  const handleWhatsAppReachout = async () => {
+  const handleSendWhatsAppTemplate = async (tmpl: WhatsAppTemplate) => {
     if (!leadPhone) return;
-    const greeting = `Hello ${leadName}, thank you for speaking with us today. Please let us know if you need any additional information.`;
-    await whatsappReachoutService.openWhatsAppChat(leadPhone, greeting);
+    const variables: Record<string, string> = {
+      lead_name: leadName,
+      name: leadName,
+      follow_up_time: followUpLabel || 'soon',
+      followup_date: followUpLabel || 'soon',
+      service: 'CallMind CRM services',
+    };
+    const renderedMsg = whatsappReachoutService.renderTemplate(tmpl.bodyText, variables);
+    setShowWhatsAppModal(false);
+    await whatsappReachoutService.openWhatsAppChat(leadPhone, renderedMsg);
   };
+
+  const noteChips = useMemo(() => {
+    if (form.noteTemplates && form.noteTemplates.length > 0) {
+      return form.noteTemplates.map(t => t.label);
+    }
+    return DEFAULT_NOTE_CHIPS;
+  }, [form.noteTemplates]);
 
   const chip = (
     option: FormOption,
@@ -146,7 +183,7 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
               if (o.value !== CONNECTED) {
                 // One tap and done. Saved immediately for unanswered/busy/invalid
                 setInterest(null);
-                submit(o.value);
+                submit(o.value, false);
               }
             }))}
           </View>
@@ -189,16 +226,16 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
               )}
 
               {/* Note Templates 1-Tap Insert */}
-              <Text style={styles.sectionTitle}>Note Templates (1-Tap Insert)</Text>
+              <Text style={styles.sectionTitle}>Quick Note Tags (1-Tap Insert)</Text>
               <View style={styles.templatesRow}>
-                {(form.noteTemplates || []).map(t => (
+                {noteChips.map(tagText => (
                   <TouchableOpacity
-                    key={t.value}
+                    key={tagText}
                     style={styles.templateChip}
-                    onPress={() => setNotes(prev => prev ? `${prev} | ${t.label}` : t.label)}
+                    onPress={() => setNotes(prev => prev ? `${prev} | ${tagText}` : tagText)}
                   >
                     <Plus size={11} color="#475569" />
-                    <Text style={styles.templateChipText}>{t.label}</Text>
+                    <Text style={styles.templateChipText}>{tagText}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -221,10 +258,10 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
               {leadPhone && (
                 <TouchableOpacity
                   style={styles.whatsappActionBtn}
-                  onPress={handleWhatsAppReachout}
+                  onPress={() => setShowWhatsAppModal(true)}
                 >
                   <MessageSquare size={16} color="#16a34a" />
-                  <Text style={styles.whatsappActionText}>Send WhatsApp Follow-up</Text>
+                  <Text style={styles.whatsappActionText}>Send WhatsApp Template Message</Text>
                 </TouchableOpacity>
               )}
             </>
@@ -233,16 +270,42 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
 
         {connected && (
           <View style={styles.bottomFooter}>
-            <TouchableOpacity
-              style={[styles.saveBtn, !interest && styles.saveBtnDisabled]}
-              disabled={!interest}
-              onPress={() => submit(CONNECTED)}
-              accessibilityLabel="Save"
-            >
-              <Text style={styles.saveBtnText}>
-                {interest ? 'Save Call Feedback' : 'Pick what they said'}
-              </Text>
-            </TouchableOpacity>
+            {nextLeadName ? (
+              <View style={{ gap: 8 }}>
+                <TouchableOpacity
+                  style={[styles.saveAndNextBtn, !interest && styles.saveBtnDisabled]}
+                  disabled={!interest}
+                  onPress={() => submit(CONNECTED, true)}
+                  accessibilityLabel="Save and Dial Next"
+                >
+                  <Zap size={16} color="#ffffff" />
+                  <Text style={styles.saveBtnText}>
+                    {interest ? `Save & Dial Next (${nextLeadName})` : 'Pick what they said'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveBtn, !interest && styles.saveBtnDisabled]}
+                  disabled={!interest}
+                  onPress={() => submit(CONNECTED, false)}
+                  accessibilityLabel="Save Only"
+                >
+                  <Text style={[styles.saveBtnText, { color: '#0f172a' }]}>
+                    Save Only
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.saveBtn, !interest && styles.saveBtnDisabled]}
+                disabled={!interest}
+                onPress={() => submit(CONNECTED, false)}
+                accessibilityLabel="Save"
+              >
+                <Text style={styles.saveBtnText}>
+                  {interest ? 'Save Call Feedback' : 'Pick what they said'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </View>
@@ -311,6 +374,71 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
             <TouchableOpacity style={styles.confirmDateBtn} onPress={handleApplyCustomDate}>
               <Text style={styles.confirmDateBtnText}>Set Follow-up Time</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* WhatsApp Template Picker Modal */}
+      <Modal
+        visible={showWhatsAppModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowWhatsAppModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MessageSquare size={18} color="#16a34a" />
+                <Text style={styles.modalTitle}>Choose WhatsApp Template</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setShowWhatsAppModal(false)}
+                accessibilityLabel="Close"
+              >
+                <X size={18} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalSubtitle, { marginBottom: 12 }]}>
+              Pre-approved business message templates
+            </Text>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }}>
+              <View style={{ gap: 10, paddingBottom: 16 }}>
+                {templates.map((tmpl) => {
+                  const previewText = whatsappReachoutService.renderTemplate(tmpl.bodyText, {
+                    lead_name: leadName,
+                    name: leadName,
+                    follow_up_time: followUpLabel || 'soon',
+                    followup_date: followUpLabel || 'soon',
+                    service: 'CallMind CRM services',
+                  });
+
+                  return (
+                    <TouchableOpacity
+                      key={tmpl.id}
+                      style={styles.tmplCard}
+                      onPress={() => handleSendWhatsAppTemplate(tmpl)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.tmplHeader}>
+                        <Text style={styles.tmplIcon}>{tmpl.icon || '💬'}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.tmplName}>{tmpl.name}</Text>
+                          <Text style={styles.tmplCategory}>{tmpl.category}</Text>
+                        </View>
+                        <Send size={14} color="#16a34a" />
+                      </View>
+                      <Text style={styles.tmplBody} numberOfLines={3}>
+                        {previewText}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -484,13 +612,65 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   saveBtn: {
-    backgroundColor: '#0f172a',
+    backgroundColor: '#f1f5f9',
     borderRadius: 16,
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
-  saveBtnDisabled: { backgroundColor: '#cbd5e1' },
+  saveAndNextBtn: {
+    backgroundColor: '#16a34a',
+    borderRadius: 16,
+    paddingVertical: 15,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  saveBtnDisabled: { backgroundColor: '#cbd5e1', borderColor: '#cbd5e1' },
   saveBtnText: { fontSize: 14, fontWeight: '800', color: '#ffffff' },
+
+  // WhatsApp Template Modal Card Styles
+  tmplCard: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 16,
+    padding: 14,
+    gap: 6,
+  },
+  tmplHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  tmplIcon: {
+    fontSize: 20,
+  },
+  tmplName: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  tmplCategory: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#16a34a',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  tmplBody: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#475569',
+    lineHeight: 17,
+  },
 
   // Date-Time Modal Styles
   modalOverlay: {
@@ -502,7 +682,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: '100%',
-    maxWidth: 360,
+    maxWidth: 380,
     backgroundColor: '#ffffff',
     borderRadius: 24,
     padding: 20,

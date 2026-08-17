@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { ArrowLeft, Phone, Edit3, Star, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, Phone, Edit3, Star, ChevronRight, MessageSquare } from 'lucide-react-native';
 
 import { LeadItem } from './LeadListScreen';
 import { activityService, type ActivityEntry } from '../services/activityService';
+import { whatsappReachoutService } from '../services/whatsappReachout';
 
 /**
  * One lead, as recorded.
@@ -135,6 +136,22 @@ export const LeadDetailScreen: React.FC<LeadDetailScreenProps> = ({
                 <Phone size={20} color="#ffffff" />
               </View>
               <Text style={styles.actionLabel}>Call now</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionItem}
+              onPress={() => {
+                if (!lead.phone) return;
+                const msg = `Hello ${lead.name}, connecting from CallMind regarding your inquiry. Please let us know if you need any assistance.`;
+                whatsappReachoutService.openWhatsAppChat(lead.phone, msg);
+              }}
+              disabled={!lead.phone}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.actionCircle, { backgroundColor: lead.phone ? '#25D366' : '#cbd5e1' }]}>
+                <MessageSquare size={20} color="#ffffff" />
+              </View>
+              <Text style={styles.actionLabel}>WhatsApp</Text>
             </TouchableOpacity>
           </View>
         </View>

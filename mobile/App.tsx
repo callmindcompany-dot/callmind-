@@ -487,11 +487,18 @@ function MainAppContent() {
     }
   };
 
+  const nextLeadInQueue = useMemo(() => {
+    if (!queuedLeads || queuedLeads.length === 0) return null;
+    return queuedLeads.find((l) => l.id !== activeCallingLead?.id && !isClosed(l)) ?? null;
+  }, [queuedLeads, activeCallingLead?.id]);
+
   const handleCallLead = (lead: LeadItem) => dialNumber(lead.phone, lead.name, lead);
 
   // Handle post-call feedback submit
-  const handleFeedbackSubmit = async (feedback: PostCallFeedback) => {
+  const handleFeedbackSubmit = async (feedback: PostCallFeedback, dialNext: boolean = false) => {
     setShowFeedback(false);
+    const targetNextLead = dialNext ? nextLeadInQueue : null;
+
     if (!profile?.companyId || !profile?.uid) {
       toastError('Error', 'Missing user profile or company session.');
       return;
@@ -543,35 +550,11 @@ function MainAppContent() {
       }
     }
 
-    // Move the lead.
-    //
-    // This is what was missing. The two writes above recorded the call and the
-    // follow-up; the lead itself was never touched, so its status stayed 'New'
-    // and it held its place in the queue. An agent worked down the list past
-    // people they had already spoken to, and a day's work left no mark on the
-    // screen they were looking at.
-    // The stage is resolved in two steps on purpose. resolveOutcome says what
-    // the call meant; decideStage turns that into one of *this company's* own
-    // stages, read from team_settings.leads_statuses.
-    //
-    // Until now both halves were hardcoded, in two different files, and both
-    // ran on every submit: this line wrote 'Invalid' for a wrong number while
-    // callService wrote 'Not Interested' for the same call a moment earlier.
-    // Neither name exists in the live company's pipeline, which is New, In
-    // Progress, Closed, Hot, Cold.
-    //
-    // decideStage returns null when no stage can be justified, and null leaves
-    // the lead exactly where it is. A lead in the wrong real stage can be moved
-    // back; a pipeline full of stages that do not exist corrupts the funnel and
-    // every pipeline figure at once.
     const resolved = resolveOutcome(feedback.outcome, feedback.interest);
     let leadMoved = true;
     if (activeCallingLead?.id) {
       try {
         const { stages } = await getLeadStages(profile.companyId);
-        // The admin's own mapping, when they set one, from the settings screen.
-        // decideStage ignores it if the stage it names no longer exists, so a
-        // renamed stage cannot reintroduce a phantom.
         const decision = decideStage(resolved.intent, stages, postCallForm.stageByIntent);
         if (decision.status) {
           await leadService.recordCallOutcome(
@@ -583,8 +566,6 @@ function MainAppContent() {
           );
         } else {
           leadMoved = false;
-          // Said out loud rather than logged. An agent who believes a lead
-          // moved and finds it unchanged tomorrow calls the same person twice.
           toastInfo('Lead stage unchanged', decision.reason);
         }
       } catch (e) {
@@ -606,15 +587,20 @@ function MainAppContent() {
       loadSecondaryData();
     }
 
-    // Says where the lead went. Replaces a toast that only confirmed the form
-    // had been submitted, which was never the agent's question.
-    setCallResult({
-      leadName: activeCallingLead?.name || callingLeadName || 'Lead',
-      leadPhone: activeCallingLead?.phone || 'No number on file',
-      duration: callDuration,
-      summary: describeOutcome(resolved, feedback.followUpAt),
-      closed: resolved.closes,
-    });
+    if (targetNextLead) {
+      setCallResult(null);
+      setTimeout(() => {
+        handleCallLead(targetNextLead);
+      }, 400);
+    } else {
+      setCallResult({
+        leadName: activeCallingLead?.name || callingLeadName || 'Lead',
+        leadPhone: activeCallingLead?.phone || 'No number on file',
+        duration: callDuration,
+        summary: describeOutcome(resolved, feedback.followUpAt),
+        closed: resolved.closes,
+      });
+    }
   };
 
   // Display the feedback sheet when the agent returns from the system dialer.
@@ -1306,7 +1292,9 @@ function MainAppContent() {
           leadName={callingLeadName || activeCallingLead?.name || 'Lead'}
           leadPhone={activeCallingLead?.phone}
           leadId={activeCallingLead?.id}
+          nextLeadName={nextLeadInQueue?.name}
           callDuration={callDuration}
+          companyId={profile?.companyId}
           form={postCallForm}
           onSubmit={handleFeedbackSubmit}
           onDismiss={() => setShowFeedback(false)}
@@ -1354,6 +1342,16 @@ function MainAppContent() {
           duration={callResult.duration}
           summary={callResult.summary}
           closed={callResult.closed}
+          nextLeadName={nextLeadInQueue?.name}
+          onDialNext={() => {
+            const nextL = nextLeadInQueue;
+            setCallResult(null);
+            if (nextL) {
+              setTimeout(() => {
+                handleCallLead(nextL);
+              }, 300);
+            }
+          }}
           onDone={() => {
             setCallResult(null);
             setActiveCallingLead(null);
