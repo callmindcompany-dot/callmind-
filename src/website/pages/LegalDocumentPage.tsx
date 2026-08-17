@@ -67,9 +67,26 @@ export const LegalDocumentPage = ({ slug }: { slug: LegalSlug }) => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
-        title={`${doc.title} — ${ENTITY.brand} CRM`}
+        title={`${doc.title} — ${ENTITY.brand} CRM Legal`}
         description={doc.summary}
         path={`/legal/${doc.slug}`}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Legal', path: '/legal/terms' },
+          { name: doc.title, path: `/legal/${doc.slug}` },
+        ]}
+        jsonLd={[
+          {
+            '@type': 'WebPage',
+            '@id': `https://callmind.app/legal/${doc.slug}#webpage`,
+            name: `${doc.title} - CallMind CRM`,
+            description: doc.summary,
+            publisher: {
+              '@type': 'Organization',
+              name: 'Voolabs Technologies',
+            },
+          },
+        ]}
       />
       <Navbar />
 

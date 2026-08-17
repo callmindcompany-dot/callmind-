@@ -133,14 +133,53 @@ async function main() {
     if (seo.title) {
       html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeAttr(seo.title)}</title>`);
     }
+    if (seo.keywords && seo.keywords.length > 0) {
+      html = upsertMeta(html, 'name', 'keywords', seo.keywords.join(', '));
+    }
     html = upsertMeta(html, 'name', 'description', seo.description);
     html = upsertMeta(html, 'name', 'robots', seo.noindex ? 'noindex, nofollow' : 'index, follow');
     html = upsertMeta(html, 'property', 'og:title', seo.title);
     html = upsertMeta(html, 'property', 'og:description', seo.description);
     html = upsertMeta(html, 'property', 'og:url', canonical);
+    html = upsertMeta(html, 'property', 'og:site_name', 'CallMind CRM');
+    html = upsertMeta(html, 'property', 'og:locale', 'en_IN');
     html = upsertMeta(html, 'name', 'twitter:title', seo.title);
     html = upsertMeta(html, 'name', 'twitter:description', seo.description);
     html = upsertCanonical(html, canonical);
+
+    // Build Page Schema.org Structured Data
+    const schemas = [];
+    if (seo.breadcrumbs && seo.breadcrumbs.length > 0) {
+      schemas.push({
+        '@type': 'BreadcrumbList',
+        itemListElement: seo.breadcrumbs.map((b, idx) => ({
+          '@type': 'ListItem',
+          position: idx + 1,
+          name: b.name,
+          item: b.path.startsWith('http') ? b.path : `${SITE_URL}${b.path}`,
+        })),
+      });
+    }
+
+    if (seo.jsonLd) {
+      if (Array.isArray(seo.jsonLd)) {
+        schemas.push(...seo.jsonLd);
+      } else {
+        schemas.push(seo.jsonLd);
+      }
+    }
+
+    if (schemas.length > 0) {
+      const jsonLdBlock = `\n    <script type="application/ld+json" id="page-structured-data">\n    ${JSON.stringify(
+        {
+          '@context': 'https://schema.org',
+          '@graph': schemas,
+        },
+        null,
+        2
+      ).replace(/\n/g, '\n    ')}\n    </script>`;
+      html = html.replace('</head>', `${jsonLdBlock}\n  </head>`);
+    }
 
     const outPath =
       route === '/' ? join(distDir, 'index.html') : join(distDir, route, 'index.html');

@@ -38,9 +38,39 @@ export const CompanyPage = () => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
-        title="About Voolabs — The Team Behind CallMind CRM"
-        description="CallMind is built by Voolabs Technologies for Indian sales teams. Meet the founder and the engineering principles behind the telecalling platform."
+        title="About CallMind & Voolabs Technologies | Indian SaaS Company"
+        description="Learn about Voolabs Technologies and our mission to build high-performance, privacy-first telecalling software for fast-growing sales organizations across India."
         path="/company"
+        keywords={[
+          'CallMind company',
+          'Voolabs Technologies',
+          'Vrushabh Shinde founder',
+          'Pune SaaS startup',
+          'Made in India CRM',
+          'telecalling technology company',
+          'Indian CRM software company',
+        ]}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Company', path: '/company' },
+        ]}
+        jsonLd={[
+          {
+            '@type': 'AboutPage',
+            '@id': 'https://callmind.app/company#about',
+            name: 'About CallMind & Voolabs Technologies',
+            mainEntity: {
+              '@type': 'Organization',
+              name: 'Voolabs Technologies',
+              url: 'https://callmind.app',
+              founder: {
+                '@type': 'Person',
+                name: 'Vrushabh Shinde',
+                jobTitle: 'Founder & Software Architect',
+              },
+            },
+          },
+        ]}
       />
       <Navbar />
 

@@ -53,9 +53,32 @@ export const IntegrationsPage = () => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead 
-        title="Integrations | CallMind by Voolabs" 
-        description="Connect CallMind with IndiaMART, JustDial, TradeIndia, Meta Lead Ads, website forms and custom webhooks to auto-capture leads."
+        title="Lead Integrations — IndiaMART, JustDial, Meta Ads & Webhooks | CallMind" 
+        description="Connect your lead generation sources in 60 seconds. Real-time auto-capture webhooks for IndiaMART, JustDial, TradeIndia, Facebook Lead Ads, Google Forms, and REST APIs."
         path="/integrations"
+        keywords={[
+          'IndiaMART CRM API integration',
+          'JustDial lead webhook',
+          'Facebook Lead Ads auto import',
+          'TradeIndia CRM integration',
+          'lead capture webhooks',
+          'REST API telecalling CRM',
+          'WhatsApp webhook CRM',
+        ]}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Integrations', path: '/integrations' },
+        ]}
+        jsonLd={[
+          {
+            '@type': 'SoftwareApplication',
+            '@id': 'https://callmind.app/integrations#software',
+            name: 'CallMind CRM Integrations Engine',
+            applicationCategory: 'BusinessApplication',
+            description:
+              'Real-time automated webhook and API integration connectors for IndiaMART, JustDial, Meta Ads, and webhooks.',
+          },
+        ]}
       />
       <Navbar />
 

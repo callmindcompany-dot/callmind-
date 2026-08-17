@@ -15,12 +15,20 @@
  * bracketed by resetSeo().
  */
 
+export interface BreadcrumbItem {
+  name: string;
+  path: string;
+}
+
 export interface CollectedSeo {
   title?: string;
   description?: string;
   path?: string;
   image?: string;
   noindex?: boolean;
+  keywords?: string[];
+  breadcrumbs?: BreadcrumbItem[];
+  jsonLd?: Record<string, any> | Array<Record<string, any>>;
 }
 
 let collected: CollectedSeo = {};

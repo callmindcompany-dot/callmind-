@@ -66,9 +66,35 @@ export const SolutionsPage = () => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
-        title="CallMind Solutions — Telecalling CRM by Team & Industry"
-        description="See how real estate, financial services, and SME sales teams use CallMind to auto-capture leads and dial faster over mobile SIM."
+        title="Industry Solutions — Real Estate, BFSI, Education, SME Sales | CallMind"
+        description="Tailored telecalling workflows for Real Estate brokers, Loan & Insurance agents, EdTech counseling, Healthcare clinics, Automobile dealerships, and B2B distributors."
         path="/solutions"
+        keywords={[
+          'real estate telecalling CRM',
+          'insurance sales CRM software',
+          'education counseling CRM',
+          'B2B telecalling software',
+          'SME lead management system',
+          'automotive dealership CRM',
+          'financial services telecalling CRM',
+        ]}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Solutions', path: '/solutions' },
+        ]}
+        jsonLd={[
+          {
+            '@type': 'Service',
+            '@id': 'https://callmind.app/solutions#service',
+            name: 'CallMind Industry Telecalling Solutions',
+            provider: {
+              '@type': 'Organization',
+              name: 'Voolabs Technologies',
+            },
+            serviceType: 'Telecalling and Lead Management Systems for Indian Industries',
+            areaServed: 'IN',
+          },
+        ]}
       />
       <Navbar />
 

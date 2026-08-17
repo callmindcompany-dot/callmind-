@@ -42,11 +42,32 @@ export const FaqPage = () => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
-        title="Frequently Asked Questions — CallMind Telecalling CRM"
-        description="Answers about SIM dialing, offline calling, IndiaMART and JustDial lead capture, data privacy under India's DPDP Act, GST invoices and CallMind pricing."
+        title="Frequently Asked Questions (FAQ) — Telecalling CRM Guide | CallMind"
+        description="Find clear answers to common questions about CallMind SIM dialing, lead webhooks, offline mobile sync, pricing, free trial, GST invoices, and data security."
         path="/faq"
+        keywords={[
+          'telecalling CRM FAQ',
+          'how SIM telecalling works',
+          'does CallMind record calls',
+          'IndiaMART webhook setup',
+          'CRM free trial questions',
+          'offline telecalling app sync',
+          'GST invoice software',
+        ]}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'FAQ', path: '/faq' },
+        ]}
+        jsonLd={{
+          '@type': 'FAQPage',
+          '@id': 'https://callmind.app/faq#faq',
+          mainEntity: FAQS.map((f) => ({
+            '@type': 'Question',
+            name: f.question,
+            acceptedAnswer: { '@type': 'Answer', text: f.answer },
+          })),
+        }}
       />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: faqSchema }} />
       <Navbar />
 
       <main className="flex-grow">

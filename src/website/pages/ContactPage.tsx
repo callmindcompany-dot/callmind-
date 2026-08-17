@@ -12,9 +12,39 @@ export const ContactPage = () => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead 
-        title="Contact Sales | CallMind by Voolabs" 
-        description="Get in touch with the CallMind team. Book a demo, request pricing, or contact our support team in India."
+        title="Contact Sales & Support Team — Schedule Live Demo | CallMind" 
+        description="Get in touch with the CallMind team. Book an interactive product demo, discuss customized enterprise plans, or speak to our technical support team in India."
         path="/contact"
+        keywords={[
+          'contact CallMind',
+          'schedule CRM demo',
+          'telecalling software support',
+          'CallMind sales phone email',
+          'enterprise CRM consultation',
+          'Indian CRM customer support',
+        ]}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Contact Us', path: '/contact' },
+        ]}
+        jsonLd={[
+          {
+            '@type': 'ContactPage',
+            '@id': 'https://callmind.app/contact#contact',
+            name: 'Contact CallMind Sales & Support',
+            mainEntity: {
+              '@type': 'Organization',
+              name: 'Voolabs Technologies',
+              contactPoint: {
+                '@type': 'ContactPoint',
+                contactType: 'customer support & sales',
+                email: 'support@callmind.app',
+                availableLanguage: ['English', 'Hindi', 'Marathi'],
+                areaServed: 'IN',
+              },
+            },
+          },
+        ]}
       />
       <Navbar />
 

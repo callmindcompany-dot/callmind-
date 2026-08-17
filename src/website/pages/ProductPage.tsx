@@ -123,9 +123,36 @@ export const ProductPage = () => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
-        title="CallMind Product Suite - Features & Architecture Deep Dive"
-        description="Explore CallMind's complete product capabilities: Web Admin Dashboard, Mobile Telecaller App, SIM call logging, B2B lead ingestion, and Gemini AI intelligence."
+        title="Product Suite & Interactive Tour — Web Admin & Telecaller App | CallMind"
+        description="Deep dive into CallMind's dual product suite: high-speed Web Admin Dashboard for sales managers and native Android Telecaller App for sales executives."
         path="/product"
+        keywords={[
+          'telecaller mobile app',
+          'sales executive mobile CRM',
+          'sales manager dashboard',
+          'web CRM software',
+          'call tracking software without PBX',
+          'telecalling workflow software',
+          'SIM dialer app India',
+        ]}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Product Suite', path: '/product' },
+        ]}
+        jsonLd={[
+          {
+            '@type': 'Product',
+            '@id': 'https://callmind.app/product#product',
+            name: 'CallMind Telecalling CRM Suite',
+            description:
+              'High-speed Web Admin Dashboard and native Android SIM Telecaller App for sales teams.',
+            brand: {
+              '@type': 'Brand',
+              name: 'CallMind',
+            },
+            category: 'CRM & Sales Automation Software',
+          },
+        ]}
       />
       <Navbar />
 

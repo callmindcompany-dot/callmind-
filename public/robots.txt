@@ -2,7 +2,7 @@
 User-agent: *
 Allow: /
 
-# Keep authenticated app and auth flows out of the index
+# Keep authenticated app, billing and internal admin flows out of the search index
 Disallow: /dashboard
 Disallow: /founder-hub
 Disallow: /onboarding
@@ -11,5 +11,22 @@ Disallow: /join
 Disallow: /login
 Disallow: /signup
 Disallow: /preview
+Disallow: /api/
+
+# Search Engine & AI Model Indexing (Allowed for AI Overviews & Search Citations)
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
 
 Sitemap: https://callmind.app/sitemap.xml

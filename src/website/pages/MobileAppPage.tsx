@@ -75,9 +75,38 @@ export const MobileAppPage = () => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
-        title="CallMind Telecaller App — 1-Click SIM Dialing for Android"
-        description="The CallMind Android app lets telecallers dial leads with one tap over their own SIM, log call outcomes, and sync to the CRM. Zero call audio stored."
+        title="Mobile Telecaller App for Android — 1-Click SIM Dialing | CallMind"
+        description="Download CallMind Mobile App. Telecallers dial directly with standard GSM SIM, log call notes in 2 taps, send WhatsApp messages instantly, and sync offline/online."
         path="/mobile-app"
+        keywords={[
+          'Android telecalling app',
+          'mobile CRM SIM calling',
+          'offline telecaller app',
+          '1-click SIM dialer',
+          'WhatsApp lead follow-up app',
+          'sales caller app India',
+          'mobile CRM for sales executives',
+        ]}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Mobile App', path: '/mobile-app' },
+        ]}
+        jsonLd={[
+          {
+            '@type': 'SoftwareApplication',
+            '@id': 'https://callmind.app/mobile-app#app',
+            name: 'CallMind Telecaller Mobile App',
+            operatingSystem: 'Android',
+            applicationCategory: 'BusinessApplication',
+            description:
+              'Native Android telecalling app with 1-click SIM dialing, offline logging, WhatsApp quick templates, and real-time CRM sync.',
+            offers: {
+              '@type': 'Offer',
+              price: '0',
+              priceCurrency: 'INR',
+            },
+          },
+        ]}
       />
       <Navbar />
 

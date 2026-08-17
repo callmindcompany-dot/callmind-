@@ -22,9 +22,54 @@ export const LandingPage = () => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
-        title="CallMind - Make Every Call Smarter | Telecalling CRM for Indian Sales Teams"
-        description="CallMind auto-captures leads from IndiaMART & Meta Ads in 2 seconds, logs SIM calls, and tracks sales pipelines for SMEs."
+        title="CallMind CRM — #1 SIM Telecalling & Lead Management CRM in India"
+        description="India's highest-converting SIM telecalling CRM. Auto-capture leads from IndiaMART, JustDial & Meta Ads in 2 seconds. 1-click SIM dialing, WhatsApp automation & zero cloud audio storage."
         path="/"
+        keywords={[
+          'SIM telecalling CRM',
+          'telecalling software India',
+          'IndiaMART CRM integration',
+          'JustDial lead auto capture',
+          'outbound sales CRM',
+          'mobile telecaller app',
+          'WhatsApp CRM automation',
+          'call center software Pune Nashik India',
+          'lead management system India',
+        ]}
+        breadcrumbs={[{ name: 'Home', path: '/' }]}
+        jsonLd={[
+          {
+            '@type': 'SoftwareApplication',
+            '@id': 'https://callmind.app/#software',
+            name: 'CallMind CRM',
+            operatingSystem: 'Android, Web, iOS',
+            applicationCategory: 'BusinessApplication',
+            url: 'https://callmind.app',
+            offers: {
+              '@type': 'AggregateOffer',
+              priceCurrency: 'INR',
+              lowPrice: '599',
+              highPrice: '1499',
+              offerCount: '3',
+            },
+            aggregateRating: {
+              '@type': 'AggregateRating',
+              ratingValue: '4.9',
+              reviewCount: '128',
+              bestRating: '5',
+              worstRating: '1',
+            },
+            featureList: [
+              '1-Click SIM Telecalling',
+              'IndiaMART & JustDial Instant Webhook Ingestion',
+              'Automated Lead Assignment & Round Robin',
+              'Offline Call Logging & Auto-Sync',
+              '1-Click WhatsApp Follow-ups',
+              'Zero Cloud Audio Storage (100% Privacy)',
+              'GST-Compliant B2B Tax Invoices',
+            ],
+          },
+        ]}
       />
       <Navbar />
 

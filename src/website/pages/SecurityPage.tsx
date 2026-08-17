@@ -59,9 +59,30 @@ export const SecurityPage = () => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
-        title="Security & Data Privacy — CallMind CRM"
-        description="CallMind stores zero call audio, isolates every workspace with PostgreSQL Row Level Security, and encrypts data in transit. See our security posture."
+        title="Security, SIM Privacy & DPDP Act 2023 Compliance | CallMind CRM"
+        description="CallMind security architecture: strict multi-tenant Row Level Security (RLS), end-to-end data encryption, zero cloud audio recordings, and compliance with India's DPDP Act 2023."
         path="/security"
+        keywords={[
+          'CRM security architecture',
+          'SIM privacy telecalling',
+          'DPDP Act 2023 compliant CRM',
+          'multi-tenant RLS PostgreSQL',
+          'zero audio storage CRM',
+          'enterprise data privacy CRM',
+        ]}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Security & Privacy', path: '/security' },
+        ]}
+        jsonLd={[
+          {
+            '@type': 'WebPage',
+            '@id': 'https://callmind.app/security#webpage',
+            name: 'CallMind CRM Security & Data Privacy Architecture',
+            description:
+              'Security standards, zero audio recording policy, and DPDP Act 2023 compliance overview for CallMind CRM.',
+          },
+        ]}
       />
       <Navbar />
 

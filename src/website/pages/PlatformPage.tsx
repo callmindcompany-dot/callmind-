@@ -45,9 +45,41 @@ export const PlatformPage = () => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
-        title="Platform — Everything CallMind Does | Telecalling CRM"
-        description="The full CallMind platform: multi-source lead capture, SIM dialing, automation rules, WhatsApp and email, reports, team operations, AI assistance and DPDP-aligned data controls."
+        title="Platform Architecture & Capabilities | CallMind Telecalling CRM"
+        description="Explore all core capabilities of the CallMind platform: multi-channel lead ingestion, GSM SIM dialer, WhatsApp templates, automated task escalation, analytics, and DPDP-ready privacy."
         path="/platform"
+        keywords={[
+          'telecalling CRM capabilities',
+          'sales workflow architecture',
+          'lead routing engine',
+          'SIM calling architecture',
+          'automated task escalation CRM',
+          'telecaller performance dashboard',
+          'enterprise telecalling platform',
+        ]}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Platform', path: '/platform' },
+        ]}
+        jsonLd={[
+          {
+            '@type': 'SoftwareApplication',
+            '@id': 'https://callmind.app/platform#software',
+            name: 'CallMind CRM Platform',
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Android, Web',
+            description:
+              'Complete telecalling CRM architecture with lead capture, mobile SIM dialer, automation rules, WhatsApp integration, and analytics.',
+            featureList: [
+              'Multi-Source Ingestion (IndiaMART, JustDial, Meta Ads, Webhooks)',
+              '1-Click Mobile GSM SIM Dialing',
+              'Rule-Based Lead Assignment (Round Robin & Weighted)',
+              'Follow-up Reminders & Automatic Escalation',
+              'Real-Time Live Telecaller Activity Monitoring',
+              'Zero Cloud Audio Recording Storage (100% Legal & Private)',
+            ],
+          },
+        ]}
       />
       <Navbar />
 

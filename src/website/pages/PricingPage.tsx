@@ -51,9 +51,53 @@ export const PricingPage = () => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
-        title="CallMind Pricing — Plans for Indian Telecalling Teams"
-        description={`Transparent per-telecaller pricing for CallMind CRM. Start a ${FREE_TRIAL_CONFIG.trialDays}-day free trial with ${FREE_TRIAL_CONFIG.includedTelecallers} telecallers included. All plans include GST-compliant invoices.`}
+        title="Pricing Plans — Transparent Per-Telecaller Subscription | CallMind CRM"
+        description={`Simple, transparent telecalling CRM pricing for Indian SMEs. Starter at ₹599/user/mo, Growth at ₹999/user/mo, Pro at ₹1,499/user/mo with ${FREE_TRIAL_CONFIG.trialDays}-day free trial and GST input tax credit.`}
         path="/pricing"
+        keywords={[
+          'telecalling CRM pricing India',
+          'affordable sales CRM',
+          'CRM per user cost',
+          'BPO telecalling software price',
+          'GST invoice CRM software',
+          'SaaS CRM plans India',
+          'SIM calling software subscription',
+        ]}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Pricing', path: '/pricing' },
+        ]}
+        jsonLd={[
+          {
+            '@type': 'ProductGroup',
+            '@id': 'https://callmind.app/pricing#plans',
+            name: 'CallMind CRM Subscription Plans',
+            description:
+              'Per-telecaller monthly and annual plans for CallMind CRM with GST-compliant tax invoices.',
+            hasVariant: plans.map((p) => ({
+              '@type': 'Product',
+              name: `CallMind ${p.name} Plan`,
+              description: `${p.description} Includes ${p.seats} and ${p.leads}.`,
+              offers: {
+                '@type': 'Offer',
+                priceCurrency: 'INR',
+                price: String(p.annualPrice),
+                billingDuration: 'P1M',
+                priceSpecification: {
+                  '@type': 'UnitPriceSpecification',
+                  price: String(p.annualPrice),
+                  priceCurrency: 'INR',
+                  unitCode: 'MON',
+                  referenceQuantity: {
+                    '@type': 'QuantitativeValue',
+                    value: '1',
+                    unitCode: 'C62',
+                  },
+                },
+              },
+            })),
+          },
+        ]}
       />
       <Navbar />
 

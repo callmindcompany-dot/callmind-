@@ -87,9 +87,31 @@ export const DocsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col">
       <SEOHead
-        title="CallMind Documentation & API Reference"
-        description="Official documentation, integration guides, and REST API specification for CallMind CRM."
+        title="Documentation & API Guide — Quickstart & Webhooks | CallMind CRM"
+        description="Official technical documentation for CallMind CRM. Step-by-step guides for webhook integration, role configurations, custom fields, and mobile app deployment."
         path="/docs"
+        keywords={[
+          'CallMind documentation',
+          'telecalling API docs',
+          'lead webhook setup guide',
+          'CRM admin tutorial',
+          'sales executive onboarding guide',
+          'IndiaMART webhook API tutorial',
+        ]}
+        breadcrumbs={[
+          { name: 'Home', path: '/' },
+          { name: 'Documentation', path: '/docs' },
+        ]}
+        jsonLd={[
+          {
+            '@type': 'TechArticle',
+            '@id': 'https://callmind.app/docs#techarticle',
+            headline: 'CallMind CRM Developer & User Documentation',
+            description:
+              'Official guides, webhook endpoints, and setup documentation for CallMind CRM.',
+            articleSection: selectedCategory.title,
+          },
+        ]}
       />
       <Navbar />
 
