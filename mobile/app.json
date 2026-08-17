@@ -2,6 +2,7 @@
   "expo": {
     "name": "CallMind Telecaller",
     "slug": "callmind-telecaller",
+    "owner": "callminds-team",
     "version": "2.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
