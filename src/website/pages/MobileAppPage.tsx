@@ -86,12 +86,6 @@ export const MobileAppPage = () => {
         <section className="pt-20 pb-24 px-6 md:px-12 bg-white border-b border-slate-100 relative">
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center relative z-10">
             <div className="space-y-8">
-              <button
-                onClick={() => navigate('/')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-all cursor-pointer"
-              >
-                <ArrowLeft size={13} /> Back to Home
-              </button>
               <div>
                 <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-xs font-semibold">
                   <Smartphone size={14} />

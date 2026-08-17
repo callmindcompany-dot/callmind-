@@ -20,13 +20,7 @@ export const ContactPage = () => {
 
       <main className="flex-grow">
         {/* Header */}
-        <section className="pt-16 pb-12 px-6 md:px-12 bg-white text-center space-y-6">
-          <button
-            onClick={() => navigate('/')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-all cursor-pointer"
-          >
-            <ArrowLeft size={13} /> Back to Home
-          </button>
+        <section className="pt-20 pb-12 px-6 md:px-12 bg-white text-center space-y-6">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.08] font-display max-w-3xl mx-auto">
             Let's Talk About Scaling Your Sales.
           </h1>

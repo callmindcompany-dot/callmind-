@@ -81,13 +81,6 @@ export const LegalDocumentPage = ({ slug }: { slug: LegalSlug }) => {
             transition={{ duration: 0.5 }}
             className="max-w-3xl mx-auto space-y-5"
           >
-            <button
-              onClick={() => (window.location.href = '/')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-all cursor-pointer mb-2"
-            >
-              <ArrowLeft size={13} /> Back to Home
-            </button>
-
             <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight font-display leading-tight">
               {doc.title}
             </h1>

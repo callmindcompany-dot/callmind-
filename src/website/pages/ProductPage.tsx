@@ -133,13 +133,6 @@ export const ProductPage = () => {
         {/* Product Hero Header */}
         <section className="pt-20 pb-16 px-6 md:px-12 bg-white border-b border-slate-200 text-center relative overflow-hidden">
           <div className="max-w-4xl mx-auto space-y-5">
-            <button
-              onClick={() => navigate('/')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer"
-            >
-              <ArrowLeft size={13} /> Back to Home
-            </button>
-
             <div>
               <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-xs font-bold uppercase tracking-wider">
                 <Cpu size={14} /> Product Suite & Interactive Walkthrough
