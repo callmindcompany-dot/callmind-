@@ -52,7 +52,7 @@ export const PricingPage = () => {
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
         title="Pricing Plans — Transparent Per-Telecaller Subscription | CallMind CRM"
-        description={`Simple, transparent telecalling CRM pricing for Indian SMEs. Starter at ₹599/user/mo, Growth at ₹999/user/mo, Pro at ₹1,499/user/mo with ${FREE_TRIAL_CONFIG.trialDays}-day free trial and GST input tax credit.`}
+        description={`Simple, transparent telecalling CRM pricing for Indian SMEs. Starter, Growth, and Pro plans per telecaller with ${FREE_TRIAL_CONFIG.trialDays}-day free trial and 18% GST input tax credit.`}
         path="/pricing"
         keywords={[
           'telecalling CRM pricing India',

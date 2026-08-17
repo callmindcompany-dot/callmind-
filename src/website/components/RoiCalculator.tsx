@@ -20,20 +20,33 @@ export const RoiCalculator = () => {
   const hoursSavedPerMonth = Math.round((teamSize * dailyCallsPerAgent * minutesSavedPerCall * workingDays) / 60);
   const leadsPreventedFromRotting = Math.round(teamSize * 3.5 * workingDays);
 
-  // Switching plan only ever caps the team size. It used to also push the
-  // number *up* -- picking Growth forced at least 11 seats -- back when plans
-  // had minimums. They do not any more: any plan can be bought at one seat.
+  // Clicking a plan tab sets a representative team size within that tier
   const handleTabChange = (tab: 'starter' | 'growth' | 'pro') => {
     setActiveTab(tab);
-    setTeamSize((current) => Math.min(current, PRICING_PLANS[tab].maxSeats));
+    if (tab === 'starter') {
+      setTeamSize((current) => Math.min(Math.max(current, 1), STARTER_MAX));
+    } else if (tab === 'growth') {
+      setTeamSize((current) => {
+        if (current <= STARTER_MAX || current > GROWTH_MAX) return 18;
+        return current;
+      });
+    } else if (tab === 'pro') {
+      setTeamSize((current) => {
+        if (current <= GROWTH_MAX) return 30;
+        return current;
+      });
+    }
   };
 
-  // Dragging past a plan's ceiling moves to the smallest plan that fits.
+  // Dragging slider forwards OR backwards dynamically syncs the active plan tier and org chart
   const handleSliderChange = (newSize: number) => {
     setTeamSize(newSize);
-    if (newSize > PRICING_PLANS[activeTab].maxSeats) {
-      if (newSize <= GROWTH_MAX) setActiveTab('growth');
-      else setActiveTab('pro');
+    if (newSize <= STARTER_MAX) {
+      setActiveTab('starter');
+    } else if (newSize <= GROWTH_MAX) {
+      setActiveTab('growth');
+    } else {
+      setActiveTab('pro');
     }
   };
 
