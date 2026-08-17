@@ -94,8 +94,7 @@ export const PlatformPage = () => {
         </section>
 
         {/* India-first differentiators */}
-        <section className="py-20 px-6 md:px-12 bg-slate-900 text-white relative overflow-hidden">
-          <div className="absolute -top-32 -right-32 w-96 h-96 bg-brand-500/20 blur-[120px] rounded-full pointer-events-none" />
+        <section className="py-20 px-6 md:px-12 bg-slate-900 text-white relative border-b border-slate-800">
           <div className="max-w-6xl mx-auto relative z-10 space-y-14">
             <SectionHeader
               theme="dark"

@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native';
-import { ArrowLeft, CheckCircle2, Calendar, ChevronDown, Clock } from 'lucide-react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal, Linking } from 'react-native';
+import { ArrowLeft, CheckCircle2, Calendar, Clock, WifiOff, MessageSquare, Plus, X } from 'lucide-react-native';
+import { followUpAt, type PostCallForm, type FormOption } from '../services/postCallForm';
+import { whatsappReachoutService } from '../services/whatsappReachout';
 
 export interface PostCallFeedback {
   outcome: string;
@@ -8,70 +10,118 @@ export interface PostCallFeedback {
   notes: string;
   /** ISO timestamp for the follow-up, or null when none was scheduled. */
   followUpAt: string | null;
+  leadPhone?: string;
+  leadId?: string;
 }
 
 interface PostCallFeedbackSheetProps {
   leadName?: string;
+  leadPhone?: string;
+  leadId?: string;
   callDuration?: string;
+  /** The company's own form. Falls back to the built-in defaults upstream. */
+  form: PostCallForm;
   onSubmit: (feedback: PostCallFeedback) => void;
   onDismiss: () => void;
 }
 
-/**
- * Follow-up choices, as offsets from now.
- *
- * A picker would be better, but @react-native-community/datetimepicker is not
- * installed and adding a native module to make a follow-up time is out of
- * proportion to the job. These four cover what a telecaller actually chooses
- * between calls, and the agent has five seconds to fill this form.
- */
-const FOLLOW_UP_CHOICES: { label: string; at: () => Date }[] = [
-  { label: 'In 2 hours', at: () => new Date(Date.now() + 2 * 60 * 60 * 1000) },
-  {
-    label: 'Tomorrow 10am',
-    at: () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(10, 0, 0, 0); return d; },
-  },
-  {
-    label: 'In 3 days',
-    at: () => { const d = new Date(); d.setDate(d.getDate() + 3); d.setHours(10, 0, 0, 0); return d; },
-  },
-  {
-    label: 'Next week',
-    at: () => { const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(10, 0, 0, 0); return d; },
-  },
-];
+const CONNECTED = 'Connected';
 
 export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
   leadName = 'Lead',
+  leadPhone,
+  leadId,
   callDuration = '00:00',
+  form,
   onSubmit,
   onDismiss,
 }) => {
   const feedbackOpenedAt = new Date().toLocaleString('en-IN', {
     hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short', year: 'numeric',
   });
-  const [selectedOutcome, setSelectedOutcome] = useState('Connected');
-  const [selectedInterest, setSelectedInterest] = useState('Interested');
+
+  const [outcome, setOutcome] = useState<string | null>(null);
+  const [interest, setInterest] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [followUp, setFollowUp] = useState<string | null>(null);
+  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
 
-  const outcomes = ['Connected', 'No Answer', 'Busy', 'Invalid Number', 'Wrong Number'];
-  const interestLevels = ['Interested', 'Not Interested', 'Call Back Later'];
+  // Custom date picker temporary selection states
+  const [selectedDayOffset, setSelectedDayOffset] = useState(1); // 1 = Tomorrow
+  const [selectedTimeHour, setSelectedTimeHour] = useState(11);
+  const [selectedTimeMinute, setSelectedTimeMinute] = useState(0);
+
+  const connected = outcome === CONNECTED;
+
+  const followUpLabel = useMemo(() => {
+    if (!followUp) return null;
+    return new Date(followUp).toLocaleString('en-IN', {
+      weekday: 'short', day: 'numeric', month: 'short',
+      hour: '2-digit', minute: '2-digit',
+    });
+  }, [followUp]);
+
+  const submit = (withOutcome: string) => {
+    onSubmit({
+      outcome: withOutcome,
+      interest: withOutcome === CONNECTED ? (interest ?? '') : '',
+      notes,
+      followUpAt: followUp,
+      leadPhone,
+      leadId,
+    });
+  };
+
+  const handleApplyCustomDate = () => {
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + selectedDayOffset);
+    targetDate.setHours(selectedTimeHour, selectedTimeMinute, 0, 0);
+    setFollowUp(targetDate.toISOString());
+    setShowDatePickerModal(false);
+  };
+
+  const handleWhatsAppReachout = async () => {
+    if (!leadPhone) return;
+    const greeting = `Hello ${leadName}, thank you for speaking with us today. Please let us know if you need any additional information.`;
+    await whatsappReachoutService.openWhatsAppChat(leadPhone, greeting);
+  };
+
+  const chip = (
+    option: FormOption,
+    selected: boolean,
+    onPress: () => void,
+    icon?: React.ReactNode,
+  ) => (
+    <TouchableOpacity
+      key={option.value}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={option.label}
+      style={[
+        styles.chip,
+        selected && { backgroundColor: option.color ?? '#0f172a', borderColor: option.color ?? '#0f172a' },
+      ]}
+      onPress={onPress}
+    >
+      {icon}
+      <Text style={[styles.chipText, selected && styles.chipTextSelected, icon ? { marginLeft: 6 } : null]}>
+        {option.label}
+      </Text>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.overlay}>
       <View style={styles.sheet}>
-        {/* Top Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.iconBtn} onPress={onDismiss}>
+          <TouchableOpacity style={styles.iconBtn} onPress={onDismiss} accessibilityLabel="Close">
             <ArrowLeft size={20} color="#0f172a" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Post-Call Feedback</Text>
+          <Text style={styles.headerTitle}>{leadName}</Text>
           <View style={{ width: 40 }} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Call Ended Summary Banner Card */}
           <View style={styles.summaryCard}>
             <CheckCircle2 size={32} color="#16a34a" />
             <Text style={styles.summaryTitle}>Call Ended</Text>
@@ -80,115 +130,208 @@ export const PostCallFeedbackSheet: React.FC<PostCallFeedbackSheetProps> = ({
             <Text style={styles.summaryDate}>{feedbackOpenedAt}</Text>
           </View>
 
-          {/* Outcome Section */}
-          <Text style={styles.sectionTitle}>Outcome</Text>
-          <View style={styles.chipGroup}>
-            {outcomes.map((item) => (
-              <TouchableOpacity
-                key={item}
-                style={[
-                  styles.chip,
-                  selectedOutcome === item && styles.chipActiveBlue,
-                ]}
-                onPress={() => setSelectedOutcome(item)}
-              >
-                <Text style={[styles.chipText, selectedOutcome === item && styles.chipTextActiveBlue]}>
-                  {item}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Interest Level Section */}
-          <Text style={styles.sectionTitle}>Interest Level</Text>
-          <View style={styles.chipGroup}>
-            {interestLevels.map((item) => {
-              const isSelected = selectedInterest === item;
-              let activeStyle = styles.chipActiveGreen;
-              let activeTextStyle = styles.chipTextActiveGreen;
-              if (item === 'Call Back Later') {
-                activeStyle = styles.chipActiveAmber;
-                activeTextStyle = styles.chipTextActiveAmber;
-              }
-              return (
-                <TouchableOpacity
-                  key={item}
-                  style={[styles.chip, isSelected && activeStyle]}
-                  onPress={() => setSelectedInterest(item)}
-                >
-                  <Text style={[styles.chipText, isSelected && activeTextStyle]}>
-                    {item}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* Schedule Callback.
-              Two pickers used to sit here reading "Tomorrow" and "11:00 AM".
-              Neither had an onPress, and neither value was ever sent — the
-              form looked like it scheduled a follow-up and scheduled nothing. */}
-          <Text style={styles.sectionTitle}>
-            Schedule Callback <Text style={styles.optionalText}>(Optional)</Text>
-          </Text>
-          <View style={styles.chipGroup}>
-            {FOLLOW_UP_CHOICES.map(({ label, at }) => {
-              const iso = at().toISOString();
-              const isSelected = followUp === iso;
-              return (
-                <TouchableOpacity
-                  key={label}
-                  style={[styles.chip, isSelected && styles.chipActiveAmber]}
-                  onPress={() => setFollowUp(isSelected ? null : iso)}
-                >
-                  <Calendar size={13} color={isSelected ? '#b45309' : '#64748b'} />
-                  <Text style={[styles.chipText, isSelected && styles.chipTextActiveAmber, { marginLeft: 6 }]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {followUp && (
-            <View style={styles.followUpNote}>
-              <Clock size={13} color="#b45309" />
-              <Text style={styles.followUpNoteText}>
-                {new Date(followUp).toLocaleString('en-IN', {
-                  weekday: 'short', day: 'numeric', month: 'short',
-                  hour: '2-digit', minute: '2-digit',
-                })}
+          {form.stale && (
+            <View style={styles.staleNote}>
+              <WifiOff size={13} color="#b45309" />
+              <Text style={styles.staleText}>
+                Showing the saved form. Recent changes may not appear yet.
               </Text>
             </View>
           )}
 
-          {/* Notes Textarea */}
-          <Text style={styles.sectionTitle}>Notes</Text>
-          <View style={styles.notesInputContainer}>
-            <TextInput
-              style={styles.notesInput}
-              multiline
-              numberOfLines={4}
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Enter call summary and next steps..."
-              placeholderTextColor="#94a3b8"
-            />
-            <Text style={styles.charCount}>{notes.length}/200</Text>
+          <Text style={styles.sectionTitle}>How did it go?</Text>
+          <View style={styles.chipGroup}>
+            {form.outcomes.map(o => chip(o, outcome === o.value, () => {
+              setOutcome(o.value);
+              if (o.value !== CONNECTED) {
+                // One tap and done. Saved immediately for unanswered/busy/invalid
+                setInterest(null);
+                submit(o.value);
+              }
+            }))}
           </View>
+
+          {/* Everything below is asked only of a call that connected. */}
+          {connected && (
+            <>
+              <Text style={styles.sectionTitle}>What did they say?</Text>
+              <View style={styles.chipGroup}>
+                {form.interests.map(o => chip(o, interest === o.value, () => setInterest(o.value)))}
+              </View>
+
+              <Text style={styles.sectionTitle}>
+                Call back <Text style={styles.optionalText}>(optional)</Text>
+              </Text>
+              <View style={styles.chipGroup}>
+                {form.followups.map(o => {
+                  const iso = followUpAt(o);
+                  const selected = followUp !== null &&
+                    Math.abs(new Date(followUp).getTime() - new Date(iso).getTime()) < 60_000;
+                  return chip(
+                    o, selected,
+                    () => setFollowUp(selected ? null : iso),
+                    <Calendar size={13} color={selected ? '#ffffff' : '#64748b'} />,
+                  );
+                })}
+                <TouchableOpacity
+                  style={[styles.chip, styles.customDateChip]}
+                  onPress={() => setShowDatePickerModal(true)}
+                >
+                  <Calendar size={13} color="#2563eb" />
+                  <Text style={styles.customDateChipText}>Pick date…</Text>
+                </TouchableOpacity>
+              </View>
+              {followUpLabel && (
+                <View style={styles.followUpNote}>
+                  <Clock size={13} color="#b45309" />
+                  <Text style={styles.followUpNoteText}>{followUpLabel}</Text>
+                </View>
+              )}
+
+              {/* Note Templates 1-Tap Insert */}
+              <Text style={styles.sectionTitle}>Note Templates (1-Tap Insert)</Text>
+              <View style={styles.templatesRow}>
+                {(form.noteTemplates || []).map(t => (
+                  <TouchableOpacity
+                    key={t.value}
+                    style={styles.templateChip}
+                    onPress={() => setNotes(prev => prev ? `${prev} | ${t.label}` : t.label)}
+                  >
+                    <Plus size={11} color="#475569" />
+                    <Text style={styles.templateChipText}>{t.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.sectionTitle}>Notes</Text>
+              <View style={styles.notesInputContainer}>
+                <TextInput
+                  style={styles.notesInput}
+                  multiline
+                  numberOfLines={4}
+                  value={notes}
+                  onChangeText={setNotes}
+                  maxLength={200}
+                  placeholder="What did they say? Anything to remember for next time."
+                  placeholderTextColor="#94a3b8"
+                />
+                <Text style={styles.charCount}>{notes.length}/200</Text>
+              </View>
+
+              {leadPhone && (
+                <TouchableOpacity
+                  style={styles.whatsappActionBtn}
+                  onPress={handleWhatsAppReachout}
+                >
+                  <MessageSquare size={16} color="#16a34a" />
+                  <Text style={styles.whatsappActionText}>Send WhatsApp Follow-up</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
         </ScrollView>
 
-        {/* Save Feedback CTA Button */}
-        <View style={styles.bottomFooter}>
-          <TouchableOpacity style={styles.saveBtn} onPress={() => onSubmit({ outcome: selectedOutcome, interest: selectedInterest, notes, followUpAt: followUp })}>
-            <Text style={styles.saveBtnText}>Save Feedback</Text>
-          </TouchableOpacity>
-        </View>
+        {connected && (
+          <View style={styles.bottomFooter}>
+            <TouchableOpacity
+              style={[styles.saveBtn, !interest && styles.saveBtnDisabled]}
+              disabled={!interest}
+              onPress={() => submit(CONNECTED)}
+              accessibilityLabel="Save"
+            >
+              <Text style={styles.saveBtnText}>
+                {interest ? 'Save Call Feedback' : 'Pick what they said'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
+
+      {/* Custom Date & Time Picker Modal */}
+      <Modal
+        visible={showDatePickerModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDatePickerModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Callback Date & Time</Text>
+              <TouchableOpacity onPress={() => setShowDatePickerModal(false)} style={styles.modalCloseBtn}>
+                <X size={18} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>Choose Day</Text>
+            <View style={styles.daySelectorRow}>
+              {[
+                { offset: 0, label: 'Today' },
+                { offset: 1, label: 'Tomorrow' },
+                { offset: 2, label: 'In 2 Days' },
+                { offset: 3, label: 'In 3 Days' },
+                { offset: 7, label: 'Next Week' },
+              ].map(d => (
+                <TouchableOpacity
+                  key={d.offset}
+                  style={[styles.dayChoiceBtn, selectedDayOffset === d.offset && styles.dayChoiceBtnActive]}
+                  onPress={() => setSelectedDayOffset(d.offset)}
+                >
+                  <Text style={[styles.dayChoiceText, selectedDayOffset === d.offset && styles.dayChoiceTextActive]}>
+                    {d.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.modalSubtitle}>Choose Time Slot</Text>
+            <View style={styles.timeSelectorRow}>
+              {[
+                { h: 10, m: 0, label: '10:00 AM' },
+                { h: 11, m: 30, label: '11:30 AM' },
+                { h: 14, m: 0, label: '02:00 PM' },
+                { h: 16, m: 0, label: '04:00 PM' },
+                { h: 18, m: 30, label: '06:30 PM' },
+              ].map(t => (
+                <TouchableOpacity
+                  key={t.label}
+                  style={[styles.timeChoiceBtn, selectedTimeHour === t.h && selectedTimeMinute === t.m && styles.timeChoiceBtnActive]}
+                  onPress={() => {
+                    setSelectedTimeHour(t.h);
+                    setSelectedTimeMinute(t.m);
+                  }}
+                >
+                  <Text style={[styles.timeChoiceText, selectedTimeHour === t.h && selectedTimeMinute === t.m && styles.timeChoiceTextActive]}>
+                    {t.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity style={styles.confirmDateBtn} onPress={handleApplyCustomDate}>
+              <Text style={styles.confirmDateBtnText}>Set Follow-up Time</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  staleNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fffbeb',
+    borderColor: '#fde68a',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  staleText: { fontSize: 11, fontWeight: '600', color: '#b45309', flex: 1 },
   followUpNote: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -233,164 +376,226 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
+  headerTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 24, gap: 4 },
   summaryCard: {
+    alignItems: 'center',
     backgroundColor: '#f0fdf4',
     borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#dcfce7',
-    marginBottom: 20,
+    paddingVertical: 20,
+    marginBottom: 12,
+    gap: 2,
   },
-  summaryTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#16a34a',
-    marginTop: 8,
-  },
-  summaryDuration: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#0f172a',
-    marginTop: 2,
-  },
-  summaryLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748b',
-    marginTop: 2,
-  },
-  summaryDate: {
-    fontSize: 12,
-    color: '#64748b',
-    fontWeight: '500',
-    marginTop: 4,
-  },
+  summaryTitle: { fontSize: 13, fontWeight: '800', color: '#166534', marginTop: 6 },
+  summaryDuration: { fontSize: 26, fontWeight: '900', color: '#0f172a' },
+  summaryLabel: { fontSize: 10, fontWeight: '600', color: '#64748b' },
+  summaryDate: { fontSize: 10, fontWeight: '600', color: '#94a3b8', marginTop: 2 },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '800',
     color: '#0f172a',
-    marginBottom: 10,
-    marginTop: 8,
+    marginTop: 16,
+    marginBottom: 8,
   },
-  optionalText: {
-    fontWeight: '500',
-    color: '#94a3b8',
-  },
-  chipGroup: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
+  optionalText: { fontSize: 11, fontWeight: '600', color: '#94a3b8' },
+  chipGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
+    backgroundColor: '#f8fafc',
   },
-  chipActiveBlue: {
-    borderColor: '#2563eb',
+  chipText: { fontSize: 13, fontWeight: '700', color: '#475569' },
+  chipTextSelected: { color: '#ffffff' },
+  customDateChip: {
+    borderStyle: 'dashed',
+    borderColor: '#93c5fd',
     backgroundColor: '#eff6ff',
   },
-  chipActiveGreen: {
-    borderColor: '#16a34a',
-    backgroundColor: '#f0fdf4',
-  },
-  chipActiveAmber: {
-    borderColor: '#f59e0b',
-    backgroundColor: '#fef3c7',
-  },
-  chipText: {
-    fontSize: 12,
+  customDateChipText: {
+    fontSize: 13,
     fontWeight: '700',
-    color: '#64748b',
-  },
-  chipTextActiveBlue: {
     color: '#2563eb',
+    marginLeft: 6,
   },
-  chipTextActiveGreen: {
-    color: '#16a34a',
-  },
-  chipTextActiveAmber: {
-    color: '#d97706',
-  },
-  scheduleRow: {
+  templatesRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 6,
   },
-  pickerBox: {
-    flex: 1,
+  templateChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 4,
+  },
+  templateChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  notesInputContainer: {
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  pickerText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-  notesInputContainer: {
     backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 20,
+    padding: 12,
   },
   notesInput: {
+    minHeight: 84,
     fontSize: 14,
     color: '#0f172a',
-    lineHeight: 20,
     textAlignVertical: 'top',
-    minHeight: 80,
   },
-  charCount: {
-    fontSize: 11,
-    color: '#94a3b8',
-    alignSelf: 'flex-end',
-    marginTop: 4,
+  charCount: { alignSelf: 'flex-end', fontSize: 10, fontWeight: '600', color: '#94a3b8' },
+  whatsappActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: 14,
+    paddingVertical: 12,
+    marginTop: 12,
+  },
+  whatsappActionText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#15803d',
   },
   bottomFooter: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 12,
+    paddingBottom: 24,
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
     backgroundColor: '#ffffff',
   },
   saveBtn: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 18,
+    backgroundColor: '#0f172a',
     borderRadius: 16,
+    paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 4,
   },
-  saveBtnText: {
-    color: '#ffffff',
-    fontSize: 16,
+  saveBtnDisabled: { backgroundColor: '#cbd5e1' },
+  saveBtnText: { fontSize: 14, fontWeight: '800', color: '#ffffff' },
+
+  // Date-Time Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalSubtitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    color: '#64748b',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  daySelectorRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 14,
+  },
+  dayChoiceBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  dayChoiceBtnActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  dayChoiceText: {
+    fontSize: 11,
     fontWeight: '700',
+    color: '#475569',
+  },
+  dayChoiceTextActive: {
+    color: '#ffffff',
+  },
+  timeSelectorRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 20,
+  },
+  timeChoiceBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  timeChoiceBtnActive: {
+    backgroundColor: '#0f172a',
+    borderColor: '#0f172a',
+  },
+  timeChoiceText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  timeChoiceTextActive: {
+    color: '#ffffff',
+  },
+  confirmDateBtn: {
+    backgroundColor: '#2563eb',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  confirmDateBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#ffffff',
   },
 });

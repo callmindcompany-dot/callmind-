@@ -46,10 +46,8 @@ export const SecurityHighlight = () => {
 
           <div className="w-full md:w-1/2">
             {/* Visual Security Architecture */}
-            <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 relative overflow-hidden group">
-              <div className="absolute -right-20 -top-20 w-64 h-64 bg-emerald-500/10 rounded-full blur-[60px] group-hover:bg-emerald-500/20 transition-colors"></div>
-              
-              <div className="space-y-6 relative z-10">
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 relative">
+              <div className="space-y-4 relative z-10">
                 <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                   <Server className="text-emerald-500" />
                   <div className="flex-1">

@@ -694,22 +694,50 @@ export const LeadDetail = React.memo(({
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-6"
               >
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Log Notes</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Log Notes</h3>
+                  <span className="text-[10px] text-slate-400 font-semibold">{notesList.length} notes recorded</span>
+                </div>
 
                 {/* Add Note Form */}
                 <form onSubmit={handleAddNote} className="space-y-3 bg-slate-50 p-4 border border-slate-100 rounded-2xl">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      Quick Note Chips (1-Tap Add)
+                    </label>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {[
+                        "Price negotiation in progress",
+                        "Callback requested tomorrow",
+                        "Product brochure sent on WhatsApp",
+                        "Decision maker busy - retry later",
+                        "Interested - send formal proposal",
+                        "Client demo scheduled"
+                      ].map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          type="button"
+                          onClick={() => setNewNoteText((prev) => (prev ? `${prev} | ${suggestion}` : suggestion))}
+                          className="px-2.5 py-1 bg-white hover:bg-brand-50 text-slate-600 hover:text-brand-600 border border-slate-200 hover:border-brand-200 rounded-lg text-[10px] font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
+                        >
+                          + {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <textarea
                     placeholder="Type notes or call context logs..."
                     value={newNoteText}
                     onChange={(e) => setNewNoteText(e.target.value)}
                     rows={3}
-                    className="w-full text-xs font-semibold bg-white border border-slate-200 focus:border-brand-300 rounded-xl p-3 focus:outline-none focus:ring-0 resize-none custom-scrollbar"
+                    className="w-full text-xs font-semibold bg-white border border-slate-200 focus:border-brand-400 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-brand-100 resize-none custom-scrollbar"
                   />
                   <div className="flex justify-end">
                     <button
                       type="submit"
                       disabled={createNoteMutation.isPending || !newNoteText.trim()}
-                      className="px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-brand-700 transition-colors shadow-lg shadow-brand-600/10 flex items-center gap-1.5 disabled:opacity-50"
+                      className="px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-brand-700 transition-colors shadow-lg shadow-brand-600/10 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                     >
                       {createNoteMutation.isPending ? <CallMindLoader size="xs" /> : <Send size={12} />}
                       Post Note

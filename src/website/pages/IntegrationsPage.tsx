@@ -138,8 +138,7 @@ export const IntegrationsPage = () => {
                 </ul>
               </div>
               <div className="w-full md:w-1/2">
-                <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 relative overflow-hidden">
-                   <div className="absolute top-0 right-0 w-32 h-32 bg-slate-500/10 rounded-full blur-[40px]"></div>
+                <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 relative">
                    <div className="font-mono text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200">
                      POST /api/webhooks/meta<br/>
                      {"{"} "lead_id": "12345", "form": "Q3_Offers" {"}"}
@@ -200,14 +199,13 @@ export const IntegrationsPage = () => {
 
         {/* CTA Banner */}
         <section className="py-24 px-6 md:px-12 bg-white border-t border-slate-100">
-          <div className="max-w-4xl mx-auto bg-slate-900 rounded-3xl p-10 md:p-16 text-center text-white shadow-2xl relative overflow-hidden">
-            <div className="absolute -top-32 -left-32 w-64 h-64 bg-brand-500/30 blur-[80px] rounded-full pointer-events-none" />
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight font-display mb-6 relative z-10">
+          <div className="max-w-4xl mx-auto bg-slate-900 rounded-3xl p-10 md:p-16 text-center text-white shadow-2xl relative border border-slate-800">
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight font-display mb-6">
               Ready to automate your lead ingress?
             </h2>
             <button 
               onClick={() => navigate('/signup')}
-              className="px-8 py-4 bg-brand-600 text-white rounded-xl font-bold text-sm btn-glow btn-tactile flex items-center gap-2 mx-auto relative z-10"
+              className="px-8 py-4 bg-brand-600 text-white rounded-xl font-bold text-sm btn-glow btn-tactile flex items-center gap-2 mx-auto"
             >
               Start Free Trial
               <ArrowRight size={16} />

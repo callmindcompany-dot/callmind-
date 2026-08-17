@@ -1,42 +1,44 @@
 import React from 'react';
-import { Database, Zap, FileSpreadsheet, ShieldCheck, CreditCard } from 'lucide-react';
+import { Zap, Database, FileSpreadsheet, CreditCard, ShieldCheck } from 'lucide-react';
 
 export const IntegrationsBar = () => {
   const channels = [
-    { name: 'IndiaMART GLUSR Webhooks', icon: Zap, detail: 'Sub-2s Lead Ingress' },
-    { name: 'Meta (Facebook & IG) Lead Ads', icon: Database, detail: 'Real-Time Auto Capture' },
-    { name: 'Google Sheets Live Sync', icon: FileSpreadsheet, detail: 'Cloud Database Import' },
-    { name: 'Smart Excel / CSV Import', icon: FileSpreadsheet, detail: 'AI Column Mapping' },
-    { name: 'Razorpay 18% GST Payments', icon: CreditCard, detail: 'B2B Invoice Compliance' },
+    { name: 'IndiaMART GLUSR API', tag: '< 1.8s Ingress', detail: 'Direct Webhook Push' },
+    { name: 'Meta Lead Ads', tag: 'Real-Time', detail: 'FB & IG Form Ingress' },
+    { name: 'TradeIndia Leads', tag: 'Automated Sync', detail: 'Buyer Inquiries' },
+    { name: 'JustDial Enquiries', tag: 'Direct Capture', detail: 'Instant Assignment' },
+    { name: 'Google Sheets & CSV', tag: 'Live Sync', detail: 'Clean Data Mapping' },
+    { name: 'Razorpay 18% GST', tag: 'B2B Invoices', detail: 'Instant ITC Credit' },
   ];
 
   return (
-    <section className="py-8 px-6 md:px-12 bg-white border-b border-slate-100 font-sans">
-      <div className="max-w-7xl mx-auto space-y-4">
-        <p className="text-center text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-          Trusted Lead Ingress & Payment Integrations
+    <section className="py-7 px-6 md:px-12 bg-slate-50 border-b border-slate-200/80 font-sans">
+      <div className="max-w-7xl mx-auto space-y-3.5">
+        <p className="text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+          Verified B2B Lead Ingress & Payment Integrations
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
-          {channels.map((item, idx) => {
-            const Icon = item.icon;
-            return (
-              <div
-                key={idx}
-                className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-50 border border-slate-200/70 text-slate-700 hover:border-brand-200 transition-colors"
-              >
-                <div className="w-7 h-7 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-600">
-                  <Icon size={14} />
+        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+          {channels.map((item, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 shadow-2xs hover:border-slate-300 transition-colors"
+            >
+              <div className="w-2 h-2 rounded-full bg-brand-600" />
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-slate-900 font-sans">{item.name}</span>
+                  <span className="text-[9px] font-mono font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                    {item.tag}
+                  </span>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-900 font-display">{item.name}</p>
-                  <p className="text-[10px] text-slate-400 font-medium">{item.detail}</p>
-                </div>
+                <p className="text-[10px] text-slate-500 font-medium">{item.detail}</p>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
     </section>
   );
 };
+

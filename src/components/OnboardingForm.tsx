@@ -340,8 +340,9 @@ export const OnboardingForm = ({ onComplete }: OnboardingFormProps) => {
                   <div>
                     <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Market Industry *</label>
                     <input 
+                      id="company-industry-input"
                       type="text" 
-                      placeholder="e.g. Real Estate" 
+                      placeholder="e.g. Coaching / Classes, Logistics, Agriculture..." 
                       value={formData.companyIndustry} 
                       onChange={(e) => handleDataChange({ companyIndustry: e.target.value })} 
                       className={`w-full h-[52px] px-4 bg-slate-50 border-2 ${errors.companyIndustry ? 'border-red-300' : 'border-slate-100 focus:border-blue-600'} rounded-2xl outline-none font-bold text-sm transition-all`} 
@@ -361,6 +362,62 @@ export const OnboardingForm = ({ onComplete }: OnboardingFormProps) => {
                       <option value="51-200">51-200 callers</option>
                       <option value="201+">201+ callers</option>
                     </select>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Suggestions:</label>
+                    <span className="text-[10px] text-slate-400 font-medium">Or type custom industry above</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      '🎓 Coaching & Classes',
+                      '🏠 Real Estate',
+                      '☀️ Solar & Energy',
+                      '📞 Telecalling Agency',
+                      '🏭 Manufacturing',
+                      '💼 Financial Services',
+                      '🏥 Healthcare & Clinic',
+                      '🚗 Automobile',
+                      '🌾 Agriculture',
+                      '📦 Logistics & Transport',
+                      '✍️ Other / Custom'
+                    ].map((ind) => {
+                      if (ind === '✍️ Other / Custom') {
+                        return (
+                          <button
+                            key={ind}
+                            type="button"
+                            onClick={() => {
+                              const inputEl = document.getElementById('company-industry-input');
+                              if (inputEl) {
+                                inputEl.focus();
+                              }
+                            }}
+                            className="text-xs px-3 py-1.5 rounded-xl font-semibold transition-all border border-dashed border-slate-300 text-slate-500 hover:text-slate-800 hover:border-slate-400 bg-white"
+                          >
+                            {ind}
+                          </button>
+                        );
+                      }
+                      const cleanName = ind.replace(/^[^\w\s]+\s*/, '');
+                      const isSelected = formData.companyIndustry.toLowerCase() === cleanName.toLowerCase();
+                      return (
+                        <button
+                          key={ind}
+                          type="button"
+                          onClick={() => handleDataChange({ companyIndustry: cleanName })}
+                          className={`text-xs px-3 py-1.5 rounded-xl font-semibold transition-all border ${
+                            isSelected
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                              : 'bg-slate-50 text-slate-600 border-slate-200/70 hover:bg-slate-100 hover:text-slate-900'
+                          }`}
+                        >
+                          {ind}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

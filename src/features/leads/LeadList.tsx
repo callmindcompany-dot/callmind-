@@ -6,6 +6,7 @@ import { List, type RowComponentProps } from 'react-window';
 import { useLeads } from '../../hooks/useLeads';
 import { LeadStatus, Lead, LeadFilters } from '../../types/lead';
 import { SkeletonLoader } from '../../components/SkeletonLoader';
+import { isLeadRotting } from '@/utils/leadRotting';
 import { clsx } from 'clsx';
 import { format } from 'date-fns';
 
@@ -76,6 +77,13 @@ export const LeadList: React.FC<LeadListProps> = ({
       fetchNextPage();
     }
 
+    const createdAtMillis = lead.createdAt?.seconds 
+      ? lead.createdAt.seconds * 1000 
+      : (lead as any).created_at 
+        ? new Date((lead as any).created_at).getTime() 
+        : undefined;
+    const isStale = isLeadRotting(createdAtMillis, 3) && lead.status === LeadStatus.NEW;
+
     return (
       <div style={{ ...style, paddingBottom: '12px' }} {...ariaAttributes}>
         <motion.div
@@ -93,6 +101,11 @@ export const LeadList: React.FC<LeadListProps> = ({
             <div className="flex items-center gap-3">
               <h4 className="text-base font-bold text-gray-900 group-hover:text-brand-600 transition-colors truncate">{lead.name || 'Anonymous Lead'}</h4>
               <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-black uppercase tracking-widest shrink-0">{lead.source || 'Direct'}</span>
+              {isStale && (
+                <span className="text-[10px] bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse shrink-0 flex items-center gap-1">
+                  🔥 Stale
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-1.5 text-sm font-medium text-gray-500 truncate">

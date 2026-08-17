@@ -1795,7 +1795,7 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
           </div>
         );
       case 'pipeline':
-        return <PipelineBoard />;
+        return <PipelineBoard onSelectLead={(l) => setSelectedLead(l as any)} />;
       case 'list':
         return (
           <div className="space-y-6">

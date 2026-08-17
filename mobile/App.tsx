@@ -19,6 +19,7 @@ import { orderQueue, isClosed } from './src/services/priorityQueue';
 import { resolveOutcome, describeOutcome } from './src/services/callOutcome';
 import { decideStage } from './src/services/leadStageMapping';
 import { getLeadStages } from './src/services/workspaceStages';
+import { getPostCallForm, defaultForm, type PostCallForm } from './src/services/postCallForm';
 import { planStatusService, type PlanStatus } from './src/services/planStatusService';
 import { agentStatusService } from './src/services/agentStatusService';
 import { GlobalSearchScreen } from './src/screens/GlobalSearchScreen';
@@ -153,6 +154,37 @@ function MainAppContent() {
 
   // Overlays & Offline
   const [showFeedback, setShowFeedback] = useState(false);
+  /**
+   * The company's own post-call form.
+   *
+   * Held in state and refreshed when the sheet opens rather than fetched at
+   * render, so the network is never between a telecaller and the form. It
+   * starts as the built-in defaults, which are the exact chips this app used
+   * to hardcode -- so the first call after a cold start looks the same as it
+   * always did rather than showing an empty screen.
+   */
+  const [postCallForm, setPostCallForm] = useState<PostCallForm>(() => defaultForm());
+
+  /**
+   * Pull the company's form, quietly.
+   *
+   * Never throws and never shows an error. getPostCallForm already falls back
+   * fresh → cached → built-in defaults, so the worst case is an older set of
+   * chips, and the sheet says so itself. An error toast here would interrupt
+   * an agent between calls over something they cannot act on.
+   */
+  const refreshPostCallForm = useCallback(async () => {
+    if (!profile?.companyId) return;
+    try {
+      setPostCallForm(await getPostCallForm(profile.companyId));
+    } catch (e) {
+      console.warn('[App] post-call form refresh failed; keeping what we have', e);
+    }
+  }, [profile?.companyId]);
+
+  // Once on sign-in, so the very first call of a shift already has the current
+  // form rather than the defaults.
+  useEffect(() => { void refreshPostCallForm(); }, [refreshPostCallForm]);
   // Shown after the post-call form, by 42_CallCompletedCard. That file existed
   // and was imported and never rendered, so nothing ever told the agent what
   // had become of the lead they just called.
@@ -470,15 +502,27 @@ function MainAppContent() {
       agentId: profile.uid,
       leadId: activeCallingLead?.id,
       leadName: activeCallingLead?.name || callingLeadName || 'Lead',
-      // No placeholder. This wrote '+91 98765 43210' into calls.phone whenever
-      // the lead had no number, producing a call record to a number nobody had
-      // dialled -- the same invented number schedulerService used on the web.
       phone: activeCallingLead?.phone ?? '',
       duration: callDuration,
       outcome: feedback.outcome,
       interest: feedback.interest,
       notes: feedback.notes,
     });
+
+    // Unify notes: record call note directly in lead_notes with relationship context
+    if (feedback.notes?.trim() && activeCallingLead?.id) {
+      try {
+        await supabase.from('lead_notes').insert({
+          lead_id: activeCallingLead.id,
+          company_id: profile.companyId,
+          agent_id: profile.uid,
+          content: feedback.notes.trim(),
+          created_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('[handleFeedbackSubmit] lead_notes insert warning:', err);
+      }
+    }
 
     // Schedule the follow-up, if the agent chose one. Written to `callbacks`
     // so it shows on the web too, and so the reminder has something to fire on.
@@ -525,7 +569,10 @@ function MainAppContent() {
     if (activeCallingLead?.id) {
       try {
         const { stages } = await getLeadStages(profile.companyId);
-        const decision = decideStage(resolved.intent, stages);
+        // The admin's own mapping, when they set one, from the settings screen.
+        // decideStage ignores it if the stage it names no longer exists, so a
+        // renamed stage cannot reintroduce a phantom.
+        const decision = decideStage(resolved.intent, stages, postCallForm.stageByIntent);
         if (decision.status) {
           await leadService.recordCallOutcome(
             profile.companyId,
@@ -584,6 +631,10 @@ function MainAppContent() {
         awaitingDialerReturnRef.current = false;
         dialerStartedAtRef.current = null;
         setShowFeedback(true);
+        // Refreshed alongside, not awaited. The sheet is already on screen with
+        // whatever was cached; a slow network must never be the reason a
+        // telecaller is left staring at nothing after hanging up.
+        void refreshPostCallForm();
         // Off the call. The admin's board was showing everyone offline
         // permanently because nothing had ever written to agent_status.
         void agentStatusService.set(profile?.companyId, profile?.uid, agentDisplayName, 'active');
@@ -1253,7 +1304,10 @@ function MainAppContent() {
       {showFeedback && (
         <PostCallFeedbackSheet
           leadName={callingLeadName || activeCallingLead?.name || 'Lead'}
+          leadPhone={activeCallingLead?.phone}
+          leadId={activeCallingLead?.id}
           callDuration={callDuration}
+          form={postCallForm}
           onSubmit={handleFeedbackSubmit}
           onDismiss={() => setShowFeedback(false)}
         />

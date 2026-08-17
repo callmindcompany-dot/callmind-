@@ -38,10 +38,7 @@ export const Footer = () => {
   const linkClass = 'text-sm text-slate-300 hover:text-white transition-colors text-left';
 
   return (
-    <footer className="bg-slate-900 text-white pt-20 pb-10 px-6 md:px-12 font-sans border-t border-slate-800 relative overflow-hidden">
-      {/* Ambient Glow */}
-      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-brand-600/8 blur-[120px] rounded-full pointer-events-none" />
-
+    <footer className="bg-slate-900 text-white pt-16 pb-10 px-6 md:px-12 font-sans border-t border-slate-800 relative">
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12 mb-16 pb-16 border-b border-slate-800">
 

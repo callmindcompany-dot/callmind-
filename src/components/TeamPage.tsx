@@ -548,20 +548,31 @@ interface TeamMemberRowProps {
   onDisable: (member: Member) => void;
   onRemove: (member: Member) => void;
   onSelect: (member: Member) => void;
+  rankIndex?: number;
 }
 
-const TeamMemberRow = React.memo(({ member, teamSettings, getStatusColor, getViaIcon, onDisable, onRemove, onSelect }: TeamMemberRowProps) => {
+const TeamMemberRow = React.memo(({ member, teamSettings, getStatusColor, getViaIcon, onDisable, onRemove, onSelect, rankIndex }: TeamMemberRowProps) => {
+  const rankBadge = rankIndex === 0 ? '🥇 #1 Star' : rankIndex === 1 ? '🥈 #2 Pro' : rankIndex === 2 ? '🥉 #3 Achiever' : null;
+
   return (
     <tr className="hover:bg-gray-50/50 transition-colors group">
       <td className="px-6 py-5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-700 font-bold border border-brand-100">
-            {/* No photo_url column exists and nothing uploads one, so this
-                always fell through to the initial anyway. */}
+          <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-700 font-bold border border-brand-100 relative">
             {(member.display_name || member.name || member.email)?.charAt(0)}
+            {rankIndex === 0 && (
+              <span className="absolute -top-1.5 -right-1.5 text-xs">👑</span>
+            )}
           </div>
           <div>
-            <p className="text-sm font-bold text-gray-900 group-hover:text-brand-600 transition-colors">{member.display_name || member.name || member.email}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-bold text-gray-900 group-hover:text-brand-600 transition-colors">{member.display_name || member.name || member.email}</p>
+              {rankBadge && (
+                <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                  {rankBadge}
+                </span>
+              )}
+            </div>
             <p className="text-[10px] font-medium text-gray-400">{member.role || 'Telecaller'}</p>
           </div>
         </div>
@@ -850,6 +861,7 @@ const MembersSection = React.memo(({
                 onDisable={onDisable}
                 onRemove={onRemove}
                 onSelect={onSelect}
+                rankIndex={currentPage === 1 && i < 3 ? i : undefined}
               />
             ))}
           </tbody>

@@ -11,7 +11,7 @@ import { supabase } from '@/supabaseClient';
  * take connect rate to zero in every report without raising anything.
  */
 
-export type OptionKind = 'outcome' | 'interest' | 'followup';
+export type OptionKind = 'outcome' | 'interest' | 'followup' | 'note_template';
 
 export interface PostCallOption {
   id: string;

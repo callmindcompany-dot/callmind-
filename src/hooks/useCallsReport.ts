@@ -55,7 +55,7 @@ export function useCallsReport(companyId: string | null, filters: ReportFilters)
       let query = supabase
         .from('calls')
         .select(
-          `id, duration, outcome, interest, timestamp, agent_id, lead_id,
+          `id, duration, outcome, interest, notes, timestamp, agent_id, lead_id,
            ${join}(id, name, phone, source, status)`,
         )
         .eq('company_id', companyId);
@@ -98,6 +98,7 @@ export function useCallsReport(companyId: string | null, filters: ReportFilters)
           duration: c.duration,
           outcome: c.outcome,
           interest: c.interest,
+          notes: c.notes ?? null,
           timestamp: c.timestamp,
         };
       });

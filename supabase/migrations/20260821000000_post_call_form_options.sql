@@ -39,10 +39,11 @@ CREATE TABLE IF NOT EXISTS public.post_call_form_options (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id  TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
 
-  -- 'outcome'  — did the phone get picked up
-  -- 'interest' — what they said, only asked when it did
-  -- 'followup' — a one-tap callback offset
-  kind        TEXT NOT NULL CHECK (kind IN ('outcome', 'interest', 'followup')),
+  -- 'outcome'       — did the phone get picked up
+  -- 'interest'      — what they said, only asked when it did
+  -- 'followup'      — a one-tap callback offset
+  -- 'note_template' — quick note template snippet for telecallers
+  kind        TEXT NOT NULL CHECK (kind IN ('outcome', 'interest', 'followup', 'note_template')),
 
   -- Written to the database. Immutable; see the trigger below.
   value       TEXT NOT NULL CHECK (btrim(value) <> ''),
@@ -270,6 +271,20 @@ BEGIN
     (p_company_id, 'interest', 'Interested',      'Interested',      '#0d9488', 1),
     (p_company_id, 'interest', 'Call Back Later', 'Call Back Later', '#b45309', 2),
     (p_company_id, 'interest', 'Not Interested',  'Not Interested',  '#e11d48', 3)
+  ON CONFLICT (company_id, kind, value) DO NOTHING;
+
+  GET DIAGNOSTICS v_batch = ROW_COUNT;
+  v_inserted := v_inserted + v_batch;
+
+  -- Default 1-tap note templates for telecallers
+  INSERT INTO public.post_call_form_options
+    (company_id, kind, value, label, color, sort_order)
+  VALUES
+    (p_company_id, 'note_template', 'Quote sent',               'Quote sent',               '#0d9488', 1),
+    (p_company_id, 'note_template', 'Site visit requested',     'Site visit requested',     '#2563eb', 2),
+    (p_company_id, 'note_template', 'Budget low / Negotiation', '#b45309',                  '#b45309', 3),
+    (p_company_id, 'note_template', 'Decision maker busy',      'Decision maker busy',      '#9333ea', 4),
+    (p_company_id, 'note_template', 'Follow-up next week',      'Follow-up next week',      '#475569', 5)
   ON CONFLICT (company_id, kind, value) DO NOTHING;
 
   GET DIAGNOSTICS v_batch = ROW_COUNT;

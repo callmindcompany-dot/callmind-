@@ -26,6 +26,14 @@ import {
 
 
 
+const LiveAudioWave = () => (
+  <div className="flex items-center gap-0.5 h-3 px-1 py-0.5 bg-orange-100 rounded-full border border-orange-200 shrink-0">
+    <span className="w-0.5 bg-orange-500 rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-2"></span>
+    <span className="w-0.5 bg-orange-600 rounded-full animate-[pulse_0.5s_ease-in-out_infinite] h-3"></span>
+    <span className="w-0.5 bg-orange-500 rounded-full animate-[pulse_0.9s_ease-in-out_infinite] h-2"></span>
+  </div>
+);
+
 const StatusIndicator = ({ status }: { status: AgentStats['status'] }) => {
   const colors = {
     active: 'bg-emerald-500',
@@ -34,9 +42,12 @@ const StatusIndicator = ({ status }: { status: AgentStats['status'] }) => {
   };
   
   return (
-    <div className="relative flex h-3 w-3">
-      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${colors[status]} opacity-75`}></span>
-      <span className={`relative inline-flex rounded-full h-3 w-3 ${colors[status]}`}></span>
+    <div className="flex items-center gap-1.5">
+      <div className="relative flex h-3 w-3">
+        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${colors[status]} opacity-75`}></span>
+        <span className={`relative inline-flex rounded-full h-3 w-3 ${colors[status]}`}></span>
+      </div>
+      {status === 'on_call' && <LiveAudioWave />}
     </div>
   );
 };

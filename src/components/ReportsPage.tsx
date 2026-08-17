@@ -676,21 +676,21 @@ export const ReportsPage = () => {
 
               <button
                 onClick={() => setIsScheduleModalOpen(true)}
-                className="px-4 py-2 bg-brand-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-brand-700 transition-all flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-2.5 bg-brand-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-brand-700 transition-all flex items-center gap-2 shadow-md shadow-brand-500/20 btn-tactile cursor-pointer"
               >
-                <Calendar size={12} /> Schedule Dispatch
+                <Calendar size={13} /> Schedule Dispatch
               </button>
 
               <button 
                 onClick={() => (plan.can('exports') ? setIsExportModalOpen(true) : setShowExportUpgrade(true))}
-                className="px-4 py-2 bg-white text-slate-700 border border-gray-200 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-2.5 bg-white text-slate-800 border border-slate-200 hover:border-brand-300 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-brand-50/50 hover:text-brand-600 transition-all flex items-center gap-2 shadow-xs btn-tactile cursor-pointer"
               >
-                <Download size={12} /> Export Report
+                <Download size={13} className="text-brand-600" /> Export CSV / PDF
               </button>
 
               <button 
                 onClick={() => setIsBuilderOpen(true)}
-                className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-slate-800 transition-all flex items-center gap-2 shadow-md btn-tactile cursor-pointer"
               >
                 <PlusCircle size={14} /> Custom Builder
               </button>
@@ -1133,6 +1133,7 @@ export const ReportsPage = () => {
                                 <th className="pb-2 text-center">Duration</th>
                                 <th className="pb-2 text-center">Outcome</th>
                                 <th className="pb-2 text-center">Interest</th>
+                                <th className="pb-2">Notes</th>
                                 <th className="pb-2 text-right">Time</th>
                               </tr>
                             </thead>
@@ -1165,6 +1166,9 @@ export const ReportsPage = () => {
                                     </span>
                                   </td>
                                   <td className="py-3 text-center text-slate-500">{call.interest || '—'}</td>
+                                  <td className="py-3 max-w-[200px] truncate text-[11px] font-medium text-slate-600" title={call.notes || ''}>
+                                    {call.notes || '—'}
+                                  </td>
                                   <td className="py-3 text-right font-mono text-gray-400">
                                     {new Date(call.timestamp).toLocaleString('en-IN')}
                                   </td>

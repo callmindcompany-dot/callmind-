@@ -88,28 +88,17 @@ const Login = ({ defaultMode = 'login' }: { defaultMode?: 'login' | 'signup' }) 
       const errorCode = err.code || '';
       const errMsg = (err.message || '').toLowerCase();
       
-      if (errMsg.includes('failed to fetch') || errMsg.includes('networkerror') || errMsg.includes('load failed')) {
-        setError(`Connecting to Supabase failed: Server at '${import.meta.env.VITE_SUPABASE_URL || 'Supabase'}' is unreachable. Please check if your project is active in Supabase Dashboard.`);
-      } else if (
-        errorCode === 'auth/user-not-found' ||
-        errMsg.includes('user-not-found') ||
-        errorCode === 'auth/wrong-password' ||
-        errorCode === 'auth/invalid-credential' ||
-        errMsg.includes('invalid login credentials') ||
-        errMsg.includes('wrong-password') ||
-        errMsg.includes('invalid-credential')
-      ) {
-         setError("Invalid email or password. Please double check your credentials or reset your password."); 
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setError("You appear to be offline. Please check your internet connection and try again.");
       } else if (errMsg.includes('email not confirmed')) {
-         setError("Email address is not confirmed yet. Please check your inbox for the confirmation link.");
+        setError("Email address is not confirmed yet. Please check your inbox for the confirmation link.");
       } else if (errMsg.includes('email provider is disabled')) {
-         setError("Email login is disabled in Supabase Dashboard (Authentication > Providers > Email).");
+        setError("Email login is currently unavailable. Please contact support.");
       } else if (errorCode === 'auth/too-many-requests' || errMsg.includes('too-many-requests')) {
-         setError("Too many attempts. Please wait a moment and try again.");
-      } else if (errorCode === 'auth/network-request-failed' || errMsg.includes('network-request-failed')) {
-         setError("Network error. Check connection.");
+        setError("Too many login attempts. Please wait a moment and try again.");
       } else {
-         setError(err.message || 'Sign in failed.');
+        // Default truthful message for any non-existent user or credential mismatch
+        setError("No account found with this email, or password is incorrect. If you don't have an account yet, please click 'Create an account' below to sign up.");
       }
     } finally {
       setIsLoading(false);
@@ -159,8 +148,8 @@ const Login = ({ defaultMode = 'login' }: { defaultMode?: 'login' | 'signup' }) 
       }
     } catch (err: any) {
       const errMsg = (err.message || '').toLowerCase();
-      if (errMsg.includes('failed to fetch') || errMsg.includes('networkerror') || errMsg.includes('load failed')) {
-        setError(`Connecting to Supabase failed: Server at '${import.meta.env.VITE_SUPABASE_URL || 'Supabase'}' is unreachable. Please check if your project is active in Supabase Dashboard.`);
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setError("You appear to be offline. Please check your internet connection.");
       } else if (err.code === 'auth/email-already-in-use' || errMsg.includes('already registered') || errMsg.includes('already in use')) {
         setError("This email is already registered. Please login instead.");
         setExistingAccountError(true);
@@ -169,7 +158,7 @@ const Login = ({ defaultMode = 'login' }: { defaultMode?: 'login' | 'signup' }) 
       } else if (err.code === 'auth/invalid-email' || errMsg.includes('invalid email')) {
         setError("Please enter a valid email address.");
       } else {
-        setError(err.message || 'Registration failed.');
+        setError(err.message || "Registration could not be completed. Please try again.");
       }
     } finally {
       setIsLoading(false);
@@ -369,6 +358,36 @@ const Login = ({ defaultMode = 'login' }: { defaultMode?: 'login' | 'signup' }) 
                 </svg>
                 Continue with Google
               </button>
+
+              <div className="pt-6 text-center border-t border-slate-100 mt-6">
+                <p className="text-[14px] text-slate-600 font-medium">
+                  Don't have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('signup');
+                      setError('');
+                      setSuccessMsg('');
+                    }}
+                    className="text-brand-600 hover:text-brand-700 font-bold hover:underline"
+                  >
+                    Create an account
+                  </button>
+                </p>
+              </div>
+
+              <div className="mt-6 text-center text-xs text-slate-500 space-y-1.5 leading-relaxed">
+                <p>
+                  By continuing, you agree to CallMind's{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:text-slate-900 underline font-medium">Terms of Service</a>
+                  {' '}and{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:text-slate-900 underline font-medium">Privacy Policy</a>.
+                </p>
+                <p className="text-[11px] text-slate-400 font-medium flex items-center justify-center gap-1.5">
+                  <ShieldCheck size={13} className="text-emerald-500" />
+                  <span>DPDP Act 2023 Compliant · Data Stored in India 🇮🇳</span>
+                </p>
+              </div>
             </motion.div>
           )}
 
@@ -548,6 +567,36 @@ const Login = ({ defaultMode = 'login' }: { defaultMode?: 'login' | 'signup' }) 
                   </button>
                 )}
               </form>
+
+              <div className="pt-6 text-center border-t border-slate-100 mt-6">
+                <p className="text-[14px] text-slate-600 font-medium">
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('login');
+                      setError('');
+                      setSuccessMsg('');
+                    }}
+                    className="text-brand-600 hover:text-brand-700 font-bold hover:underline"
+                  >
+                    Sign in
+                  </button>
+                </p>
+              </div>
+
+              <div className="mt-6 text-center text-xs text-slate-500 space-y-1.5 leading-relaxed">
+                <p>
+                  By creating an account, you agree to CallMind's{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:text-slate-900 underline font-medium">Terms of Service</a>
+                  {' '}and{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-slate-700 hover:text-slate-900 underline font-medium">Privacy Policy</a>.
+                </p>
+                <p className="text-[11px] text-slate-400 font-medium flex items-center justify-center gap-1.5">
+                  <ShieldCheck size={13} className="text-emerald-500" />
+                  <span>DPDP Act 2023 Compliant · Data Stored in India 🇮🇳</span>
+                </p>
+              </div>
             </motion.div>
           )}
 

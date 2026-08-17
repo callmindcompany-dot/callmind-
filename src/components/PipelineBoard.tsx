@@ -38,7 +38,13 @@ function getColorForStatus(status: string): string {
   return 'bg-slate-400';
 }
 
-const SortableLeadCard = React.memo(({ lead, isOverlay = false }: { lead: Lead; isOverlay?: boolean }) => {
+interface SortableLeadCardProps {
+  lead: Lead;
+  isOverlay?: boolean;
+  onSelectLead?: (lead: Lead) => void;
+}
+
+const SortableLeadCard = React.memo(({ lead, isOverlay = false, onSelectLead }: SortableLeadCardProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id });
 
   const style = {
@@ -70,7 +76,11 @@ const SortableLeadCard = React.memo(({ lead, isOverlay = false }: { lead: Lead; 
 
   const handleDetailsClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toast.success(`Details modal for ${lead.name || 'Lead'} coming soon!`);
+    if (onSelectLead) {
+      onSelectLead(lead);
+    } else {
+      toast.success(`Viewing ${lead.name || 'Lead'}`);
+    }
   };
 
   return (
@@ -79,7 +89,8 @@ const SortableLeadCard = React.memo(({ lead, isOverlay = false }: { lead: Lead; 
       style={style}
       {...attributes}
       {...listeners}
-      className={`bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-100 transition-all cursor-grab active:cursor-grabbing group ${isOverlay ? 'shadow-xl border-brand-500 rotate-2' : ''}`}
+      onClick={handleDetailsClick}
+      className={`bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-200 transition-all cursor-pointer group ${isOverlay ? 'shadow-xl border-brand-500 rotate-2' : ''}`}
     >
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-2">
@@ -93,7 +104,8 @@ const SortableLeadCard = React.memo(({ lead, isOverlay = false }: { lead: Lead; 
         </div>
         <button 
           onClick={handleDetailsClick} 
-          className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+          className="p-1 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+          title="Open Details"
         >
           <MoreVertical size={14} />
         </button>
@@ -104,6 +116,11 @@ const SortableLeadCard = React.memo(({ lead, isOverlay = false }: { lead: Lead; 
           <Clock size={12} />
           {lead.created_at ? new Date(lead.created_at).toLocaleDateString() : 'N/A'}
         </div>
+        {lead.estimated_budget && (
+          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+            ₹{Number(lead.estimated_budget).toLocaleString('en-IN')}
+          </span>
+        )}
         <div className="flex-1" />
         <div className="flex items-center gap-1">
           <button 
@@ -131,8 +148,23 @@ interface ColumnType {
   color: string;
 }
 
-const VirtualKanbanColumn = React.memo(({ column, columnLeads }: { column: ColumnType; columnLeads: Lead[] }) => {
+const VirtualKanbanColumn = React.memo(({ 
+  column, 
+  columnLeads,
+  onSelectLead
+}: { 
+  column: ColumnType; 
+  columnLeads: Lead[];
+  onSelectLead?: (lead: Lead) => void;
+}) => {
   const parentRef = useRef<HTMLDivElement>(null);
+
+  const totalValue = useMemo(() => {
+    return columnLeads.reduce((sum, lead) => {
+      const val = parseFloat(lead.estimated_budget || '0');
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+  }, [columnLeads]);
 
   const rowVirtualizer = useVirtualizer({
     count: columnLeads.length,
@@ -144,17 +176,21 @@ const VirtualKanbanColumn = React.memo(({ column, columnLeads }: { column: Colum
   return (
     <div className="flex flex-col bg-gray-50 rounded-[32px] p-4 border border-gray-100 min-w-[300px] lg:min-w-0 snap-start shrink-0 max-h-[700px]">
       {/* Column Header */}
-      <div className="flex items-center justify-between mb-4 px-2 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${column.color}`} />
-          <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider">{column.title}</h3>
-          <span className="bg-white px-2 py-0.5 rounded-lg text-[10px] font-bold text-gray-400 border border-gray-100">
-            {columnLeads.length}
-          </span>
+      <div className="flex flex-col mb-4 px-2 shrink-0 gap-1.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`w-2.5 h-2.5 rounded-full ${column.color}`} />
+            <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider">{column.title}</h3>
+            <span className="bg-white px-2 py-0.5 rounded-lg text-[10px] font-bold text-gray-400 border border-gray-100">
+              {columnLeads.length}
+            </span>
+          </div>
         </div>
-        <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
-          <MoreVertical size={14} />
-        </button>
+        {totalValue > 0 && (
+          <div className="text-[11px] font-semibold text-emerald-600 pl-4.5">
+            Total: ₹{totalValue.toLocaleString('en-IN')}
+          </div>
+        )}
       </div>
 
       {/* Virtual Scroll Container */}
@@ -195,7 +231,7 @@ const VirtualKanbanColumn = React.memo(({ column, columnLeads }: { column: Colum
                       paddingBottom: '12px',
                     }}
                   >
-                    <SortableLeadCard lead={lead} />
+                    <SortableLeadCard lead={lead} onSelectLead={onSelectLead} />
                   </div>
                 );
               })}
@@ -208,7 +244,7 @@ const VirtualKanbanColumn = React.memo(({ column, columnLeads }: { column: Colum
 });
 VirtualKanbanColumn.displayName = 'VirtualKanbanColumn';
 
-export const PipelineBoard = () => {
+export const PipelineBoard = ({ onSelectLead }: { onSelectLead?: (lead: Lead) => void }) => {
   const { companyId } = useCompany();
 
   // 1. Data Query
@@ -383,6 +419,7 @@ export const PipelineBoard = () => {
               key={column.id}
               column={column}
               columnLeads={filteredLeads.filter(l => l.status === column.id)}
+              onSelectLead={onSelectLead}
             />
           ))}
         </div>
@@ -394,7 +431,7 @@ export const PipelineBoard = () => {
             }),
           }}
         >
-          {activeLead ? <SortableLeadCard lead={activeLead} isOverlay /> : null}
+          {activeLead ? <SortableLeadCard lead={activeLead} isOverlay onSelectLead={onSelectLead} /> : null}
         </DragOverlay>
       </DndContext>
     </div>

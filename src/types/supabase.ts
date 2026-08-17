@@ -87,7 +87,7 @@ export interface Database {
         Row: {
           id: string;
           company_id: string;
-          kind: 'outcome' | 'interest' | 'followup';
+          kind: 'outcome' | 'interest' | 'followup' | 'note_template';
           /** Written to calls.outcome / calls.interest. Immutable in Postgres. */
           value: string;
           /** Shown to the telecaller. Free to change, in any language. */

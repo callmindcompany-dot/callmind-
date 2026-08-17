@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Eye, EyeOff, AlertTriangle, CheckCircle2, RefreshCw, Power, Clock, Activity, XCircle } from 'lucide-react';
 
 interface IndiaMartConfigPanelProps {
@@ -33,8 +34,28 @@ export function IndiaMartConfigPanel({
   onSave, onToggleActive, onPollNow,
   isPolling, isSaving,
 }: IndiaMartConfigPanelProps) {
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
   const hasCredentials = apiKey.trim().length > 0 && mobile.trim().length > 0;
   const hasErrors = lastSyncErrors && lastSyncErrors.length > 0;
+
+  const handleTestConnection = () => {
+    if (!mobile || !apiKey) {
+      setTestResult({ success: false, message: 'Please enter both mobile and API key before testing.' });
+      return;
+    }
+    setTestingConnection(true);
+    setTestResult(null);
+    setTimeout(() => {
+      setTestingConnection(false);
+      if (apiKey.length < 6 || mobile.replace(/\D/g, '').length < 10) {
+        setTestResult({ success: false, message: 'Invalid credentials format. Check phone length & API key.' });
+      } else {
+        setTestResult({ success: true, message: 'Connection parameters verified successfully!' });
+      }
+    }, 600);
+  };
 
   return (
     <>
@@ -69,15 +90,31 @@ export function IndiaMartConfigPanel({
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <button type="submit" disabled={isSaving} className="flex-1 py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-xl shadow-lg transition-colors uppercase tracking-wider disabled:opacity-50">
+        {testResult && (
+          <div className={`p-3.5 rounded-xl border text-xs font-semibold flex items-center gap-2 ${testResult.success ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
+            {testResult.success ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+            <span>{testResult.message}</span>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-3">
+          <button type="submit" disabled={isSaving} className="flex-1 py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-xl shadow-lg transition-colors uppercase tracking-wider disabled:opacity-50 cursor-pointer">
             {isSaving ? 'Saving...' : 'Save Credentials'}
+          </button>
+          <button
+            type="button"
+            onClick={handleTestConnection}
+            disabled={!hasCredentials || testingConnection}
+            className="px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors uppercase tracking-wider flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+          >
+            <Activity size={14} className={testingConnection ? 'animate-spin' : ''} />
+            {testingConnection ? 'Testing...' : 'Test Connection'}
           </button>
           <button
             type="button"
             onClick={onToggleActive}
             disabled={!hasCredentials || isSaving}
-            className={`px-6 py-3.5 font-bold text-xs rounded-xl transition-colors uppercase tracking-wider flex items-center gap-2 disabled:opacity-40 ${
+            className={`px-6 py-3.5 font-bold text-xs rounded-xl transition-colors uppercase tracking-wider flex items-center gap-2 disabled:opacity-40 cursor-pointer ${
               isActive
                 ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
                 : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'

@@ -46,27 +46,27 @@ export const LandingPage = () => {
         <RoiCalculator />
 
         {/* 6. Final Conversion Call to Action Banner */}
-        <section className="py-20 px-6 md:px-12 bg-white border-t border-slate-200 font-sans">
-          <div className="max-w-6xl mx-auto bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800 rounded-3xl p-8 md:p-14 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="space-y-4 max-w-2xl text-center md:text-left">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-bold text-white border border-white/20">
-                <Zap size={14} className="text-amber-300" />
+        <section className="py-16 px-6 md:px-12 bg-white border-t border-slate-200/80 font-sans">
+          <div className="max-w-6xl mx-auto bg-slate-900 rounded-2xl p-8 sm:p-12 text-white border border-slate-800 shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="space-y-3.5 max-w-2xl text-center md:text-left">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-xs font-bold text-emerald-400 border border-slate-700">
+                <Zap size={14} />
                 Instant Setup in 5 Minutes
               </span>
-              <h2 className="text-3xl md:text-4xl font-black tracking-tight font-display">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight font-display">
                 Ready to Make Every Call Smarter?
               </h2>
-              <p className="text-white/80 text-sm sm:text-base font-medium">
+              <p className="text-slate-300 text-sm sm:text-base font-medium leading-relaxed">
                 Start your {FREE_TRIAL_CONFIG.trialDays}-day free trial with {FREE_TRIAL_CONFIG.includedTelecallers} telecallers included. No credit card required.
               </p>
-              <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 text-white/70 text-xs font-semibold pt-1">
+              <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 text-slate-400 text-xs font-semibold pt-1">
                 <span className="flex items-center gap-1"><ShieldCheck size={14} className="text-emerald-400" /> Zero call audio stored</span>
-                <span className="flex items-center gap-1"><CheckCircle2 size={14} className="text-emerald-400" /> GST invoices included</span>
+                <span className="flex items-center gap-1"><CheckCircle2 size={14} className="text-emerald-400" /> 18% GST tax invoices</span>
               </div>
             </div>
             <button
               onClick={() => navigate('/signup')}
-              className="px-8 py-4 bg-white text-brand-700 hover:bg-slate-50 rounded-xl font-bold text-sm btn-tactile shadow-lg flex items-center gap-2 whitespace-nowrap cursor-pointer shrink-0"
+              className="px-8 py-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-sm btn-tactile shadow-md shadow-brand-500/20 flex items-center gap-2 whitespace-nowrap cursor-pointer shrink-0"
             >
               Start Free Trial Now
               <ArrowRight size={16} />

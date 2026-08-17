@@ -4,11 +4,7 @@ import { Smartphone, LayoutDashboard, ArrowRight, Zap, CheckCircle2 } from 'luci
 
 export const ProductSimulator = () => {
   return (
-    <section className="py-24 px-6 md:px-12 bg-white relative overflow-hidden border-t border-slate-100">
-      {/* Background Elements */}
-      <div className="absolute top-0 right-0 w-1/3 h-full bg-slate-50/50 -skew-x-12 transform origin-top-right z-0"></div>
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-50 rounded-full blur-[100px] opacity-60 z-0"></div>
-
+    <section className="py-20 px-6 md:px-12 bg-white relative border-t border-slate-100">
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-sm font-bold mb-2">

@@ -94,10 +94,9 @@ export const ContactPage = () => {
               </div>
 
               {/* Book Demo CTA */}
-              <div className="bg-slate-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-                <div className="absolute -top-24 -right-24 w-64 h-64 bg-brand-500/30 blur-[80px] rounded-full pointer-events-none" />
-                <h3 className="text-2xl font-bold font-display relative z-10">Prefer a live walk-through?</h3>
-                <p className="text-slate-300 mt-2 mb-6 font-medium relative z-10">
+              <div className="bg-slate-900 rounded-2xl p-8 text-white border border-slate-800 shadow-xl relative">
+                <h3 className="text-2xl font-bold font-display">Prefer a live walk-through?</h3>
+                <p className="text-slate-300 mt-2 mb-6 font-medium">
                   Book a 30-minute Zoom call. We'll show you how to connect IndiaMART and add your team.
                 </p>
                 <button className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-100 transition-all btn-tactile w-full md:w-auto relative z-10">

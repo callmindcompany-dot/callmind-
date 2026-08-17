@@ -167,6 +167,7 @@ export interface CallReportRecord {
   duration: string;
   outcome: string;
   interest: string | null;
+  notes: string | null;
   timestamp: string;
 }
 

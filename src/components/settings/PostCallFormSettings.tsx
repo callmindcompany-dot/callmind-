@@ -337,15 +337,23 @@ const Preview = React.memo(({ options }: { options: PostCallOption[] }) => {
           </div>
 
           <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Notes</p>
-            <div className="h-12 rounded-xl bg-slate-50 border border-slate-100" />
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Note templates</p>
+            <div className="flex flex-wrap gap-1 mb-2">
+              {options.filter(o => o.kind === 'note_template' && o.is_active).map(o => (
+                <span key={o.id} className="px-2 py-0.5 rounded-md text-[8px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                  ＋ {o.label}
+                </span>
+              ))}
+            </div>
+            <div className="h-10 rounded-xl bg-slate-50 border border-slate-100 p-2 text-[9px] text-slate-400 font-mono">
+              Type call notes...
+            </div>
           </div>
         </div>
       </div>
 
       <p className="mt-3 text-[10px] text-center font-medium text-slate-400 leading-relaxed max-w-[300px] mx-auto">
-        A drawing of the phone screen, from the same rows on the left. The date
-        picker and note templates arrive in the next mobile build.
+        A real-time drawing of the phone screen from the configured rows.
       </p>
     </div>
   );
@@ -416,6 +424,12 @@ export const PostCallFormSettings = React.memo(({
             title="Call back presets"
             hint="One-tap follow-up times, in minutes from the end of the call. A specific date and time is always available beside them."
             kind="followup" options={byKind('followup')}
+            stages={stages} companyId={companyId} canEdit={canEdit}
+          />
+          <OptionGroup
+            title="Note templates"
+            hint="Pre-written note snippets telecallers can tap to insert at their cursor (e.g. 'Quote sent', 'Site visit', 'Budget low')."
+            kind="note_template" options={byKind('note_template')}
             stages={stages} companyId={companyId} canEdit={canEdit}
           />
 

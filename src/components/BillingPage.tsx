@@ -136,8 +136,8 @@ const DynamicStatusRibbon = ({
             <div className="flex items-center gap-4">
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] font-sans">Time Remaining:</span>
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-black text-blue-600 uppercase tracking-[0.2em] animate-pulse font-sans">
-                  {Math.max(0, Math.ceil(trialDaysRemaining))} Days
+                <span className={`text-[11px] font-black uppercase tracking-[0.2em] animate-pulse font-sans ${trialDaysRemaining <= 3 ? 'text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200' : 'text-blue-600'}`}>
+                  {Math.max(0, Math.ceil(trialDaysRemaining))} Days Left
                 </span>
               </div>
             </div>
@@ -155,6 +155,25 @@ const DynamicStatusRibbon = ({
           </button>
         </div>
       </div>
+      {isTrial && typeof trialDaysRemaining === 'number' && trialDaysRemaining <= 3 && (
+        <div className="bg-gradient-to-r from-amber-500 to-red-500 text-white px-6 py-2 text-xs font-bold flex items-center justify-between shadow-inner">
+          <div className="max-w-[1400px] mx-auto w-full flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">⚠️</span>
+              <span>Trial Ending in {Math.max(0, Math.ceil(trialDaysRemaining))} Day{trialDaysRemaining === 1 ? '' : 's'} — Upgrade your plan today to keep uninterrupted telecalling & integrations active!</span>
+            </div>
+            <button
+              onClick={() => {
+                const el = document.getElementById('pricing-tiers-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="px-3 py-1 bg-white text-red-600 hover:bg-slate-50 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-xs cursor-pointer shrink-0"
+            >
+              Upgrade Now
+            </button>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

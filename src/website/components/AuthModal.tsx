@@ -83,8 +83,12 @@ export const AuthModal = ({
         setMode('password_entry');
       }
     } catch (err: any) {
-      const errorMessage = err.message || 'Unknown error';
-      setError(`Connection failed: ${errorMessage}. Please try again.`);
+      const errMsg = (err.message || '').toLowerCase();
+      if (errMsg.includes('failed to fetch') || errMsg.includes('networkerror') || errMsg.includes('load failed')) {
+        setError('Unable to connect to the server. Please check your internet connection.');
+      } else {
+        setError(err.message || 'Unable to proceed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -111,18 +115,18 @@ export const AuthModal = ({
       const isInternal = FOUNDER_OWNERS.includes(email.toLowerCase().trim()) || 
                       INTERNAL_TEAM.includes(email.toLowerCase().trim()) || 
                       USER_PERSPECTIVE_TESTERS.includes(email.toLowerCase().trim());
+      const errMsg = (err.message || '').toLowerCase();
+      const errCode = err.code || '';
 
-      if (err.code === 'auth/user-not-found' || err.message?.includes('user-not-found') || err.message?.includes('invalid-credential') || err.code === 'auth/invalid-credential') {
-        if (isInternal) {
-          setMode('set_password');
-          setError(null);
-        } else {
-          setError("No account found or invalid credentials. Please try again or sign up.");
-        }
-      } else if (err.code === 'auth/wrong-password' || err.message?.includes('wrong-password')) {
-        setError("Invalid credentials. Please verify your password.");
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setError("You appear to be offline. Please check your internet connection.");
+      } else if (errCode === 'auth/wrong-password' || errMsg.includes('wrong-password')) {
+        setError("Invalid password. Please double check and try again.");
+      } else if (isInternal) {
+        setMode('set_password');
+        setError(null);
       } else {
-        setError(err.message || 'Login failed');
+        setError("No account found with this email, or password is incorrect. Please sign up to create an account.");
       }
     } finally {
       setIsLoading(false);

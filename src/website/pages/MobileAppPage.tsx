@@ -83,9 +83,7 @@ export const MobileAppPage = () => {
 
       <main className="flex-grow">
         {/* Hero */}
-        <section className="pt-20 pb-24 px-6 md:px-12 bg-white border-b border-slate-100 relative overflow-hidden">
-          <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-brand-500/4 blur-[120px] rounded-full pointer-events-none" />
-
+        <section className="pt-20 pb-24 px-6 md:px-12 bg-white border-b border-slate-100 relative">
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center relative z-10">
             <div className="space-y-8">
               <button
