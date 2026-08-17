@@ -106,9 +106,9 @@ async function startServer() {
     verify: (req: any, _res, buf) => { req.rawBody = buf; },
   }));
   // F-04 FIX: Fail-fast on missing cookie secret in production
-  const cookieSecret = process.env.COOKIE_SECRET;
+  const cookieSecret = process.env.COOKIE_SECRET || process.env.CSRF_SECRET;
   if (!cookieSecret && process.env.NODE_ENV === 'production') {
-    throw new Error('COOKIE_SECRET env var is required in production');
+    throw new Error('COOKIE_SECRET or CSRF_SECRET env var is required in production');
   }
   app.use(cookieParser(cookieSecret || 'dev-only-cookie-secret'));
 
