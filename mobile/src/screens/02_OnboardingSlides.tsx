@@ -67,7 +67,7 @@ export const OnboardingSlides: React.FC<OnboardingProps> = ({ onNext, onSkip }) 
 
           {/* Clean Isolated 3D Character Illustration */}
           <Image
-            source={require('../../assets/onboarding_telecaller_3d.png')}
+            source={require('../../assets/onboarding_telecaller_3d.jpg')}
             style={styles.illustrationImage}
             resizeMode="contain"
           />
