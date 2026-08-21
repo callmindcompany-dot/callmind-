@@ -73,7 +73,7 @@ export const FounderSection = () => {
             <div className="relative bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
               <Quote size={28} className="text-brand-500/15 absolute -top-3 -left-2 rotate-180" />
               <p className="text-slate-700 text-sm md:text-base leading-relaxed italic font-medium pl-4">
-                "Our vision at CallMind is to liberate sales teams from manual data entry. By turning every mobile SIM call into auto-logged sales intelligence and instant IndiaMART lead action, we give Indian SMEs the unfair advantage to scale revenue rapidly."
+                "Our vision at CallMind is to liberate sales teams from manual data entry. By turning every mobile SIM call into structured CRM intelligence and automating lead capture from all your marketing channels, we give growing businesses the power to close deals faster."
               </p>
               <p className="text-xs font-bold text-brand-600 text-right pr-2">
                 — Vrushabh Shinde, Founder & CEO

@@ -22,19 +22,19 @@ export const LandingPage = () => {
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
       <SEOHead
-        title="CallMind CRM — #1 SIM Telecalling & Lead Management CRM in India"
-        description="India's highest-converting SIM telecalling CRM. Auto-capture leads from IndiaMART, JustDial & Meta Ads in 2 seconds. 1-click SIM dialing, WhatsApp automation & zero cloud audio storage."
+        title="CallMind CRM — SIM Telecalling & Multi-Source Lead Management CRM"
+        description="India's premier SIM telecalling & sales CRM. Auto-capture leads from ads, webhooks, portals & spreadsheets in 2 seconds. 1-click SIM dialing, WhatsApp follow-ups & zero cloud audio storage."
         path="/"
         keywords={[
           'SIM telecalling CRM',
           'telecalling software India',
-          'IndiaMART CRM integration',
-          'JustDial lead auto capture',
+          'multi-source lead management',
+          'sales CRM software India',
           'outbound sales CRM',
           'mobile telecaller app',
           'WhatsApp CRM automation',
-          'call center software Pune Nashik India',
           'lead management system India',
+          'call center software Pune Nashik India',
         ]}
         breadcrumbs={[{ name: 'Home', path: '/' }]}
         jsonLd={[
@@ -61,7 +61,7 @@ export const LandingPage = () => {
             },
             featureList: [
               '1-Click SIM Telecalling',
-              'IndiaMART & JustDial Instant Webhook Ingestion',
+              'Multi-Source Webhook & Spreadsheet Ingestion',
               'Automated Lead Assignment & Round Robin',
               'Offline Call Logging & Auto-Sync',
               '1-Click WhatsApp Follow-ups',

@@ -37,7 +37,7 @@ const QUALITATIVE: Record<string, string[]> = {
     'Performance dashboards',
   ],
   growth: [
-    'IndiaMART lead auto-capture',
+    'Multi-source webhook lead auto-capture',
     'Meta Lead Ads auto-capture',
   ],
   pro: [],

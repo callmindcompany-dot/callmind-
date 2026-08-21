@@ -33,7 +33,7 @@ export const FAQS: Faq[] = [
     category: 'product',
     question: 'What exactly is CallMind?',
     answer:
-      'CallMind is a telecalling CRM for Indian sales teams. Leads are captured automatically from sources like IndiaMART, JustDial, TradeIndia and Meta Lead Ads, assigned to your telecallers, and called from the telecaller’s own mobile SIM through an Android app. Every call outcome syncs back to a central dashboard your admins can see.',
+      'CallMind is a sales & telecalling CRM for Indian businesses. Inbound leads flow automatically from your ad campaigns, website forms, online marketplaces, and Excel/CSV spreadsheets, get distributed to telecallers instantly, and are dialed with 1 tap from mobile SIMs. All call logs, notes, and deal pipelines sync in real-time to your central dashboard.',
   },
   {
     category: 'product',

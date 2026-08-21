@@ -150,7 +150,7 @@ export const ContactPage = () => {
                 </div>
                 <h3 className="text-2xl font-bold font-display">Prefer a live walk-through?</h3>
                 <p className="text-slate-300 font-medium">
-                  Book a quick call with our engineering and product team. We'll help you connect IndiaMART and add your team.
+                  Book a quick call with our product experts. We'll help you connect your lead sources and onboard your team.
                 </p>
                 <div className="flex flex-wrap gap-3 pt-2">
                   <a 
@@ -225,7 +225,7 @@ export const ContactPage = () => {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow resize-none" 
-                    placeholder="I want to connect our IndiaMART account and onboard 5 telecallers..."
+                    placeholder="I want to connect our lead sources and onboard 5 telecallers..."
                   />
                 </div>
 

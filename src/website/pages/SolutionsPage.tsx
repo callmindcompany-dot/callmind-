@@ -11,10 +11,10 @@ const solutions = [
   {
     icon: Building2,
     title: 'B2B Sales Teams',
-    tagline: 'Never Lose an Inbound IndiaMART or Meta Lead',
+    tagline: 'Never Lose an Inbound Buyer Lead',
     description: 'B2B companies receive dozens of inbound inquiries daily. CallMind auto-assigns leads to telecallers instantly and flags untouched leads before they go cold.',
     benefits: [
-      'Instant lead assignment via IndiaMART & Meta webhooks',
+      'Instant lead assignment via webhooks, ads & spreadsheets',
       'Lead rotting alerts for untouched leads (>24 hours)',
       'Stage progression tracking from New to Negotiation',
       'Daily call targets and telecaller quota monitoring',

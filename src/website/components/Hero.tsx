@@ -31,7 +31,7 @@ export const Hero = () => {
           </h1>
 
           <p className="text-base sm:text-lg text-slate-600 max-w-xl font-medium leading-relaxed font-sans">
-            Auto-capture leads from IndiaMART & Meta Ads in under 2 seconds. Dial with 1 tap from your mobile SIM, log notes directly into your CRM, and monitor call quotas in real-time — with zero audio stored.
+            Auto-capture leads from ads, webhooks, marketplaces & spreadsheets in real-time. Dial with 1 tap from your mobile SIM, log notes directly into your CRM, and monitor call quotas with zero audio stored.
           </p>
 
           {/* CTAs */}
@@ -61,7 +61,7 @@ export const Hero = () => {
             <div>
               <div className="text-2xl font-bold text-slate-900 font-grotesk">&lt; 2s</div>
               <div className="text-xs font-semibold text-slate-700 font-sans mt-0.5">Lead Ingress</div>
-              <div className="text-[11px] text-slate-400 font-sans">IndiaMART & Meta Ads</div>
+              <div className="text-[11px] text-slate-400 font-sans">Multi-Source Sync</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-slate-900 font-grotesk">18% GST</div>
@@ -127,11 +127,15 @@ export const Hero = () => {
               <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/80 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 font-mono">
-                    <Zap size={14} /> [WEBHOOK] IndiaMART Buy Lead Received
+                    <Zap size={14} /> [LEAD CAPTURED] Inbound Buyer Inquiry
                   </div>
                   <span className="text-[10px] font-mono text-slate-400">0.8s ago</span>
                 </div>
                 <div className="space-y-1.5 text-xs text-slate-300 font-mono">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Source:</span>
+                    <span className="font-semibold text-brand-400">Meta Ads / Webhook</span>
+                  </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Buyer:</span>
                     <span className="font-semibold text-white">Vikram Shinde (Pune, MH)</span>

@@ -9,9 +9,9 @@ const faqs = [
       'Telecallers open the CallMind Android Mobile App on their phone. When tapping "Call Lead", the app initiates a direct mobile call through the phone\'s native SIM 1 or SIM 2. The call outcome, duration, and timestamp auto-sync directly to your central CRM database.',
   },
   {
-    question: 'How does automatic lead capture from IndiaMART & Meta Ads work?',
+    question: 'How does automatic multi-source lead capture work?',
     answer:
-      'CallMind provides built-in webhook endpoints for IndiaMART GLUSR API and Meta Lead Ads. As soon as a prospective buyer fills an inquiry on IndiaMART or Facebook, CallMind captures the lead within 2 seconds and assigns it directly to your telecallers via round-robin distribution.',
+      'CallMind provides built-in webhook endpoints and connectors for Meta Lead Ads, online marketplaces, website forms, and Excel spreadsheets. Inbound inquiries are captured within seconds and automatically assigned to available telecallers via round-robin distribution.',
   },
   {
     question: 'What is the security difference between Admin Web Dashboard and Telecaller Mobile App?',
@@ -31,7 +31,7 @@ const faqs = [
   {
     question: 'Is there a free trial, and do I need to enter credit card details?',
     answer:
-      'You get a 7-Day Free Trial with full access to up to 2 telecaller seats, IndiaMART lead integration, and Kanban pipelines. No credit card or upfront payment commitment is required to start your trial.',
+      'You get a 7-Day Free Trial with full access to 3 telecaller seats, multi-source lead integrations, and Kanban pipelines. No credit card or upfront payment commitment is required to start your trial.',
   },
 ];
 
