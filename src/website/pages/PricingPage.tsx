@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: 'What payment methods do you accept?',
-    answer: 'We accept Credit/Debit Cards, UPI, Net Banking, and corporate cards via Razorpay payment gateway.',
+    answer: 'We accept Credit/Debit Cards, UPI, Net Banking, and corporate cards via secure, encrypted payment processing with instant GST invoice delivery.',
   },
 ];
 

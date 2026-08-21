@@ -36,7 +36,7 @@ const PRODUCT_MODULES = [
     title: 'Lead Ingestion Engine',
     icon: Zap,
     color: 'text-amber-500 bg-amber-50 border-amber-200',
-    description: 'Auto-captures buy leads from IndiaMART, TradeIndia, Justdial, and Facebook Ads within 2 seconds.',
+    description: 'Auto-captures buy leads from ad campaigns, portals, webhooks, and spreadsheets within 2 seconds.',
     features: [
       'Multi-source API polling & webhook triggers',
       'Automatic phone number sanitization & deduplication',

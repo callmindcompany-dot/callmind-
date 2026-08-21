@@ -145,7 +145,7 @@ export const SecurityPage = () => {
                 // writing several browser-readable tables were still missing
                 // policies (see supabase/migrations/20260730_rls_gap_closure.sql).
                 { title: 'Row-Level Tenant Isolation', text: 'Reads and writes are scoped to your workspace by PostgreSQL Row Level Security policies that check company_id, enforced inside the database rather than in application code.' },
-                { title: 'Sanitized Webhook Payloads', text: 'Inbound webhooks from IndiaMART and Meta Ads are sanitized to prevent injection attacks before stored in your workspace inbox.' },
+                { title: 'Sanitized Webhook Payloads', text: 'Inbound webhooks from all connected marketing and lead channels are sanitized to prevent injection attacks before stored in your workspace inbox.' },
                 { title: 'Role-Based Access Control (RBAC)', text: 'Telecallers cannot export lead databases or access financial settings. Only Founders and Admins hold full workspace permissions.' },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-4 p-6 bg-slate-50 rounded-2xl border border-slate-100">

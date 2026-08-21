@@ -7,7 +7,7 @@ export const CompanyAboutSection = () => {
     {
       icon: Cpu,
       title: 'High-Speed Webhook Architecture',
-      desc: 'Sub-2-second lead auto-ingestion from IndiaMART GLUSR APIs, Meta Lead Ads, and Excel spreadsheets directly to mobile telecallers.',
+      desc: 'Sub-2-second lead auto-ingestion from multi-source webhooks, ad campaigns, and Excel spreadsheets directly to mobile telecallers.',
     },
     {
       icon: ShieldCheck,

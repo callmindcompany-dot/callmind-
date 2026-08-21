@@ -131,18 +131,18 @@ export const IntegrationsPage = () => {
         <section className="py-20 px-6 md:px-12">
           <div className="max-w-6xl mx-auto space-y-24">
             
-            {/* IndiaMART Integration */}
+            {/* Marketplace & B2B Webhooks */}
             <div className="flex flex-col md:flex-row items-center gap-12 lg:gap-24">
               <div className="w-full md:w-1/2 space-y-6">
                 <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center border border-brand-100 shadow-sm">
                   <Database size={32} />
                 </div>
-                <h2 className="text-3xl font-black text-slate-900 font-display">IndiaMART CRM Sync</h2>
+                <h2 className="text-3xl font-black text-slate-900 font-display">Marketplace & Webhook Ingestion</h2>
                 <p className="text-lg text-slate-500 font-medium">
-                  Use our GLUSR webhook to instantly capture every IndiaMART inquiry. The moment a buyer sends a message, it rings on your telecaller's phone.
+                  Use CallMind webhooks to instantly capture B2B inquiries from IndiaMART, TradeIndia, and custom websites. The moment a buyer inquires, it routes straight to your telecallers' mobile app.
                 </p>
                 <ul className="space-y-3">
-                  {['Zero API coding required', 'Auto-assign to available agents', 'Lead de-duplication enabled'].map((feature, i) => (
+                  {['Zero complex coding required', 'Auto-assign to available telecallers', 'Instant lead de-duplication'].map((feature, i) => (
                     <li key={i} className="flex items-center gap-3 text-slate-700 font-semibold text-sm">
                       <CheckCircle2 size={18} className="text-emerald-500" />
                       {feature}
@@ -153,7 +153,7 @@ export const IntegrationsPage = () => {
               <div className="w-full md:w-1/2">
                 <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
                   <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <span className="font-bold text-slate-800">New IndiaMART Lead</span>
+                    <span className="font-bold text-slate-800">Inbound B2B Lead</span>
                     <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md font-bold">Auto-Assigned</span>
                   </div>
                   <div className="mt-4 space-y-2">

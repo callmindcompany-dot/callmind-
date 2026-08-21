@@ -34,7 +34,7 @@ const phoneSteps = [
     title: 'Lead Assigned',
     content: (
       <div className="space-y-2">
-        <div className="text-xs font-semibold text-brand-600">New Lead via IndiaMART</div>
+        <div className="text-xs font-semibold text-brand-600">Inbound Qualified Lead</div>
         <div className="text-sm font-bold text-slate-900">Rajesh Kumar</div>
         <div className="text-xs text-slate-500">+91 98XXX XXXXX · Interested in Product Demo</div>
       </div>

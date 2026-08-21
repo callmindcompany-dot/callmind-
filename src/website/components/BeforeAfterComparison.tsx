@@ -11,10 +11,10 @@ export const BeforeAfterComparison = () => {
       solutionDesc: 'Dial instantly from Android SIM 1 or SIM 2 with zero manual typing and automatic duration tracking.',
     },
     {
-      problemTitle: 'IndiaMART Leads Sit Idle',
-      problemDesc: 'Inquiries sit in email inboxes for hours before telecallers see them, losing hot buyer intent.',
+      problemTitle: 'Inbound Leads Sit Idle in Inboxes',
+      problemDesc: 'Inquiries sit in email inboxes or spreadsheets for hours before telecallers see them, losing hot buyer intent.',
       solutionTitle: 'Sub-2s Webhook Ingress',
-      solutionDesc: 'IndiaMART & Meta Ads leads route directly to checked-in telecallers on their phones in under 2 seconds.',
+      solutionDesc: 'Inbound leads from ad campaigns, webhooks & forms route directly to active telecallers in under 2 seconds.',
     },
     {
       problemTitle: 'Zero Real-Time Visibility',

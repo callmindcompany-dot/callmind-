@@ -19,9 +19,9 @@ const webScreens = [
   },
   {
     id: 'ingestion',
-    title: 'IndiaMART & Meta Webhook Engine',
+    title: 'Multi-Source Lead Webhook Engine',
     badge: 'Webhook Engine',
-    desc: 'Auto-capture prospective buyers from IndiaMART GLUSR API and Meta Lead Ads in sub-2 seconds directly to telecaller queues.',
+    desc: 'Auto-capture prospective buyers from ad campaigns, website forms, and online marketplaces in sub-2 seconds directly to telecaller queues.',
     bullets: [
       'Sub-2s lead auto-ingestion with smart duplicate detection',
       'Automatic round-robin assignment to active mobile telecallers',
@@ -46,7 +46,7 @@ const webScreens = [
     desc: 'Generate PDF tax invoices with complete CGST (9%) + SGST (9%) breakdowns for every subscription payment.',
     bullets: [
       'Automated 18% GST tax invoices for business accounting credit',
-      'Downloadable PDF linked with Razorpay subscription payment ID',
+      'Downloadable PDF with official transaction and tax ID details',
     ],
     imageSrc: '/ui-images/web-ui-4.png',
   },
@@ -72,7 +72,7 @@ export const WebAppShowcase = () => {
             Built For Business Owners & Sales Admins
           </h2>
           <p className="text-base text-slate-500 font-medium">
-            Monitor telecalling performance, auto-capture IndiaMART leads, manage sales pipelines, and download 18% GST invoices in one central control hub.
+            Monitor telecalling performance, auto-capture inbound leads, manage sales pipelines, and download 18% GST invoices in one central control hub.
           </p>
         </div>
 

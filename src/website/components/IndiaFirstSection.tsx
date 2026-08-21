@@ -24,9 +24,9 @@ const pillars = [
   },
   {
     icon: MapPin,
-    constraint: 'Your leads come from Indian marketplaces',
-    title: 'IndiaMART, JustDial, TradeIndia built in',
-    body: 'The lead sources Indian businesses actually buy from are wired in directly — not left to you to build with a generic webhook.',
+    constraint: 'Your leads come from multiple marketplaces & ads',
+    title: 'Ad campaigns & portals built in',
+    body: 'The lead sources Indian businesses actually rely on — from ad campaigns and online portals to spreadsheets — are wired in directly.',
   },
   {
     icon: FileText,

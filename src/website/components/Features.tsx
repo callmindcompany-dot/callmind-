@@ -7,7 +7,7 @@ const features = [
   {
     icon: Database,
     title: 'Multi-Source Lead Capture',
-    description: 'Auto-import leads from IndiaMART GLUSR webhooks, Meta Lead Ads, Google Sheets, Excel/CSV files, and custom API endpoints.',
+    description: 'Auto-import leads from webhooks, Meta Lead Ads, Google Sheets, Excel/CSV files, and custom API endpoints.',
     tag: 'Webhooks',
   },
   {

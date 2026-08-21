@@ -8,7 +8,7 @@ export const IntegrationsBar = () => {
     { name: 'TradeIndia Leads', tag: 'Automated Sync', detail: 'Buyer Inquiries' },
     { name: 'JustDial Enquiries', tag: 'Direct Capture', detail: 'Instant Assignment' },
     { name: 'Google Sheets & CSV', tag: 'Live Sync', detail: 'Clean Data Mapping' },
-    { name: 'Razorpay 18% GST', tag: 'B2B Invoices', detail: 'Instant ITC Credit' },
+    { name: '18% GST Invoicing', tag: 'B2B Tax Credit', detail: 'Instant ITC Invoices' },
   ];
 
   return (

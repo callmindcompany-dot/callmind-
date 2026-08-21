@@ -14,7 +14,7 @@ export const ProductSimulator = () => {
             See how leads flow <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-400">instantly.</span>
           </h2>
           <p className="text-lg text-slate-500 font-medium font-sans">
-            No fake promises. Watch how an IndiaMART inquiry reaches your telecaller's phone in under 3 seconds.
+            No fake promises. Watch how an inbound buyer inquiry reaches your telecaller's phone in under 3 seconds.
           </p>
         </div>
 
@@ -43,7 +43,7 @@ export const ProductSimulator = () => {
                   viewport={{ once: true }}
                 >
                   <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                    <span className="text-xs font-bold text-slate-500">GLUSR Payload</span>
+                    <span className="text-xs font-bold text-slate-500">Inbound Webhook</span>
                     <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded">200 OK</span>
                   </div>
                   <div>

@@ -71,7 +71,7 @@ export const PlatformPage = () => {
             description:
               'Complete telecalling CRM architecture with lead capture, mobile SIM dialer, automation rules, WhatsApp integration, and analytics.',
             featureList: [
-              'Multi-Source Ingestion (IndiaMART, JustDial, Meta Ads, Webhooks)',
+              'Multi-Source Ingestion (Ad Campaigns, Webhooks, Portals & Spreadsheets)',
               '1-Click Mobile GSM SIM Dialing',
               'Rule-Based Lead Assignment (Round Robin & Weighted)',
               'Follow-up Reminders & Automatic Escalation',
