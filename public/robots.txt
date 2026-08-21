@@ -29,4 +29,4 @@ Allow: /
 User-agent: ClaudeBot
 Allow: /
 
-Sitemap: https://callmind.app/sitemap.xml
+Sitemap: https://callmind-crm-app.onrender.com/sitemap.xml
