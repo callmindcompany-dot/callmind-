@@ -7,8 +7,9 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
-import { ArrowLeft, User, Phone, MapPin, Target, CheckCircle2, ChevronRight, Briefcase } from 'lucide-react-native';
+import { User, Phone, MapPin, Briefcase, ArrowRight, ShieldCheck } from 'lucide-react-native';
 
 interface UserInfoCollectionProps {
   onComplete: (data: {
@@ -22,222 +23,186 @@ interface UserInfoCollectionProps {
   loading?: boolean;
 }
 
+const ROLES = [
+  { id: 'Telecaller', label: 'Telecaller', desc: 'Outbound & inbound call executive' },
+  { id: 'Sales Executive', label: 'Sales Executive', desc: 'Direct client acquisition & closing' },
+  { id: 'Team Lead', label: 'Team Lead', desc: 'Manages sales floor & target tracking' },
+];
+
+import { useMobileAuth } from '../services/AuthContext';
+
 export const UserInfoCollection: React.FC<UserInfoCollectionProps> = ({
   onComplete,
-  onBack,
   loading = false,
 }) => {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const { user, profile } = useMobileAuth();
+  const [name, setName] = useState(profile?.name || user?.user_metadata?.full_name || '');
+  const [phone, setPhone] = useState(profile?.phone || '');
+  const [city, setCity] = useState(profile?.city || '');
+  const [designation, setDesignation] = useState(profile?.designation || 'Telecaller');
+  const [localLoading, setLocalLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Step 1 State
-  const [name, setName] = useState('');
-  const [designation, setDesignation] = useState<'Telecaller' | 'Team Lead' | 'Floor Manager'>('Telecaller');
+  const isBusy = loading || localLoading;
 
-  // Step 2 State
-  const [phone, setPhone] = useState('');
-  const [city, setCity] = useState('');
-
-  // Step 3 State
-  const [selectedGoals, setSelectedGoals] = useState<string[]>(['Lead Management']);
-
-  const designations = [
-    { id: 'Telecaller', label: 'Telecaller', desc: 'Outbound & inbound call executive' },
-    { id: 'Team Lead', label: 'Team Lead', desc: 'Manages telecalling team & targets' },
-    { id: 'Floor Manager', label: 'Floor Manager', desc: 'Oversees daily sales operations' },
-  ];
-
-  const availableGoals = [
-    { id: 'Lead Management', label: 'Lead Management', desc: 'Organize and track prospective clients' },
-    { id: 'Call Tracking', label: 'Call Tracking', desc: 'Log calls, recordings and analytics' },
-    { id: 'Team Performance', label: 'Team Performance', desc: 'Monitor KPIs and leaderboards' },
-    { id: 'All', label: 'All of the Above', desc: 'Full suite of CallMind sales tools' },
-  ];
-
-  const toggleGoal = (goalId: string) => {
-    if (goalId === 'All') {
-      setSelectedGoals(['Lead Management', 'Call Tracking', 'Team Performance', 'All']);
+  const handleSubmit = async () => {
+    setError(null);
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError('Please enter your full name');
       return;
     }
-    if (selectedGoals.includes(goalId)) {
-      setSelectedGoals(selectedGoals.filter(g => g !== goalId && g !== 'All'));
-    } else {
-      setSelectedGoals([...selectedGoals.filter(g => g !== 'All'), goalId]);
-    }
-  };
 
-  const handleNext = () => {
-    if (step === 1 && name.trim()) {
-      setStep(2);
-    } else if (step === 2) {
-      setStep(3);
-    } else if (step === 3) {
-      onComplete({
-        name: name.trim(),
+    try {
+      setLocalLoading(true);
+      await onComplete({
+        name: trimmedName,
         designation,
         phone: phone.trim(),
         city: city.trim(),
-        goals: selectedGoals,
+        goals: ['Lead Management', 'Call Tracking'],
       });
-    }
-  };
-
-  const handlePrevStep = () => {
-    if (step > 1) {
-      setStep((step - 1) as 1 | 2 | 3);
-    } else if (onBack) {
-      onBack();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to complete profile. Please try again.');
+    } finally {
+      setLocalLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header Bar */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={handlePrevStep} activeOpacity={0.7}>
-          <ArrowLeft size={20} color="#0f172a" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Complete Your Profile</Text>
-        <Text style={styles.stepBadge}>Step {step} of 3</Text>
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header Section */}
+        <View style={styles.header}>
+          <View style={styles.iconCircle}>
+            <User size={28} color="#2563eb" strokeWidth={2.2} />
+          </View>
+          <Text style={styles.title}>Complete Your Profile</Text>
+          <Text style={styles.subtitle}>
+            Enter your details to set up your personal telecaller workspace.
+          </Text>
+        </View>
 
-      {/* Progress Bar */}
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: step === 1 ? '33%' : step === 2 ? '66%' : '100%' }]} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {step === 1 && (
-          <View style={styles.stepContainer}>
-            <Text style={styles.title}>Basic Details</Text>
-            <Text style={styles.subtitle}>Enter your full name and select your role in the team</Text>
-
-            {/* Name Input */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Full Name *</Text>
-              <View style={styles.inputWrapper}>
-                <User size={18} color="#64748b" />
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Rahul Sharma"
-                  placeholderTextColor="#94a3b8"
-                  value={name}
-                  onChangeText={setName}
-                />
-              </View>
-            </View>
-
-            {/* Designation Selector */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Your Designation</Text>
-              {designations.map(item => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.roleCard, designation === item.id && styles.roleCardActive]}
-                  onPress={() => setDesignation(item.id as any)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.roleHeader}>
-                    <Briefcase size={18} color={designation === item.id ? '#2563eb' : '#64748b'} />
-                    <Text style={[styles.roleLabel, designation === item.id && styles.roleLabelActive]}>
-                      {item.label}
-                    </Text>
-                  </View>
-                  <Text style={styles.roleDesc}>{item.desc}</Text>
-                </TouchableOpacity>
-              ))}
+        {/* Form Fields */}
+        <View style={styles.formSection}>
+          {/* Full Name */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Full Name <Text style={styles.required}>*</Text></Text>
+            <View style={styles.inputWrapper}>
+              <User size={18} color="#64748b" />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your full name"
+                placeholderTextColor="#94a3b8"
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
             </View>
           </View>
-        )}
 
-        {step === 2 && (
-          <View style={styles.stepContainer}>
-            <Text style={styles.title}>Contact & Location</Text>
-            <Text style={styles.subtitle}>Add your contact phone and work location city</Text>
-
-            {/* Phone Input */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phone Number (Optional)</Text>
-              <View style={styles.inputWrapper}>
-                <Phone size={18} color="#64748b" />
-                <TextInput
-                  style={styles.input}
-                  placeholder="+91 98765 43210"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="phone-pad"
-                  value={phone}
-                  onChangeText={setPhone}
-                />
-              </View>
-            </View>
-
-            {/* City Input */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>City / Location</Text>
-              <View style={styles.inputWrapper}>
-                <MapPin size={18} color="#64748b" />
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Mumbai, Bengaluru, Delhi"
-                  placeholderTextColor="#94a3b8"
-                  value={city}
-                  onChangeText={setCity}
-                />
-              </View>
+          {/* Phone Number */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Phone Number</Text>
+            <View style={styles.inputWrapper}>
+              <Phone size={18} color="#64748b" />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter 10-digit mobile number"
+                placeholderTextColor="#94a3b8"
+                keyboardType="phone-pad"
+                value={phone}
+                onChangeText={setPhone}
+                maxLength={15}
+              />
             </View>
           </View>
-        )}
 
-        {step === 3 && (
-          <View style={styles.stepContainer}>
-            <Text style={styles.title}>Primary Goals</Text>
-            <Text style={styles.subtitle}>What will you primarily use CallMind for?</Text>
-
-            <View style={styles.goalsGrid}>
-              {availableGoals.map(goal => {
-                const isSelected = selectedGoals.includes(goal.id);
+          {/* Role / Designation Selector */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Your Role / Designation</Text>
+            <View style={styles.roleList}>
+              {ROLES.map(role => {
+                const isSelected = designation === role.id;
                 return (
                   <TouchableOpacity
-                    key={goal.id}
-                    style={[styles.goalCard, isSelected && styles.goalCardActive]}
-                    onPress={() => toggleGoal(goal.id)}
+                    key={role.id}
+                    style={[styles.roleCard, isSelected && styles.roleCardActive]}
+                    onPress={() => setDesignation(role.id)}
                     activeOpacity={0.8}
                   >
-                    <View style={styles.goalHeader}>
-                      <Target size={18} color={isSelected ? '#2563eb' : '#64748b'} />
-                      <Text style={[styles.goalTitle, isSelected && styles.goalTitleActive]}>
-                        {goal.label}
+                    <View style={styles.roleCardHeader}>
+                      <Briefcase size={16} color={isSelected ? '#2563eb' : '#64748b'} />
+                      <Text style={[styles.roleTitle, isSelected && styles.roleTitleActive]}>
+                        {role.label}
                       </Text>
-                      {isSelected && <CheckCircle2 size={16} color="#2563eb" style={{ marginLeft: 'auto' }} />}
+                      {isSelected && <View style={styles.selectedDot} />}
                     </View>
-                    <Text style={styles.goalDesc}>{goal.desc}</Text>
+                    <Text style={styles.roleDesc}>{role.desc}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
           </View>
+
+          {/* City */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>City / Work Location</Text>
+            <View style={styles.inputWrapper}>
+              <MapPin size={18} color="#64748b" />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your city"
+                placeholderTextColor="#94a3b8"
+                value={city}
+                onChangeText={setCity}
+                autoCapitalize="words"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Error Banner if any */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
         )}
+
+        {/* Security & Privacy Note */}
+        <View style={styles.trustBadge}>
+          <ShieldCheck size={16} color="#16a34a" />
+          <Text style={styles.trustText}>
+            Your details are encrypted and private to your team workspace.
+          </Text>
+        </View>
       </ScrollView>
 
-      {/* Footer CTA */}
+      {/* Footer Submit Button */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[
-            styles.continueBtn,
-            (step === 1 && !name.trim()) && styles.continueBtnDisabled,
-            loading && styles.continueBtnDisabled,
+            styles.submitButton,
+            !name.trim() && styles.submitButtonDisabled,
+            isBusy && styles.submitButtonDisabled,
           ]}
-          onPress={handleNext}
-          disabled={(step === 1 && !name.trim()) || loading}
+          onPress={handleSubmit}
+          disabled={!name.trim() || isBusy}
           activeOpacity={0.85}
+          accessibilityLabel="Complete Profile and Continue"
+          accessibilityRole="button"
         >
-          {loading ? (
+          {isBusy ? (
             <ActivityIndicator color="#ffffff" size="small" />
           ) : (
             <>
-              <Text style={styles.continueBtnText}>
-                {step === 3 ? 'Save & Continue' : 'Next Step'}
-              </Text>
-              <ChevronRight size={18} color="#ffffff" />
+              <Text style={styles.submitButtonText}>Complete Profile &amp; Continue</Text>
+              <ArrowRight size={18} color="#ffffff" strokeWidth={2.5} />
             </>
           )}
         </TouchableOpacity>
@@ -250,87 +215,68 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
-    paddingTop: 50,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#f8fafc',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  stepBadge: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#2563eb',
-    backgroundColor: '#eff6ff',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  progressTrack: {
-    height: 4,
-    backgroundColor: '#f1f5f9',
-    width: '100%',
-    marginBottom: 16,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#2563eb',
-    borderRadius: 2,
+    paddingTop: Platform.OS === 'ios' ? 54 : 46,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
+    paddingHorizontal: 22,
+    paddingBottom: 110,
   },
-  stepContainer: {
-    gap: 16,
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  iconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    backgroundColor: '#eff6ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
   },
   title: {
     fontSize: 24,
     fontWeight: '800',
     color: '#0f172a',
     letterSpacing: -0.5,
+    marginBottom: 6,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
     color: '#64748b',
     fontWeight: '500',
-    marginBottom: 8,
+    textAlign: 'center',
     lineHeight: 20,
+    paddingHorizontal: 12,
+  },
+  formSection: {
+    gap: 16,
   },
   inputGroup: {
-    gap: 8,
+    gap: 7,
   },
   label: {
     fontSize: 13,
     fontWeight: '700',
     color: '#334155',
   },
+  required: {
+    color: '#ef4444',
+    fontWeight: '800',
+  },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8fafc',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#e2e8f0',
     borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
     gap: 10,
   },
   input: {
@@ -339,71 +285,78 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontWeight: '500',
   },
+  roleList: {
+    gap: 8,
+  },
   roleCard: {
     backgroundColor: '#f8fafc',
     borderWidth: 1.5,
     borderColor: '#e2e8f0',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 6,
+    borderRadius: 14,
+    padding: 12,
   },
   roleCardActive: {
     backgroundColor: '#eff6ff',
     borderColor: '#2563eb',
   },
-  roleHeader: {
+  roleCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  roleLabel: {
-    fontSize: 15,
+  roleTitle: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#0f172a',
   },
-  roleLabelActive: {
+  roleTitleActive: {
     color: '#2563eb',
+  },
+  selectedDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2563eb',
+    marginLeft: 'auto',
   },
   roleDesc: {
     fontSize: 12,
     color: '#64748b',
     fontWeight: '500',
-    paddingLeft: 26,
+    paddingLeft: 24,
   },
-  goalsGrid: {
-    gap: 10,
-  },
-  goalCard: {
-    backgroundColor: '#f8fafc',
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 16,
-    padding: 14,
-  },
-  goalCardActive: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#2563eb',
-  },
-  goalHeader: {
+  trustBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+    marginTop: 20,
   },
-  goalTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  goalTitleActive: {
-    color: '#2563eb',
-  },
-  goalDesc: {
+  trustText: {
+    flex: 1,
     fontSize: 12,
-    color: '#64748b',
-    fontWeight: '500',
-    paddingLeft: 26,
+    color: '#15803d',
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  errorContainer: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#dc2626',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   footer: {
     position: 'absolute',
@@ -411,12 +364,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#ffffff',
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     paddingVertical: 16,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
   },
-  continueBtn: {
+  submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -426,14 +380,16 @@ const styles = StyleSheet.create({
     gap: 8,
     shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 3,
   },
-  continueBtnDisabled: {
-    opacity: 0.5,
+  submitButtonDisabled: {
+    backgroundColor: '#94a3b8',
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  continueBtnText: {
+  submitButtonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '700',

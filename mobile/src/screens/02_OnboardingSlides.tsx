@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Platform } from 'react-native';
 import { Users, PhoneCall, TrendingUp, Phone, BarChart2 } from 'lucide-react-native';
 
 interface OnboardingProps {
@@ -53,19 +53,8 @@ export const OnboardingSlides: React.FC<OnboardingProps> = ({ onNext, onSkip }) 
           Everything you need to manage leads, calls and performance right from your pocket.
         </Text>
 
-        {/* 🎨 Seamless 3D Graphic Hero Composition (No Boxy Edges / 100% Native Design) */}
+        {/* 🎨 High-End 3D Character & Live Analytics Graphic */}
         <View style={styles.illustrationHeroCard}>
-          {/* Floating Call Badge */}
-          <View style={styles.floatingCallBadge}>
-            <Phone size={18} color="#ffffff" />
-          </View>
-
-          {/* Floating Chart Badge */}
-          <View style={styles.floatingChartBadge}>
-            <BarChart2 size={18} color="#2563eb" />
-          </View>
-
-          {/* Clean Isolated 3D Character Illustration */}
           <Image
             source={require('../../assets/onboarding_telecaller_3d.jpg')}
             style={styles.illustrationImage}
@@ -120,7 +109,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
-    paddingTop: 50,
+    paddingTop: Platform.OS === 'ios' ? 54 : 46,
     paddingHorizontal: 24,
     paddingBottom: 24,
   },
@@ -158,52 +147,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   illustrationHeroCard: {
-    height: 190,
+    height: 220,
     backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-    position: 'relative',
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   illustrationImage: {
     width: '100%',
     height: '100%',
-  },
-  floatingCallBadge: {
-    position: 'absolute',
-    left: 12,
-    top: 24,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#16a34a',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-    shadowColor: '#16a34a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  floatingChartBadge: {
-    position: 'absolute',
-    right: 12,
-    top: 28,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#eff6ff',
-    borderWidth: 1.5,
-    borderColor: '#dbeafe',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
   featureList: {
     gap: 12,

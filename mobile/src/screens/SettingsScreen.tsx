@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { appLockService } from '../services/appLockService';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
-import { Edit2, Fingerprint, Info, LogOut, CalendarCheck, BarChart3, Trash2, ChevronRight, Target, FileText, Bell, HelpCircle } from 'lucide-react-native';
+import { Edit2, Fingerprint, Info, LogOut, CalendarCheck, BarChart3, Trash2, ChevronRight, Target, FileText, Bell, HelpCircle, Building2, ShieldCheck } from 'lucide-react-native';
 import { useMobileAuth } from '../services/AuthContext';
 import appJson from '../../app.json';
 
@@ -17,13 +17,8 @@ interface SettingsScreenProps {
   onOpenPerformance?: () => void;
   /** Opens DeleteAccountScreen. Required by the Play Store. */
   onDeleteAccount?: () => void;
-  /*
-   * The seven below were screens App.tsx rendered in a switch case that nothing
-   * could reach. TargetScreen, DocumentsScreen, HelpCenterScreen,
-   * AboutAppScreen, LanguageSelectionScreen and NotificationCenterScreen were
-   * all written, all wired into the router, and unreachable from any button in
-   * the app -- thirteen of twenty-eight screens were in that state.
-   */
+  /** Opens JoinCompany screen to connect to team workspace. */
+  onOpenJoinCompany?: () => void;
   onOpenTargets?: () => void;
   onOpenDocuments?: () => void;
   onOpenHelp?: () => void;
@@ -38,6 +33,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onOpenAttendance,
   onOpenPerformance,
   onDeleteAccount,
+  onOpenJoinCompany,
   onOpenTargets,
   onOpenDocuments,
   onOpenHelp,
@@ -115,6 +111,31 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </View>
             <Text style={styles.profilePhone}>{displayPhone}</Text>
             <Text style={styles.profileEmail}>{displayEmail}</Text>
+          </View>
+        </View>
+
+        {/* Company Workspace Card */}
+        <View style={styles.workspaceCard}>
+          <View style={styles.workspaceHeader}>
+            <View style={styles.workspaceIconCircle}>
+              <Building2 size={20} color="#2563eb" />
+            </View>
+            <View style={styles.workspaceMeta}>
+              <Text style={styles.workspaceLabel}>Company Workspace</Text>
+              <Text style={styles.workspaceName}>
+                {profile?.companyName || 'Independent Workspace'}
+              </Text>
+            </View>
+            {profile?.companyName ? (
+              <View style={styles.connectedBadge}>
+                <ShieldCheck size={12} color="#15803d" />
+                <Text style={styles.connectedText}>Connected</Text>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.joinBtn} onPress={onOpenJoinCompany} activeOpacity={0.8}>
+                <Text style={styles.joinBtnText}>Join Team</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -378,6 +399,68 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#bfdbfe',
     marginTop: 1,
+  },
+  workspaceCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    padding: 16,
+    marginBottom: 20,
+  },
+  workspaceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  workspaceIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#eff6ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  workspaceMeta: {
+    flex: 1,
+  },
+  workspaceLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  workspaceName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginTop: 2,
+  },
+  connectedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  connectedText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#15803d',
+  },
+  joinBtn: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  joinBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
   },
   sectionTitle: {
     fontSize: 15,

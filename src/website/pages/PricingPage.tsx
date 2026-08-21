@@ -180,6 +180,110 @@ export const PricingPage = () => {
           </p>
         </section>
 
+        {/* Clean Side-by-Side Plan Comparison Table */}
+        <section className="py-16 px-6 md:px-12 bg-white border-t border-slate-100">
+          <div className="max-w-6xl mx-auto space-y-8">
+            <div className="text-center space-y-3">
+              <span className="inline-block px-3.5 py-1 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-xs font-bold">
+                Feature Comparison
+              </span>
+              <h2 className="text-3xl md:text-4xl font-black text-slate-900 font-display">
+                Detailed Plan Feature Matrix
+              </h2>
+              <p className="text-sm text-slate-500 font-medium max-w-xl mx-auto">
+                100% transparent specifications. No hidden limits, no surprise add-on charges.
+              </p>
+            </div>
+
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="py-4 px-6 font-bold text-slate-900 w-2/5">Capabilities & Limits</th>
+                    <th className="py-4 px-6 font-bold text-slate-900 text-center w-1/5">Starter</th>
+                    <th className="py-4 px-6 font-bold text-brand-600 text-center w-1/5">Growth</th>
+                    <th className="py-4 px-6 font-bold text-slate-900 text-center w-1/5">Pro</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Telecaller Seat Capacity</td>
+                    <td className="py-3.5 px-6 text-center">1 – 10 Seats</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">1 – 25 Seats</td>
+                    <td className="py-3.5 px-6 text-center font-bold">1 – 50 Seats</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Admin & Manager Accounts</td>
+                    <td className="py-3.5 px-6 text-center">1 Admin</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">2 Admins</td>
+                    <td className="py-3.5 px-6 text-center font-bold">3 Admins</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Total Leads Stored</td>
+                    <td className="py-3.5 px-6 text-center">10,000 Leads</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">25,000 Leads</td>
+                    <td className="py-3.5 px-6 text-center font-bold">50,000 Leads</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">1-Click SIM Telecalling (Android)</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Included</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Included</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Included</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Zero Audio Storage (Carrier Privacy)</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ 100% Private</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ 100% Private</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ 100% Private</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Active Lead Source Integrations</td>
+                    <td className="py-3.5 px-6 text-center">1 Source</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">3 Sources</td>
+                    <td className="py-3.5 px-6 text-center font-bold">Unlimited</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Round-Robin & Sequential Routing</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Included</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Included</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Included</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Offline Calling & Auto-Sync</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Included</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Included</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Included</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Document Storage per Seat</td>
+                    <td className="py-3.5 px-6 text-center">2 GB / seat</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">3 GB / seat</td>
+                    <td className="py-3.5 px-6 text-center font-bold">5 GB / seat</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Recycle Bin Data Recovery</td>
+                    <td className="py-3.5 px-6 text-center">7 Days</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">15 Days</td>
+                    <td className="py-3.5 px-6 text-center font-bold">30 Days</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">GST Tax Invoices with ITC (18%)</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Downloadable</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Downloadable</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Downloadable</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Support SLA</td>
+                    <td className="py-3.5 px-6 text-center">Email (48h)</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">Priority Chat (24h)</td>
+                    <td className="py-3.5 px-6 text-center font-bold">WhatsApp Priority (12h)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
         {/* FAQs */}
         <section className="py-20 px-6 md:px-12 bg-white border-t border-slate-100">
           <div className="max-w-4xl mx-auto space-y-10">

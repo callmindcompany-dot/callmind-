@@ -98,6 +98,35 @@ export const IntegrationsPage = () => {
           </p>
         </section>
 
+        {/* 3-Step Setup Guide */}
+        <section className="py-10 px-6 md:px-12 bg-white border-b border-slate-100">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                <div className="w-8 h-8 rounded-full bg-brand-600 text-white font-black text-sm flex items-center justify-center">1</div>
+                <h3 className="font-bold text-slate-900 text-base">Copy Webhook URL</h3>
+                <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                  Go to CallMind Settings ➔ Integrations and copy your company's dedicated secure webhook endpoint.
+                </p>
+              </div>
+              <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                <div className="w-8 h-8 rounded-full bg-brand-600 text-white font-black text-sm flex items-center justify-center">2</div>
+                <h3 className="font-bold text-slate-900 text-base">Paste in Lead Source</h3>
+                <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                  Paste the URL and GLUSR key into IndiaMART, JustDial, or Meta Ads Lead settings.
+                </p>
+              </div>
+              <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-black text-sm flex items-center justify-center">3</div>
+                <h3 className="font-bold text-slate-900 text-base">Instant Auto-Dialing</h3>
+                <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                  Incoming leads are automatically routed to active telecallers' mobile app in under 2 seconds.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Integration Cards */}
         <section className="py-20 px-6 md:px-12">
           <div className="max-w-6xl mx-auto space-y-24">

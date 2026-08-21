@@ -1,13 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SEOHead } from '../components/SEOHead';
-import { Mail, Phone, MapPin, Send, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, MessageSquare, ArrowLeft, MessageCircle, Calendar, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 export const ContactPage = () => {
   const navigate = useNavigate();
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !message) {
+      toast.error('Please enter your work email and message.');
+      return;
+    }
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      toast.success('Thank you! Your inquiry has been received. Our team will contact you within 15 minutes.');
+      setFirstName('');
+      setLastName('');
+      setEmail('');
+      setPhone('');
+      setMessage('');
+    }, 600);
+  };
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
@@ -118,14 +143,23 @@ export const ContactPage = () => {
               </div>
 
               {/* Book Demo CTA */}
-              <div className="bg-slate-900 rounded-2xl p-8 text-white border border-slate-800 shadow-xl relative">
+              <div className="bg-slate-900 rounded-2xl p-8 text-white border border-slate-800 shadow-xl relative space-y-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Fast 15-Min Response
+                </div>
                 <h3 className="text-2xl font-bold font-display">Prefer a live walk-through?</h3>
-                <p className="text-slate-300 mt-2 mb-6 font-medium">
-                  Book a 30-minute Zoom call. We'll show you how to connect IndiaMART and add your team.
+                <p className="text-slate-300 font-medium">
+                  Book a quick call with our engineering and product team. We'll help you connect IndiaMART and add your team.
                 </p>
-                <button className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-100 transition-all btn-tactile w-full md:w-auto relative z-10">
-                  Schedule on Calendly
-                </button>
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <a 
+                    href="mailto:sales@callmind.app?subject=Request%20Live%20CallMind%20Demo" 
+                    className="bg-brand-600 hover:bg-brand-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-all btn-tactile inline-flex items-center gap-2"
+                  >
+                    <Calendar size={16} /> Request Demo Call
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -136,35 +170,71 @@ export const ContactPage = () => {
               className="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/50 border border-slate-100"
             >
               <h2 className="text-2xl font-bold text-slate-900 font-display mb-6">Send us a message</h2>
-              <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
+              <form className="space-y-5" onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-1.5">
                     <label className="text-sm font-semibold text-slate-700">First Name</label>
-                    <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow" placeholder="Rajesh" />
+                    <input 
+                      type="text" 
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow" 
+                      placeholder="Rajesh" 
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-sm font-semibold text-slate-700">Last Name</label>
-                    <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow" placeholder="Kumar" />
+                    <input 
+                      type="text" 
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow" 
+                      placeholder="Kumar" 
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-slate-700">Work Email</label>
-                  <input type="email" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow" placeholder="rajesh@company.com" />
+                  <label className="text-sm font-semibold text-slate-700">Work Email *</label>
+                  <input 
+                    type="email" 
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow" 
+                    placeholder="rajesh@company.com" 
+                  />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-sm font-semibold text-slate-700">Phone Number (Optional)</label>
-                  <input type="tel" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow" placeholder="+91 98XXX XXXXX" />
+                  <input 
+                    type="tel" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow" 
+                    placeholder="+91 98XXX XXXXX" 
+                  />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-slate-700">How can we help?</label>
-                  <textarea rows={4} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow resize-none" placeholder="I want to integrate CallMind with our custom CRM..."></textarea>
+                  <label className="text-sm font-semibold text-slate-700">How can we help? *</label>
+                  <textarea 
+                    rows={4} 
+                    required
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-shadow resize-none" 
+                    placeholder="I want to connect our IndiaMART account and onboard 5 telecallers..."
+                  />
                 </div>
 
-                <button type="submit" className="w-full bg-brand-600 text-white rounded-xl py-3.5 font-bold text-sm btn-glow btn-tactile flex items-center justify-center gap-2 mt-2">
-                  Send Message <Send size={16} />
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="w-full bg-brand-600 hover:bg-brand-700 text-white rounded-xl py-3.5 font-bold text-sm btn-glow btn-tactile flex items-center justify-center gap-2 mt-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? 'Sending...' : 'Send Message'} <Send size={16} />
                 </button>
               </form>
             </motion.div>

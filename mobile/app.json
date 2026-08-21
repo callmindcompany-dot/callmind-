@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "CallMind Telecaller",
-    "slug": "callmind",
-    "owner": "callminds-team",
+    "slug": "callmind-crm",
+    "owner": "vooolabs-technologies",
     "version": "2.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -33,7 +33,8 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "CAMERA"
       ]
     },
     "web": {
@@ -48,11 +49,17 @@
           "locationWhenInUsePermission": "CallMind uses your location only when you mark attendance, to record where you punched in."
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "CallMind needs camera access to scan your team QR code."
+        }
+      ],
       "expo-notifications"
     ],
     "extra": {
       "eas": {
-        "projectId": "f498a261-1c85-4ff1-91e9-66ba37ef65bf"
+        "projectId": "d6396584-40ed-48bf-9803-d397415eba5e"
       }
     }
   }

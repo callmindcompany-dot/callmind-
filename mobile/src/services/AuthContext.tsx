@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { supabase, isSupabasePlaceholder } from './supabase';
+import { formatAuthError } from './authErrors';
+
+WebBrowser.maybeCompleteAuthSession();
 
 /**
  * CallMind Mobile Auth Context
@@ -40,6 +45,8 @@ interface MobileAuthContextType {
 
   // Auth Methods
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
 
   // Profile Methods
@@ -163,7 +170,7 @@ export const MobileAuthProvider: React.FC<{ children: ReactNode }> = ({ children
   }, [fetchProfile]);
 
   /**
-   * Google Sign-In via Supabase OAuth
+   * Google Sign-In via Supabase OAuth with in-app WebBrowser
    */
   const signInWithGoogle = useCallback(async () => {
     setAuthError(null);
@@ -176,18 +183,137 @@ export const MobileAuthProvider: React.FC<{ children: ReactNode }> = ({ children
     }
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const redirectUrl = Linking.createURL('google-auth');
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
           queryParams: { prompt: 'select_account' },
         },
       });
+
       if (error) throw error;
+      if (!data?.url) {
+        throw new Error('Could not retrieve authentication URL from Supabase.');
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+      if (result.type === 'success' && result.url) {
+        const url = result.url;
+
+        // 1. PKCE flow (code=...)
+        if (url.includes('code=')) {
+          const parsed = Linking.parse(url);
+          const code = (parsed.queryParams?.code as string) || '';
+          if (code) {
+            const { data: sessionData, error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
+            if (sessionError) throw sessionError;
+            if (sessionData.session?.user) {
+              setUser(sessionData.session.user);
+              await fetchProfile(sessionData.session.user.id, sessionData.session.user.email || undefined);
+            }
+            return;
+          }
+        }
+
+        // 2. Implicit / Hash flow (#access_token=...&refresh_token=...)
+        let accessToken: string | null = null;
+        let refreshToken: string | null = null;
+
+        if (url.includes('#')) {
+          const hashPart = url.split('#')[1];
+          const params = new URLSearchParams(hashPart);
+          accessToken = params.get('access_token');
+          refreshToken = params.get('refresh_token');
+        } else if (url.includes('?')) {
+          const queryPart = url.split('?')[1];
+          const params = new URLSearchParams(queryPart);
+          accessToken = params.get('access_token');
+          refreshToken = params.get('refresh_token');
+        }
+
+        if (accessToken && refreshToken) {
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (sessionError) throw sessionError;
+          if (sessionData.session?.user) {
+            setUser(sessionData.session.user);
+            await fetchProfile(sessionData.session.user.id, sessionData.session.user.email || undefined);
+          }
+        }
+      }
     } catch (e: any) {
       console.error('[MobileAuth] Google Sign-In error:', e);
-      setAuthError(e?.message || 'Google Sign-In failed. Please try again.');
+      const parsed = formatAuthError(e);
+      setAuthError(parsed.message);
     }
-  }, []);
+  }, [fetchProfile]);
+
+  /**
+   * Email / Password Sign-In
+   */
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
+    setAuthError(null);
+    setIsAdminBlocked(false);
+
+    if (isSupabasePlaceholder) {
+      setAuthError('Supabase is not configured.');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) throw error;
+      if (data.user) {
+        setUser(data.user);
+        await fetchProfile(data.user.id, data.user.email || undefined);
+      }
+    } catch (e: any) {
+      console.error('[MobileAuth] Email Sign-In error:', e);
+      const parsed = formatAuthError(e);
+      setAuthError(parsed.message);
+    }
+  }, [fetchProfile]);
+
+  /**
+   * Email / Password Sign-Up
+   */
+  const signUpWithEmail = useCallback(async (email: string, password: string, name: string) => {
+    setAuthError(null);
+    setIsAdminBlocked(false);
+
+    if (isSupabasePlaceholder) {
+      setAuthError('Supabase is not configured.');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: { full_name: name.trim() },
+        },
+      });
+
+      if (error) throw error;
+      if (data.user) {
+        setUser(data.user);
+        await fetchProfile(data.user.id, data.user.email || undefined);
+      }
+    } catch (e: any) {
+      console.error('[MobileAuth] Email Sign-Up error:', e);
+      const parsed = formatAuthError(e);
+      setAuthError(parsed.message);
+    }
+  }, [fetchProfile]);
 
   /**
    * Sign Out
@@ -238,30 +364,52 @@ export const MobileAuthProvider: React.FC<{ children: ReactNode }> = ({ children
    * Complete Onboarding — save profile data + mark as completed
    */
   const completeOnboarding = useCallback(async (data: Partial<MobileUserProfile>) => {
-    if (isSupabasePlaceholder || !user) return;
+    if (!user) return;
 
-    try {
-      const { error } = await supabase
-        .from('users')
-        .upsert({
-          id: user.id,
-          email: user.email,
-          name: data.name || user.user_metadata?.full_name || '',
-          phone: data.phone || '',
-          designation: data.designation || 'Telecaller',
-          city: data.city || '',
-          goals: data.goals || [],
-          role: 'telecaller',
-          onboarding_status: 'completed',
-        }, { onConflict: 'id' });
+    // Immediately establish local profile state with onboarding completed
+    const updatedProfile: MobileUserProfile = {
+      uid: user.id,
+      email: user.email || '',
+      name: data.name || user.user_metadata?.full_name || '',
+      phone: data.phone || '',
+      designation: data.designation || 'Telecaller',
+      companyId: profile?.companyId || '',
+      companyName: profile?.companyName || '',
+      city: data.city || '',
+      goals: data.goals || ['Lead Management', 'Call Tracking'],
+      role: profile?.role || 'telecaller',
+      onboardingStatus: 'completed',
+      approvalStatus: profile?.approvalStatus || 'approved',
+      avatarUrl: profile?.avatarUrl || '',
+    };
+    setProfile(updatedProfile);
 
-      if (error) throw error;
+    // Persist to Supabase if available
+    if (!isSupabasePlaceholder) {
+      try {
+        const { error } = await supabase
+          .from('users')
+          .upsert({
+            id: user.id,
+            email: user.email,
+            name: updatedProfile.name,
+            phone: updatedProfile.phone,
+            designation: updatedProfile.designation,
+            city: updatedProfile.city,
+            role: 'telecaller',
+            onboarding_status: 'completed',
+          }, { onConflict: 'id' });
 
-      await fetchProfile(user.id, user.email);
-    } catch (e) {
-      console.error('[MobileAuth] Complete onboarding error:', e);
+        if (error) {
+          console.warn('[MobileAuth] completeOnboarding upsert warning:', error);
+        } else {
+          await fetchProfile(user.id, user.email);
+        }
+      } catch (e) {
+        console.warn('[MobileAuth] Complete onboarding server sync error:', e);
+      }
     }
-  }, [user, fetchProfile]);
+  }, [user, profile, fetchProfile]);
 
   /**
    * Refresh Profile
@@ -287,6 +435,8 @@ export const MobileAuthProvider: React.FC<{ children: ReactNode }> = ({ children
     isApproved,
     isAdminBlocked,
     signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
     signOut,
     updateProfile,
     completeOnboarding,
@@ -296,7 +446,7 @@ export const MobileAuthProvider: React.FC<{ children: ReactNode }> = ({ children
   }), [
     user, profile, initialized, loading,
     isAuthenticated, isOnboarded, isApproved, isAdminBlocked,
-    signInWithGoogle, signOut, updateProfile, completeOnboarding, refreshProfile,
+    signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, updateProfile, completeOnboarding, refreshProfile,
     authError, clearError,
   ]);
 

@@ -2739,6 +2739,21 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
         onClose={() => setShowDeleteConfirm(false)}
       />
 
+      {/* Lead Detail Inspection Drawer */}
+      <AnimatePresence>
+        {selectedLead && (
+          <LeadDetail
+            lead={selectedLead as any}
+            onClose={() => setSelectedLead(null)}
+            onEdit={() => {
+              toast('Inline editing mode is available directly in the drawer.');
+            }}
+            leadsList={displayedLeads as any}
+            onNavigate={(nextLead) => setSelectedLead(nextLead as any)}
+          />
+        )}
+      </AnimatePresence>
+
       <ActionProgressBar
         progress={bulkActionProgress.progress}
         title={bulkActionProgress.title}

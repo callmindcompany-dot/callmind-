@@ -6,6 +6,7 @@ import NetInfo from '@react-native-community/netinfo';
 
 // Services & Context
 import { MobileAuthProvider, useMobileAuth } from './src/services/AuthContext';
+import { supabase } from './src/services/supabase';
 import { leadService } from './src/services/leadService';
 import { callService } from './src/services/callService';
 import { syncService } from './src/services/sync';
@@ -105,6 +106,8 @@ type AppScreen =
   | 'leaderboard'
   | 'attendance'
   | 'settings'
+  | 'join_company_modal'
+  | 'approval_pending'
   | 'inbox'
   | 'announcement_detail'
   | 'call_log'
@@ -134,6 +137,8 @@ function MainAppContent() {
     isApproved,
     isAdminBlocked,
     signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
     signOut,
     completeOnboarding,
     refreshProfile,
@@ -711,13 +716,11 @@ function MainAppContent() {
   }
 
   // ─── PERMISSIONS ──────────────────────────────────
-  // Once, after approval, before the app. AppPermissionsScreen was imported and
-  // never rendered, so the agent met the location prompt for the first time at
-  // the moment they tried to punch in.
-  if (isAuthenticated && isOnboarded && isApproved && permissionsSeen === false) {
+  // Prompts notifications, location and camera once after profile setup is complete.
+  if (isAuthenticated && isOnboarded && permissionsSeen === false) {
     return (
       <View style={styles.container}>
-        <StatusBar style="auto" />
+        <StatusBar style="dark" />
         <AppPermissionsScreen
           onContinue={async () => {
             await AsyncStorage.setItem('callmind.permissionsSeen', 'true');
@@ -729,12 +732,11 @@ function MainAppContent() {
   }
 
   // ─── SUBSCRIPTION ─────────────────────────────────
-  // A hard stop, unlike the legal notice: the company has stopped paying, and
-  // there is nothing useful the agent can do until an admin fixes it.
-  if (isAuthenticated && isOnboarded && isApproved && planStatus.locked) {
+  // A hard stop if company subscription is locked
+  if (isAuthenticated && isOnboarded && planStatus.locked) {
     return (
       <View style={styles.container}>
-        <StatusBar style="auto" />
+        <StatusBar style="dark" />
         <SubscriptionLockScreen
           companyName={planStatus.companyName}
           expiryDate={planStatus.expiryDate ?? 'Not recorded'}
@@ -746,20 +748,11 @@ function MainAppContent() {
     );
   }
 
-  // Legal acceptance is prompted, not enforced.
-  //
-  // A first version of this returned the documents screen instead of the app
-  // until the user accepted, with no way past it — a telecaller who declined
-  // would have been stuck on a page with a back button that re-showed it. The
-  // web app shows a dismissible banner over the dashboard rather than blocking,
-  // so mobile matches: the banner below opens the documents, and the screen
-  // records the acceptance.
-
   // ─── AUTH & ONBOARDING FLOW ────────────────────────
-  if (!isAuthenticated || !isOnboarded || !isApproved) {
+  if (!isAuthenticated || !isOnboarded) {
     return (
       <View style={styles.container}>
-        <StatusBar style="auto" />
+        <StatusBar style="dark" />
 
         {currentAuthStep === 'splash' && (
           <SplashScreen onFinish={() => setCurrentAuthStep('onboarding')} />
@@ -775,6 +768,8 @@ function MainAppContent() {
         {currentAuthStep === 'google_auth' && (
           <ProfileSetup
             onGoogleSignIn={signInWithGoogle}
+            onEmailSignIn={signInWithEmail}
+            onEmailSignUp={signUpWithEmail}
             onBack={() => setCurrentAuthStep('onboarding')}
             error={authError || (isAdminBlocked ? 'This account has admin access. Please use the web dashboard at callmind.ai' : null)}
           />
@@ -784,28 +779,8 @@ function MainAppContent() {
           <UserInfoCollection
             onComplete={async (data) => {
               await completeOnboarding(data);
-              setCurrentAuthStep('join_company');
             }}
             onBack={() => setCurrentAuthStep('google_auth')}
-          />
-        )}
-
-        {currentAuthStep === 'join_company' && (
-          <JoinCompany
-            onJoinSuccess={() => setCurrentAuthStep('approval_pending')}
-            onBack={() => setCurrentAuthStep('user_info')}
-          />
-        )}
-
-        {currentAuthStep === 'approval_pending' && (
-          <ApprovalPending
-            onBackToHome={() => signOut()}
-            onCheckStatus={async () => {
-              setCheckingApproval(true);
-              await refreshProfile();
-              setCheckingApproval(false);
-            }}
-            checkingStatus={checkingApproval}
           />
         )}
       </View>
@@ -1153,6 +1128,7 @@ function MainAppContent() {
             onOpenAttendance={() => setCurrentScreen('attendance')}
             onOpenPerformance={() => setCurrentScreen('performance')}
             onDeleteAccount={() => setCurrentScreen('delete_account')}
+            onOpenJoinCompany={() => setCurrentScreen('join_company_modal')}
             onOpenTargets={() => setCurrentScreen('target')}
             onOpenDocuments={() => setCurrentScreen('documents')}
             onOpenHelp={() => setCurrentScreen('help')}
@@ -1166,6 +1142,30 @@ function MainAppContent() {
                 message: 'Are you sure you want to log out of CallMind?',
               });
             }}
+          />
+        );
+
+      case 'join_company_modal':
+        return (
+          <JoinCompany
+            onJoinSuccess={() => {
+              loadSecondaryData();
+              setCurrentScreen('approval_pending');
+            }}
+            onBack={() => setCurrentScreen('settings')}
+          />
+        );
+
+      case 'approval_pending':
+        return (
+          <ApprovalPending
+            onBackToHome={() => setCurrentScreen('settings')}
+            onCheckStatus={async () => {
+              setCheckingApproval(true);
+              await refreshProfile();
+              setCheckingApproval(false);
+            }}
+            checkingStatus={checkingApproval}
           />
         );
 

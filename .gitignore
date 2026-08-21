@@ -18,3 +18,5 @@ scripts/backup_tables.ts
 scripts/run_pre_migration_queries.ts
 scripts/execute_all_migrations.ts
 scripts/pre_migration_backup.json
+*.apk
+eas_*_log.txt
