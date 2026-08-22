@@ -6,7 +6,7 @@ import { Footer } from '../components/Footer';
 import { SEOHead } from '../components/SEOHead';
 import { PlanCard } from '../components/PlanCard';
 import { useNavigate } from 'react-router-dom';
-import { FREE_TRIAL_CONFIG, GST_RATE } from '../../config/pricing';
+import { FREE_TRIAL_CONFIG, GST_RATE, PRICING_PLANS } from '../../config/pricing';
 import { MARKETING_PLANS } from '../data/planCopy';
 
 const faqs = [
@@ -208,21 +208,27 @@ export const PricingPage = () => {
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                   <tr className="hover:bg-slate-50/50">
                     <td className="py-3.5 px-6 font-bold text-slate-900">Telecaller Seat Capacity</td>
-                    <td className="py-3.5 px-6 text-center">1 – 10 Seats</td>
-                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">1 – 25 Seats</td>
-                    <td className="py-3.5 px-6 text-center font-bold">1 – 50 Seats</td>
+                    <td className="py-3.5 px-6 text-center">1 – {PRICING_PLANS.starter.maxSeats} Seats</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">1 – {PRICING_PLANS.growth.maxSeats} Seats</td>
+                    <td className="py-3.5 px-6 text-center font-bold">1 – {PRICING_PLANS.pro.maxSeats} Seats</td>
                   </tr>
                   <tr className="hover:bg-slate-50/50">
                     <td className="py-3.5 px-6 font-bold text-slate-900">Admin & Manager Accounts</td>
-                    <td className="py-3.5 px-6 text-center">1 Admin</td>
-                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">2 Admins</td>
-                    <td className="py-3.5 px-6 text-center font-bold">3 Admins</td>
+                    <td className="py-3.5 px-6 text-center">{PRICING_PLANS.starter.maxAdmins} Admin</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">{PRICING_PLANS.growth.maxAdmins} Admins</td>
+                    <td className="py-3.5 px-6 text-center font-bold">{PRICING_PLANS.pro.maxAdmins} Admins</td>
                   </tr>
                   <tr className="hover:bg-slate-50/50">
                     <td className="py-3.5 px-6 font-bold text-slate-900">Total Leads Stored</td>
-                    <td className="py-3.5 px-6 text-center">10,000 Leads</td>
-                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">25,000 Leads</td>
-                    <td className="py-3.5 px-6 text-center font-bold">50,000 Leads</td>
+                    <td className="py-3.5 px-6 text-center">{PRICING_PLANS.starter.leadLimit.toLocaleString('en-IN')} Leads</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">{PRICING_PLANS.growth.leadLimit.toLocaleString('en-IN')} Leads</td>
+                    <td className="py-3.5 px-6 text-center font-bold">Unlimited Leads</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Bulk Lead Import</td>
+                    <td className="py-3.5 px-6 text-center">{typeof PRICING_PLANS.starter.bulkImport === 'number' ? `${PRICING_PLANS.starter.bulkImport.toLocaleString('en-IN')} rows / import` : 'Unlimited'}</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">{typeof PRICING_PLANS.growth.bulkImport === 'number' ? `${PRICING_PLANS.growth.bulkImport.toLocaleString('en-IN')} rows / import` : 'Unlimited'}</td>
+                    <td className="py-3.5 px-6 text-center font-bold">Unlimited rows</td>
                   </tr>
                   <tr className="hover:bg-slate-50/50">
                     <td className="py-3.5 px-6 font-bold text-slate-900">1-Click SIM Telecalling (Android)</td>
@@ -238,15 +244,21 @@ export const PricingPage = () => {
                   </tr>
                   <tr className="hover:bg-slate-50/50">
                     <td className="py-3.5 px-6 font-bold text-slate-900">Active Lead Source Integrations</td>
-                    <td className="py-3.5 px-6 text-center">1 Source</td>
-                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">3 Sources</td>
-                    <td className="py-3.5 px-6 text-center font-bold">Unlimited</td>
+                    <td className="py-3.5 px-6 text-center">{PRICING_PLANS.starter.leadSources} Active Sources</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">{PRICING_PLANS.growth.leadSources} Active Sources</td>
+                    <td className="py-3.5 px-6 text-center font-bold">Unlimited Sources</td>
                   </tr>
                   <tr className="hover:bg-slate-50/50">
                     <td className="py-3.5 px-6 font-bold text-slate-900">Round-Robin & Sequential Routing</td>
                     <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Included</td>
                     <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Included</td>
                     <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Included</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Automation & Notification Rules</td>
+                    <td className="py-3.5 px-6 text-center">{PRICING_PLANS.starter.automationRules} Rules</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">{PRICING_PLANS.growth.automationRules} Rules</td>
+                    <td className="py-3.5 px-6 text-center font-bold">{PRICING_PLANS.pro.automationRules} Rules</td>
                   </tr>
                   <tr className="hover:bg-slate-50/50">
                     <td className="py-3.5 px-6 font-bold text-slate-900">Offline Calling & Auto-Sync</td>
@@ -256,27 +268,33 @@ export const PricingPage = () => {
                   </tr>
                   <tr className="hover:bg-slate-50/50">
                     <td className="py-3.5 px-6 font-bold text-slate-900">Document Storage per Seat</td>
-                    <td className="py-3.5 px-6 text-center">2 GB / seat</td>
-                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">3 GB / seat</td>
-                    <td className="py-3.5 px-6 text-center font-bold">5 GB / seat</td>
+                    <td className="py-3.5 px-6 text-center">{PRICING_PLANS.starter.storageGbPerSeat} GB / seat</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">{PRICING_PLANS.growth.storageGbPerSeat} GB / seat</td>
+                    <td className="py-3.5 px-6 text-center font-bold">{PRICING_PLANS.pro.storageGbPerSeat} GB / seat</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-6 font-bold text-slate-900">Max File Upload Size</td>
+                    <td className="py-3.5 px-6 text-center">{PRICING_PLANS.starter.maxFileSizeMb} MB</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">{PRICING_PLANS.growth.maxFileSizeMb} MB</td>
+                    <td className="py-3.5 px-6 text-center font-bold">{PRICING_PLANS.pro.maxFileSizeMb} MB</td>
                   </tr>
                   <tr className="hover:bg-slate-50/50">
                     <td className="py-3.5 px-6 font-bold text-slate-900">Recycle Bin Data Recovery</td>
-                    <td className="py-3.5 px-6 text-center">7 Days</td>
-                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">15 Days</td>
-                    <td className="py-3.5 px-6 text-center font-bold">30 Days</td>
+                    <td className="py-3.5 px-6 text-center">{PRICING_PLANS.starter.recycleBinDays} Days</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">{PRICING_PLANS.growth.recycleBinDays} Days</td>
+                    <td className="py-3.5 px-6 text-center font-bold">{PRICING_PLANS.pro.recycleBinDays} Days</td>
                   </tr>
                   <tr className="hover:bg-slate-50/50">
                     <td className="py-3.5 px-6 font-bold text-slate-900">GST Tax Invoices with ITC (18%)</td>
-                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Downloadable</td>
-                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Downloadable</td>
-                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Downloadable</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Downloadable PDF</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Downloadable PDF</td>
+                    <td className="py-3.5 px-6 text-center text-emerald-600 font-bold">✓ Downloadable PDF</td>
                   </tr>
                   <tr className="hover:bg-slate-50/50">
                     <td className="py-3.5 px-6 font-bold text-slate-900">Support SLA</td>
-                    <td className="py-3.5 px-6 text-center">Email (48h)</td>
-                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">Priority Chat (24h)</td>
-                    <td className="py-3.5 px-6 text-center font-bold">WhatsApp Priority (12h)</td>
+                    <td className="py-3.5 px-6 text-center">Email ({PRICING_PLANS.starter.supportHours}h response)</td>
+                    <td className="py-3.5 px-6 text-center text-brand-600 font-bold">Live Chat ({PRICING_PLANS.growth.supportHours}h response)</td>
+                    <td className="py-3.5 px-6 text-center font-bold">WhatsApp Priority ({PRICING_PLANS.pro.supportHours}h response)</td>
                   </tr>
                 </tbody>
               </table>
