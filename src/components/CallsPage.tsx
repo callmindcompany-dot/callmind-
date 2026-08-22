@@ -961,10 +961,40 @@ export const CallsPage = ({ onBack, onTabChange }: { onBack?: () => void, onTabC
                 <CallMindLoader size="md" text="Loading calls..." />
               </div>
             ) : calls.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-gray-400 border border-gray-150 rounded-3xl bg-white shadow-sm">
-                <Search size={48} className="mb-4 opacity-10" />
-                <p className="font-bold">No call logs found</p>
-                <p className="text-xs text-gray-400 mt-1">Try resetting search queries or workspace hubs.</p>
+              <div className="flex flex-col items-center justify-center py-16 px-6 text-gray-400 border border-gray-150 rounded-3xl bg-white shadow-sm space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-600">
+                  <Phone size={28} />
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="font-bold text-gray-800 text-base">No call logs found</p>
+                  <p className="text-xs text-gray-400 max-w-sm">
+                    {inputValue || selectedAgent !== 'All Agents' || selectedCallType !== 'All Types' || selectedInterest !== 'All Interest'
+                      ? 'No calls match your active filter criteria. Try clearing filters.'
+                      : 'Incoming and outgoing calls logged from the mobile SIM app will appear here in real-time.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 pt-2">
+                  {(inputValue || selectedAgent !== 'All Agents' || selectedCallType !== 'All Types' || selectedInterest !== 'All Interest') && (
+                    <button
+                      onClick={() => {
+                        setInputValue('');
+                        setSelectedAgent('All Agents');
+                        setSelectedCallType('All Types');
+                        setSelectedInterest('All Interest');
+                        setPage(1);
+                      }}
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all"
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowLogModal(true)}
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs btn-tactile"
+                  >
+                    <Phone size={14} /> Log Manual Call
+                  </button>
+                </div>
               </div>
             ) : (
               <>

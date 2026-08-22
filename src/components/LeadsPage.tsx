@@ -829,6 +829,36 @@ export const LeadsPage = ({ onTabChange }: { onTabChange?: (tab: string) => void
 
   const rottingThreshold = teamSettings.rottingThreshold;
 
+  // Keyboard Shortcuts (Alt+N for New Lead, Alt+I for Smart Import, Escape to dismiss)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        if (e.key === 'Escape') {
+          target.blur();
+        }
+        return;
+      }
+
+      if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+        e.preventDefault();
+        setShowAddModal(true);
+      } else if (e.altKey && (e.key === 'i' || e.key === 'I')) {
+        e.preventDefault();
+        setShowSmartImport(true);
+      } else if (e.key === 'Escape') {
+        setSelectedLead(null);
+        setShowAddModal(false);
+        setShowSmartImport(false);
+        setShowFieldSettings(false);
+        setSelectedLeadIds([]);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // React Query allLeads query for dashboard counters, stats, and local fallback compatibility
   const { data: allLeads = [], refetch: refetchAllLeads } = useQuery({
     queryKey: ['allLeads', companyId],
